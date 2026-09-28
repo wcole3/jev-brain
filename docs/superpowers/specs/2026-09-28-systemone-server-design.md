@@ -86,8 +86,8 @@ One env file per profile. You switch by restarting with a different file:
 - **Pinning:** each profile sets `HF_REVISION` to the model revision current at bring-up,
   and `PROMPT_LAYOUT` (default `decider_chat`). The label vocabulary and the temperatures
   are only valid for that revision + layout pair.
-- **Gemma access:** the weights are gated, so the HF token is read from the git-ignored
-  file `secrets/hf_token`.
+- **HF token:** none of the three models is gated (checked 2026-09-28). `HF_TOKEN` is
+  passed through from the shell only if set.
 - **Mounts:**
   - `vllm` mounts `~/.cache/huggingface` read-write.
   - `gateway` mounts it read-only, because it only needs the tokenizer.
@@ -100,9 +100,11 @@ One env file per profile. You switch by restarting with a different file:
 `build_labels.py --profile X` loads the pinned tokenizer and, for every layout in
 `prompts/`, writes `data/X/<layout>/labels.json`:
 
-- `labels`: A–Z, then two-letter uppercase codes, up to 255. A code is kept only if it
-  encodes to exactly one token right after the layout's answer slot (`Answer: (` in
-  `decider_chat`). The rule is `encode(prefix + code) == encode(prefix) + [id]`.
+- `labels`: A–Z, then two-letter uppercase codes, the first 255 that encode to exactly one
+  token on their own (decider's rule). A–J, the labels of choices with 10 or fewer
+  options, are also checked in context: `encode(answer + code) == encode(answer) + [id]`.
+  Wider option lists are built from label token ids directly, so the model sees exactly
+  the token we read.
 - The order matches decider's label order.
 - The file also stores the token ids, a hash of the tokenizer files, and a hash of the
   layout file.

@@ -11,6 +11,7 @@ status of the cited GitHub issues and PRs, the TypeSafe terms, the vLLM
 | [inference-top-projects.md](inference-top-projects.md) | decider, simple-jev, reflex, jevfire, openjev-sglang: how each runs, chat coexistence, engine bugs |
 | [inference-other-projects.md](inference-other-projects.md) | litjev, SemIf, snapjudge, openvons, jobe, mini-jev and others; the technique and its failure modes |
 | [trained-and-diffusion.md](trained-and-diffusion.md) | Diffusion route and the strongest trained open models |
+| [ordering-and-layout.md](ordering-and-layout.md) | Option-order bias and question placement for long documents: literature + Jev-ecosystem evidence |
 | [schema-audit-inference.md](schema-audit-inference.md) | Source-code audit of answer fields and `confidence` in 12 inference-technique servers |
 | [schema-audit-trained.md](schema-audit-trained.md) | Same audit for trained and diffusion servers |
 

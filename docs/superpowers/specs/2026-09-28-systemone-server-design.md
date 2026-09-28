@@ -23,7 +23,8 @@ with the official TypeSafe SDK, and has a committed latency report per profile.
 | Models | `Qwen/Qwen3.8-27B`, `Qwen/Qwen3.6-27B`, `google/gemma-4-31B-it`, bf16, one loaded at a time | bf16 is the reference for calibration and index comparison |
 | Thinking | On for chat by default, switchable per request; always off in systemone prompts | Supported per request by both model families |
 | MTP | **Off in phase 1**; investigated in a spike | vLLM cannot disable MTP per request. With MTP on, `logprob_token_ids` requests go through the rejection sampler, which drops them (v0.30.0 `model_runner.py:1552-1583`) |
-| Prompt layout | Editable prompt files (`prompts/<layout>.toml`), selected per profile. The default `decider_chat` layout matches decider token for token | Wording can change without touching code. The default lets us reuse decider's published temperature (Qwen3.6-27B: 1.943) and compare with its index scores |
+| Prompt layout | Editable prompt files (`prompts/<layout>.toml`), selected per profile, with an optional per-request override. Three ship: `decider_chat` (default, state first), plus experimental `header` and `question_first` | Wording can change without touching code. The default lets us reuse decider's published temperature (Qwen3.6-27B: 1.943) and compare with its index scores. Question placement matters on long documents (snapjudge invoices: state-first 41/75, header 45/75, question-first 50/75) |
+| Option order | The renderer can permute options and map probabilities back; averaging over orders is supported but off by default | LLMs show strong option-order and label-token bias (Pezeshkpour & Hruschka 2023; Zheng et al. 2023; Jev itself: 88% vs ~60%), but averaging helped in one reproduction and not in another. Phase 2 measures it before any default changes |
 | Label vocabulary | Built ahead of time from each tokenizer and stored with the tokenizer hash | Guarantees every option label is exactly one token |
 | HF weights | Host `~/.cache/huggingface` mounted into the containers | No re-downloads |
 
@@ -51,7 +52,9 @@ gateway/            the FastAPI app (Python package)
   calibration.py    temperatures per profile, layout and question type
   chat.py           chat proxy + route() hook
 prompts/            prompt layouts as editable text, one TOML file each
-  decider_chat.toml the default; matches decider token for token
+  decider_chat.toml   default, state first; matches decider token for token
+  header.toml         experimental: all questions, then state, then each question
+  question_first.toml experimental: question and options, then state
 scripts/            build_labels.py, bench.py, bench_data.py (phase 2 adds calibrate.py, evaluate.py)
 tests/unit/         CPU-only, fast
 tests/parity/       decider_chat prompts vs decider's, token for token
@@ -94,8 +97,8 @@ One env file per profile. You switch by restarting with a different file:
 
 ## Label vocabulary (`scripts/build_labels.py`, `gateway/labels.py`)
 
-`build_labels.py --profile X` loads the pinned tokenizer and the profile's prompt layout,
-and writes `data/X/<layout>/labels.json`:
+`build_labels.py --profile X` loads the pinned tokenizer and, for every layout in
+`prompts/`, writes `data/X/<layout>/labels.json`:
 
 - `labels`: A–Z, then two-letter uppercase codes, up to 255. A code is kept only if it
   encodes to exactly one token right after the layout's answer slot (`Answer: (` in
@@ -149,8 +152,28 @@ on a mismatch, so an edited layout forces a label rebuild.
    - choices with 10 or fewer options in the A–J text rendering, and wider choices with
      one label token per option.
 
-   Every layout puts the state first, so all questions share one prefix. A new layout
+   Placeholders available to every layout: `{state}`, `{question}`, `{options}`, and
+   `{questions}` (all of the request's questions, for the `header` layout). A new layout
    means a new TOML file, rebuilt labels, and a refitted temperature. No code changes.
+
+   Layouts differ in whether the questions of one request can share a KV-cache prefix,
+   which decides speed:
+
+   | Layout | Prompt order | Shared prefix across a request's questions | Intended use |
+   |---|---|---|---|
+   | `decider_chat` | state → question → options | Yes (the state) | Default |
+   | `header` | all questions → state → question → options | Yes (the question list + state) | Long documents with many questions ("query before and after the document", Liu et al. 2023) |
+   | `question_first` | question → options → state | No; the state is prefilled once per question | Single-question requests, and fixed questions repeated across requests (phase-3 router) |
+
+   **Option order.** The renderer takes an option permutation per question (identity by
+   default) and maps the resulting probabilities back to the caller's option names. The
+   setting `OPTION_ORDERS` (`identity` | `identity+reversed` | `cyclic:<k>`) renders each
+   question once per order and averages the mapped probabilities. The extra rows share
+   the state prefix, so the cost is mostly the question suffixes. Default: `identity`.
+
+   **Per-request override (experiments only).** Optional non-Jev request fields `layout`
+   and `option_orders` override the profile settings. Jev clients never send them.
+   The gateway loads every layout in `prompts/` at startup, together with its labels.
 3. **Read out** (`readout.py`).
    - Public interface: `letter_logprobs(prompts, label_ids) -> list[list[float]]`.
    - The gateway tokenizes the prompts itself and sends **one** batched
@@ -201,6 +224,8 @@ on a mismatch, so an edited layout forces a label rebuild.
   - schema validation and the 422 marker texts;
   - golden prompt strings for each layout × model template;
   - every file in `prompts/` loads and has all required keys and placeholders;
+  - option permutations map probabilities back to the right option names, and averaging
+    over orders matches a hand-computed example;
   - the label builder, using the real tokenizers from the HF cache;
   - readout maths: softmax with `T`, and merging the >128-label chunks;
   - confidence formulas: TypeSafe's examples give 0.82 and 0.775 for choice, and
@@ -263,10 +288,19 @@ For each of the three profiles:
   - `calibrate.py` fits `T` per profile and question type by NLL, on a calibration split
     kept separate from eval rows (never on Jev outputs);
   - measure latency with the latency-v1 protocol;
-  - report results against the matching leaderboard entries.
+  - report results against the matching leaderboard entries;
+  - **option-order experiment:** identity vs reversed vs cyclic rotations, per question
+    type. Measure flip rate, accuracy, ECE, the position histogram of chosen answers, and
+    whether disagreement between orders (TVD) predicts errors. Also try PriDe-style
+    label-prior correction (Zheng et al. 2023). Change the default only if accuracy or
+    ECE improves; jobe saw no gain from averaging;
+  - **layout experiment:** `decider_chat` vs `header` vs `question_first`, by question
+    type and state length, including long-document sets (the TypeSafe invoice cases).
+    Report accuracy and latency, and derive auto-switch rules only from these results.
 - **Phase 3, router:**
   - a light pre-flight `route()`: configurable standard questions that set thinking and
-    `reasoning_effort`;
+    `reasoning_effort`. These questions are fixed, so `question_first` lets their prefix
+    be cached across chat turns;
   - a model-invoked systemone tool;
   - a router eval comparing against always-think and never-think baselines.
 - **Spike, MTP:** swap in a top-k readout, A/B the letter distributions (idle, under MTP

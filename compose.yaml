@@ -1,4 +1,5 @@
 # One model per run: docker compose --env-file profiles/<profile>.env up -d
+name: jev-brain
 services:
   vllm:
     image: vllm/vllm-openai:v0.30.0

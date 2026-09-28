@@ -1,4 +1,5 @@
 """Option labels (A..Z, then AA..), each exactly one token. Built once per tokenizer and layout."""
+import functools
 import hashlib
 import json
 import string
@@ -33,6 +34,7 @@ def label_table(tok) -> Labels:
     return Labels(names, ids)
 
 
+@functools.cache  # keyed by tokenizer identity; hashing the full vocab is slow
 def tokenizer_sha256(tok) -> str:
     text = json.dumps(tok.get_vocab(), sort_keys=True) + str(tok.chat_template)
     return hashlib.sha256(text.encode()).hexdigest()

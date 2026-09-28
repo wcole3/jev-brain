@@ -1,0 +1,10 @@
+# Default layout: state first. Matches decider's chat layout token for token (tests/parity).
+# Each part in `order` is tokenized on its own, like decider. Literal braces must be written {{ }}.
+order = ["context", "question", "options"]
+context = "Context:\n{state}"
+question = "\n\nQuestion: {question}\nOptions:"
+option = "\n({label}) {text}"
+answer = "Answer: ("
+described = "{name}: {description}"
+noul = ["no", "yes"]
+noul_question = "Which answer fits the context?"

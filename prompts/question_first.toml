@@ -1,0 +1,9 @@
+# Experimental: question and options first, state last. Questions do not share a prefix within a request.
+order = ["question", "options", "context"]
+question = "Question: {question}\nOptions:"
+option = "\n({label}) {text}"
+context = "\n\nContext:\n{state}"
+answer = "Answer: ("
+described = "{name}: {description}"
+noul = ["no", "yes"]
+noul_question = "Which answer fits the context?"

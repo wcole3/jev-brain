@@ -1,0 +1,22 @@
+[
+  {"state": "Hi, I've been trying to connect my Stripe account for 3 days and the integration keeps failing. I'm losing sales. Please help ASAP.",
+   "questions": {
+     "department": {"type": "choice", "instructions": "Which team should handle this",
+                    "criteria": {"billing": "Payment or subscription issues", "technical": "Bugs or integration problems", "sales": "Pricing or account questions"}},
+     "frustration": {"type": "score", "instructions": "How frustrated the customer appears",
+                     "criteria": ["Calm, just stating facts", "Frustrated but civil", "Very angry, strong language"]},
+     "is_urgent": {"type": "noul", "instructions": "The message conveys urgency or time-sensitivity"}}},
+  {"state": {"ticket": {"id": 7, "records": [{"t": 1}, {"t": 2}, {"t": 3}, {"t": 4}, {"t": 5}, {"t": 6}, {"t": 7}, {"t": 8}, {"t": 9}]}},
+   "questions": {
+     "kind": {"type": "choice", "instructions": {"question": "Which kind?", "hint": "records"}, "criteria": ["alpha", "beta", "gamma"]},
+     "escalate": {"type": "noul", "instructions": "Escalate?", "criteria": {"true": "a human must look", "false": "automation is fine"}}}},
+  {"state": "Invoice 42: 3 items, total 120.00 EUR, due 2026-10-01.",
+   "questions": {
+     "category": {"type": "choice", "instructions": "Which ledger category?",
+                  "criteria": {"c0": "Travel", "c1": null, "c2": "Software", "c3": null, "c4": "Hardware", "c5": null,
+                               "c6": "Meals", "c7": null, "c8": "Rent", "c9": null, "c10": "Utilities", "c11": {"note": "other"}}},
+     "overdue": {"type": "noul", "criteria": {"true": "The invoice is overdue"}},
+     "risk": {"type": "score", "instructions": "Payment risk", "criteria": {"1": "medium", "0": "low", "2": "high"}}}},
+  {"state": "Café naïve — 東京 🚀 {braces} stay literal",
+   "questions": {"lang": {"type": "choice", "instructions": "Main language?", "criteria": {"fr": "French", "ja": "Japanese"}}}}
+]

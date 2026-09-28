@@ -1,0 +1,37 @@
+<bos><|turn>user
+Question: Which team should handle this
+Options:
+(A) billing: Payment or subscription issues
+(B) technical: Bugs or integration problems
+(C) sales: Pricing or account questions
+
+Context:
+Hi, my Stripe integration keeps failing and I'm losing sales. Please help ASAP.<turn|>
+<|turn>model
+<|channel>thought
+<channel|>Answer: (
+=====
+<bos><|turn>user
+Question: How frustrated the customer appears
+Options:
+(A) 0: Calm, just stating facts
+(B) 1: Frustrated but civil
+(C) 2: Very angry, strong language
+
+Context:
+Hi, my Stripe integration keeps failing and I'm losing sales. Please help ASAP.<turn|>
+<|turn>model
+<|channel>thought
+<channel|>Answer: (
+=====
+<bos><|turn>user
+Question: The message conveys urgency or time-sensitivity
+Options:
+(A) no
+(B) yes
+
+Context:
+Hi, my Stripe integration keeps failing and I'm losing sales. Please help ASAP.<turn|>
+<|turn>model
+<|channel>thought
+<channel|>Answer: (

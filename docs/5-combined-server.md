@@ -112,20 +112,24 @@ The core scoring call, adapted from jevfire's
 ```python
 import math
 
+
 async def score(client, tokenizer, model, prompts, letter_ids, n_options, T):
     """prompts: one rendered prompt per question, each ending at the answer slot.
     letter_ids: token ids of A, B, C… (check each is ONE token in context at startup).
     n_options: number of options for each question."""
-    r = await client.post("/v1/completions", json={
-        "model": model,
-        "prompt": [tokenizer.encode(p, add_special_tokens=False) for p in prompts],
-        "max_tokens": 1,
-        "temperature": 0,
-        "logprobs": 0,
-        "logprob_token_ids": letter_ids[: max(n_options)],   # max 128 in stock vLLM
-        "return_tokens_as_token_ids": True,
-        "add_special_tokens": False,
-    })
+    r = await client.post(
+        "/v1/completions",
+        json={
+            "model": model,
+            "prompt": [tokenizer.encode(p, add_special_tokens=False) for p in prompts],
+            "max_tokens": 1,
+            "temperature": 0,
+            "logprobs": 0,
+            "logprob_token_ids": letter_ids[: max(n_options)],  # max 128 in stock vLLM
+            "return_tokens_as_token_ids": True,
+            "add_special_tokens": False,
+        },
+    )
     r.raise_for_status()
     results = []
     for choice, n in zip(sorted(r.json()["choices"], key=lambda c: c["index"]), n_options):

@@ -208,7 +208,7 @@ from tests.helpers import PROFILES
 
 def test_read_env_file_skips_comments_and_strips_quotes(tmp_path):
     f = tmp_path / "x.env"
-    f.write_text('# comment\nA=1\n\nB=\'two words\'\nC={"enable_thinking": true}\n')
+    f.write_text("# comment\nA=1\n\nB='two words'\nC={\"enable_thinking\": true}\n")
     assert read_env_file(f) == {"A": "1", "B": "two words", "C": '{"enable_thinking": true}'}
 
 
@@ -221,8 +221,17 @@ def test_every_profile_loads_with_a_pinned_revision():
 
 
 def test_blank_optional_keys_fall_back_to_defaults():
-    s = Settings.from_env({"PROFILE": "p", "HF_MODEL": "m", "HF_REVISION": "r", "SERVED_MODEL": "s",
-                           "MAX_MODEL_LEN": "1024", "PROMPT_LAYOUT": "", "GATEWAY_API_KEY": ""})
+    s = Settings.from_env(
+        {
+            "PROFILE": "p",
+            "HF_MODEL": "m",
+            "HF_REVISION": "r",
+            "SERVED_MODEL": "s",
+            "MAX_MODEL_LEN": "1024",
+            "PROMPT_LAYOUT": "",
+            "GATEWAY_API_KEY": "",
+        }
+    )
     assert s.prompt_layout == "decider_chat"
     assert s.option_orders == "identity"
     assert s.api_key is None
@@ -238,6 +247,7 @@ Expected: FAIL, `ModuleNotFoundError: No module named 'gateway.config'`
 
 ```python
 """Settings from the environment (compose) or from a profile file (scripts, tests)."""
+
 import os
 from dataclasses import dataclass
 from pathlib import Path
@@ -353,6 +363,7 @@ OPTION_ORDERS=identity
 `tests/helpers.py`:
 ```python
 """Values shared by tests. Import from here, not from conftest or other test modules."""
+
 import functools
 
 from transformers import AutoTokenizer
@@ -417,8 +428,15 @@ from gateway.schema import SystemOneRequest
 
 
 def test_extra_fields_ignored_and_overrides_parsed():
-    r = SystemOneRequest.model_validate({"state": "s", "model": "jev-latest", "foo": 1, "layout": "header",
-                                         "questions": {"q": {"type": "noul", "extra": 2}}})
+    r = SystemOneRequest.model_validate(
+        {
+            "state": "s",
+            "model": "jev-latest",
+            "foo": 1,
+            "layout": "header",
+            "questions": {"q": {"type": "noul", "extra": 2}},
+        }
+    )
     assert r.layout == "header"
     assert r.option_orders is None
     assert r.questions["q"].type == "noul"
@@ -478,6 +496,7 @@ Expected: FAIL with `ModuleNotFoundError`
 
 ```python
 """The Jev /v1/systemone request (TypeSafe wire format) and the refusal error."""
+
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict
@@ -510,6 +529,7 @@ class SystemOneRequest(BaseModel):
 
 ```python
 """Prompt layouts. All prompt wording lives in prompts/<name>.toml; this module only loads and checks it."""
+
 import hashlib
 import tomllib
 from dataclasses import dataclass
@@ -551,10 +571,19 @@ def _check(name: str, data: dict) -> None:
     if missing:
         raise ValueError(f"{name}: missing keys {missing}")
     order = data["order"]
-    if len(order) != len(set(order)) or not set(order) <= set(PARTS) or not {"context", "question", "options"} <= set(order):
+    if (
+        len(order) != len(set(order))
+        or not set(order) <= set(PARTS)
+        or not {"context", "question", "options"} <= set(order)
+    ):
         raise ValueError(f"{name}: order must list context, question, options (and optionally questions) once each")
-    needs = [("context", "{state}"), ("question", "{question}"), ("option", "{label}"), ("described", "{name}"),
-             ("described", "{description}")]
+    needs = [
+        ("context", "{state}"),
+        ("question", "{question}"),
+        ("option", "{label}"),
+        ("described", "{name}"),
+        ("described", "{description}"),
+    ]
     if "questions" in order:
         needs += [("questions", "{questions}"), ("question_item", "{question}")]
     for key, placeholder in needs:
@@ -741,6 +770,7 @@ Expected: FAIL with `ModuleNotFoundError: No module named 'gateway.questions'`
 
 ```python
 """Jev questions → option texts, mirroring decider's systemone.render_question and render_state."""
+
 import json
 from dataclasses import dataclass
 from typing import Any
@@ -759,8 +789,10 @@ def annotate_indices(x: Any) -> Any:
     if isinstance(x, list):
         if len(x) < ANNOTATE_MIN:
             return [annotate_indices(v) for v in x]
-        return [{"_index": i, **annotate_indices(v)} if isinstance(v, dict) else {"_index": i, "value": annotate_indices(v)}
-                for i, v in enumerate(x)]
+        return [
+            {"_index": i, **annotate_indices(v)} if isinstance(v, dict) else {"_index": i, "value": annotate_indices(v)}
+            for i, v in enumerate(x)
+        ]
     if isinstance(x, dict):
         return {k: annotate_indices(v) for k, v in x.items()}
     return x
@@ -780,7 +812,9 @@ class Rendered:
 
 
 def described(layout: Layout, name: Any, description: Any) -> str:
-    return str(name) if description in (None, "") else layout.described.format(name=name, description=as_text(description))
+    return (
+        str(name) if description in (None, "") else layout.described.format(name=name, description=as_text(description))
+    )
 
 
 def question_text(q: Question, layout: Layout) -> str:
@@ -909,6 +943,7 @@ Expected: FAIL with `ModuleNotFoundError: No module named 'gateway.labels'`
 
 ```python
 """Option labels (A..Z, then AA..), each exactly one token. Built once per tokenizer and layout."""
+
 import hashlib
 import json
 import string
@@ -955,8 +990,13 @@ def build_labels(tok, layout: Layout) -> dict:
     for name, token in zip(labels.names[:NARROW], labels.ids[:NARROW]):
         if tok.encode(layout.answer + name, add_special_tokens=False) != slot + [token]:
             raise ValueError(f"layout {layout.name}: label {name!r} is not one token after {layout.answer!r}")
-    return {"layout": layout.name, "layout_sha256": layout.sha256, "tokenizer_sha256": tokenizer_sha256(tok),
-            "names": labels.names, "ids": labels.ids}
+    return {
+        "layout": layout.name,
+        "layout_sha256": layout.sha256,
+        "tokenizer_sha256": tokenizer_sha256(tok),
+        "names": labels.names,
+        "ids": labels.ids,
+    }
 
 
 def save_labels(path: Path, table: dict) -> None:
@@ -983,6 +1023,7 @@ def load_labels(path: Path, tok, layout: Layout) -> Labels:
 
 usage: uv run python scripts/build_labels.py --profile qwen3.6-27b
 """
+
 import argparse
 
 from transformers import AutoTokenizer
@@ -1043,11 +1084,20 @@ This task decides parity and prefix sharing. decider tokenizes each piece **sepa
 Append:
 ```python
 QUICKSTART = {
-    "department": {"type": "choice", "instructions": "Which team should handle this",
-                   "criteria": {"billing": "Payment or subscription issues", "technical": "Bugs or integration problems",
-                                "sales": "Pricing or account questions"}},
-    "frustration": {"type": "score", "instructions": "How frustrated the customer appears",
-                    "criteria": ["Calm, just stating facts", "Frustrated but civil", "Very angry, strong language"]},
+    "department": {
+        "type": "choice",
+        "instructions": "Which team should handle this",
+        "criteria": {
+            "billing": "Payment or subscription issues",
+            "technical": "Bugs or integration problems",
+            "sales": "Pricing or account questions",
+        },
+    },
+    "frustration": {
+        "type": "score",
+        "instructions": "How frustrated the customer appears",
+        "criteria": ["Calm, just stating facts", "Frustrated but civil", "Very angry, strong language"],
+    },
     "is_urgent": {"type": "noul", "instructions": "The message conveys urgency or time-sensitivity"},
 }
 STATE = "Hi, my Stripe integration keeps failing and I'm losing sales. Please help ASAP."
@@ -1097,8 +1147,8 @@ def test_prompts_match_golden(profile, layout_name):
 @pytest.mark.parametrize("layout_name", sorted(LAYOUTS))
 def test_rows_share_the_reported_prefix(qwen_tok, layout_name):
     batch = batch_for(qwen_tok, layout_name)
-    first = batch.rows[0].ids[:batch.shared_len]
-    assert all(r.ids[:batch.shared_len] == first for r in batch.rows)
+    first = batch.rows[0].ids[: batch.shared_len]
+    assert all(r.ids[: batch.shared_len] == first for r in batch.rows)
     assert batch.input_tokens == batch.shared_len + sum(len(r.ids) - batch.shared_len for r in batch.rows)
 
 
@@ -1140,6 +1190,7 @@ Expected: FAIL with `ModuleNotFoundError: No module named 'gateway.prompts'`
 
 ```python
 """Token ids for one question per row, built part by part like decider so shared prefixes match exactly."""
+
 from dataclasses import dataclass
 
 from gateway.labels import NARROW, Labels
@@ -1163,8 +1214,9 @@ class ChatFrame:
 def chat_frame(tok, layout: Layout) -> ChatFrame:
     """decider's ChatTemplate: one user turn, no system prompt, thinking off."""
     kwargs = {"enable_thinking": False} if "enable_thinking" in str(tok.chat_template) else {}
-    text = tok.apply_chat_template([{"role": "user", "content": SENTINEL}], tokenize=False,
-                                   add_generation_prompt=True, **kwargs)
+    text = tok.apply_chat_template(
+        [{"role": "user", "content": SENTINEL}], tokenize=False, add_generation_prompt=True, **kwargs
+    )
     head, tail = text.split(SENTINEL)
     for opened, closed in CLOSE_THINKING.items():
         if tail.endswith(opened):
@@ -1215,8 +1267,15 @@ def shared_len(frame: ChatFrame, layout: Layout, parts: dict[str, list[int]]) ->
     return n
 
 
-def build_rows(tok, frame: ChatFrame, layout: Layout, labels: Labels, state: str,
-               questions: dict[str, Rendered], perms: dict[str, list[list[int]]]) -> Batch:
+def build_rows(
+    tok,
+    frame: ChatFrame,
+    layout: Layout,
+    labels: Labels,
+    state: str,
+    questions: dict[str, Rendered],
+    perms: dict[str, list[list[int]]],
+) -> Batch:
     """One row per (question, option order). Parts shared by all rows are encoded once."""
     parts = {"context": encode(tok, layout.context.format(state=state))}
     if "questions" in layout.order:
@@ -1232,7 +1291,7 @@ def build_rows(tok, frame: ChatFrame, layout: Layout, labels: Labels, state: str
             ids = list(frame.head)
             for part in layout.order:
                 ids += parts[part]
-            rows.append(Row(qid, perm, ids + frame.tail + answer, labels.ids[:len(shown)]))
+            rows.append(Row(qid, perm, ids + frame.tail + answer, labels.ids[: len(shown)]))
     return Batch(rows, shared_len(frame, layout, parts))
 ```
 
@@ -1300,11 +1359,12 @@ This test proves the `decider_chat` layout reproduces `decider.serve.prepare(ind
 ```python
 """Record decider's token ids for tests/parity/cases.json. Runs in its own venv (decider pins numpy<2):
 
-  uv venv .cache/decider-venv
-  uv pip install --python .cache/decider-venv --no-deps decider-ai==1.5.0
-  uv pip install --python .cache/decider-venv transformers jinja2 "numpy<2" huggingface_hub
-  .cache/decider-venv/bin/python scripts/decider_fixtures.py --profile qwen3.6-27b
+uv venv .cache/decider-venv
+uv pip install --python .cache/decider-venv --no-deps decider-ai==1.5.0
+uv pip install --python .cache/decider-venv transformers jinja2 "numpy<2" huggingface_hub
+.cache/decider-venv/bin/python scripts/decider_fixtures.py --profile qwen3.6-27b
 """
+
 import argparse
 import json
 from pathlib import Path
@@ -1490,11 +1550,20 @@ def test_confidence_matches_typesafe_examples():
 
 def test_answer_shapes():
     choice = Rendered("choice", "t", ["a: x", "b"], ["a", "b"])
-    assert answer(choice, [0.25, 0.75]) == {"type": "choice", "choice": "b", "confidence": 0.5,
-                                            "probabilities": {"a": 0.25, "b": 0.75}}
+    assert answer(choice, [0.25, 0.75]) == {
+        "type": "choice",
+        "choice": "b",
+        "confidence": 0.5,
+        "probabilities": {"a": 0.25, "b": 0.75},
+    }
     score = Rendered("score", "t", ["0: lo", "1: hi"], [0, 1], ["lo", "hi"])
-    assert answer(score, [0.25, 0.75]) == {"type": "score", "score": 0.75, "confidence": 0.5,
-                                           "legend": {"0": "lo", "1": "hi"}, "probabilities": {"0": 0.25, "1": 0.75}}
+    assert answer(score, [0.25, 0.75]) == {
+        "type": "score",
+        "score": 0.75,
+        "confidence": 0.5,
+        "legend": {"0": "lo", "1": "hi"},
+        "probabilities": {"0": 0.25, "1": 0.75},
+    }
     noul = Rendered("noul", "t", ["no", "yes"], [False, True])
     assert answer(noul, [0.123456, 0.876544]) == {"type": "noul", "noul": 0.8765}
 ```
@@ -1538,6 +1607,7 @@ def average_back(probs: list[list[float]], perms: list[list[int]]) -> list[float
 
 ```python
 """Softmax temperatures per question type (fitted in phase 2; 1.0 means uncalibrated)."""
+
 import json
 import logging
 import math
@@ -1566,6 +1636,7 @@ def softmax(logprobs: list[float], temperature: float) -> list[float]:
 
 ```python
 """Probabilities → Jev answers, with TypeSafe's confidence formulas (system-one-adapter confidence_metrics)."""
+
 from gateway.questions import Rendered
 
 DECIMALS = 4
@@ -1594,12 +1665,19 @@ def answer(q: Rendered, p: list[float]) -> dict:
         return {"type": "noul", "noul": round(p[1], DECIMALS)}
     if q.type == "choice":
         best = max(range(len(p)), key=p.__getitem__)
-        return {"type": "choice", "choice": q.names[best], "confidence": round(choice_confidence(p), DECIMALS),
-                "probabilities": {name: round(x, DECIMALS) for name, x in zip(q.names, p)}}
-    return {"type": "score", "score": round(sum(i * x for i, x in enumerate(p)), DECIMALS),
-            "confidence": round(score_confidence(p), DECIMALS),
-            "legend": {str(i): d for i, d in enumerate(q.legend)},
-            "probabilities": {str(i): round(x, DECIMALS) for i, x in enumerate(p)}}
+        return {
+            "type": "choice",
+            "choice": q.names[best],
+            "confidence": round(choice_confidence(p), DECIMALS),
+            "probabilities": {name: round(x, DECIMALS) for name, x in zip(q.names, p)},
+        }
+    return {
+        "type": "score",
+        "score": round(sum(i * x for i, x in enumerate(p)), DECIMALS),
+        "confidence": round(score_confidence(p), DECIMALS),
+        "legend": {str(i): d for i, d in enumerate(q.legend)},
+        "probabilities": {str(i): round(x, DECIMALS) for i, x in enumerate(p)},
+    }
 ```
 
 - [ ] **Step 6: Seed decider's published temperature for Qwen3.6-27B**
@@ -1654,8 +1732,15 @@ def fake_vllm(seen: list):
         body = json.loads(request.content)
         seen.append(body)
         logprobs = {f"token_id:{t}": -float(t) for t in body["logprob_token_ids"]}
-        return httpx.Response(200, json={"choices": [{"index": i, "logprobs": {"top_logprobs": [logprobs]}}
-                                                     for i in reversed(range(len(body["prompt"])))]})
+        return httpx.Response(
+            200,
+            json={
+                "choices": [
+                    {"index": i, "logprobs": {"top_logprobs": [logprobs]}} for i in reversed(range(len(body["prompt"])))
+                ]
+            },
+        )
+
     return handler
 
 
@@ -1690,6 +1775,7 @@ async def test_long_shared_prefix_warms_the_first_row_alone():
 async def test_context_too_long_becomes_a_refusal():
     def handler(request):
         return httpx.Response(400, text="This model's maximum context length is 32768 tokens.")
+
     with pytest.raises(RequestError, match="maximum context length"):
         await readout(handler).letter_logprobs([[1]], [[5]], shared_len=0)
 
@@ -1697,6 +1783,7 @@ async def test_context_too_long_becomes_a_refusal():
 async def test_unreachable_vllm_raises_transport_error():
     def handler(request):
         raise httpx.ConnectError("down")
+
     with pytest.raises(httpx.TransportError):
         await readout(handler).letter_logprobs([[1]], [[5]], shared_len=0)
 ```
@@ -1710,6 +1797,7 @@ Expected: FAIL with `ModuleNotFoundError: No module named 'gateway.readout'`
 
 ```python
 """Read the log-probabilities of each row's option labels at its last position, via vLLM /v1/completions."""
+
 import httpx
 
 from gateway.schema import RequestError
@@ -1723,8 +1811,9 @@ class Readout:
         self.model = model
         self.warm_min_prefix_tokens = warm_min_prefix_tokens
 
-    async def letter_logprobs(self, prompts: list[list[int]], label_ids: list[list[int]],
-                              shared_len: int) -> list[list[float]]:
+    async def letter_logprobs(
+        self, prompts: list[list[int]], label_ids: list[list[int]], shared_len: int
+    ) -> list[list[float]]:
         """One list per prompt, in the order of that prompt's label_ids."""
         if len(prompts) > 1 and shared_len >= self.warm_min_prefix_tokens:
             # compute the long shared prefix once so the other rows hit vLLM's prefix cache
@@ -1736,20 +1825,29 @@ class Readout:
         wanted = sorted({i for ids in label_ids for i in ids})
         found: list[dict[int, float]] = [{} for _ in prompts]
         for start in range(0, len(wanted), MAX_LABEL_IDS):
-            for row, got in zip(found, await self._call(prompts, wanted[start:start + MAX_LABEL_IDS])):
+            for row, got in zip(found, await self._call(prompts, wanted[start : start + MAX_LABEL_IDS])):
                 row.update(got)
         return [[row[i] for i in ids] for row, ids in zip(found, label_ids)]
 
     async def _call(self, prompts: list[list[int]], ids: list[int]) -> list[dict[int, float]]:
-        payload = {"model": self.model, "prompt": prompts, "max_tokens": 1, "temperature": 0, "logprobs": 0,
-                   "logprob_token_ids": ids, "return_tokens_as_token_ids": True, "add_special_tokens": False}
+        payload = {
+            "model": self.model,
+            "prompt": prompts,
+            "max_tokens": 1,
+            "temperature": 0,
+            "logprobs": 0,
+            "logprob_token_ids": ids,
+            "return_tokens_as_token_ids": True,
+            "add_special_tokens": False,
+        }
         r = await self.client.post("/v1/completions", json=payload)
         if r.status_code == 400 and "maximum context length" in r.text:
             raise RequestError("prompt is longer than the maximum context length")
         r.raise_for_status()
         choices = sorted(r.json()["choices"], key=lambda c: c["index"])
-        return [{int(k.removeprefix("token_id:")): v for k, v in c["logprobs"]["top_logprobs"][0].items()}
-                for c in choices]
+        return [
+            {int(k.removeprefix("token_id:")): v for k, v in c["logprobs"]["top_logprobs"][0].items()} for c in choices
+        ]
 ```
 
 - [ ] **Step 4: Run the tests**
@@ -1798,6 +1896,7 @@ from tests.helpers import QUICKSTART, STATE
 
 class FavourFirstLabel:
     """Fake readout: label A always most likely (logprobs 0, -1, -2, ...)."""
+
     def __init__(self):
         self.calls = []
 
@@ -1869,6 +1968,7 @@ Expected: FAIL with `ModuleNotFoundError: No module named 'gateway.decide'`
 
 ```python
 """The /v1/systemone flow as one async function, so the phase-3 router can call it in-process."""
+
 import asyncio
 from dataclasses import dataclass
 from typing import Any
@@ -1887,6 +1987,7 @@ from gateway.schema import RequestError, SystemOneRequest
 @dataclass(frozen=True)
 class Engine:
     """Everything a decision needs, loaded once at startup."""
+
     settings: Settings
     tokenizer: Any
     layouts: dict[str, Layout]
@@ -1911,14 +2012,23 @@ async def decide(engine: Engine, request: SystemOneRequest) -> dict:
     except ValueError as e:
         raise RequestError(str(e)) from e
 
-    batch = await asyncio.to_thread(build_rows, engine.tokenizer, engine.frames[name], layout, engine.labels[name],
-                                    render_state(request.state), questions, perms)
+    batch = await asyncio.to_thread(
+        build_rows,
+        engine.tokenizer,
+        engine.frames[name],
+        layout,
+        engine.labels[name],
+        render_state(request.state),
+        questions,
+        perms,
+    )
     longest = max(len(row.ids) for row in batch.rows)
     if longest >= s.max_model_len:
         raise RequestError(f"prompt is longer than the maximum context length ({longest} >= {s.max_model_len} tokens)")
 
-    logprobs = await engine.readout.letter_logprobs([r.ids for r in batch.rows], [r.label_ids for r in batch.rows],
-                                                    batch.shared_len)
+    logprobs = await engine.readout.letter_logprobs(
+        [r.ids for r in batch.rows], [r.label_ids for r in batch.rows], batch.shared_len
+    )
     temperatures = engine.temperatures[name]
     reads: dict[str, list] = {qid: [] for qid in questions}
     for row, lp in zip(batch.rows, logprobs, strict=True):
@@ -1928,8 +2038,11 @@ async def decide(engine: Engine, request: SystemOneRequest) -> dict:
     for qid, q in questions.items():
         probs, perms_used = zip(*reads[qid])
         answers[qid] = answer(q, average_back(list(probs), list(perms_used)))
-    return {"model": s.served_model, "answers": answers,
-            "usage": {"input_tokens": batch.input_tokens, "output_tokens": 0}}
+    return {
+        "model": s.served_model,
+        "answers": answers,
+        "usage": {"input_tokens": batch.input_tokens, "output_tokens": 0},
+    }
 ```
 
 - [ ] **Step 4: Run the tests**
@@ -2007,8 +2120,10 @@ def fake_vllm(request: httpx.Request) -> httpx.Response:
     if path == "/v1/completions":
         body = json.loads(request.content)
         top = {f"token_id:{t}": -0.001 * t for t in body["logprob_token_ids"]}
-        return httpx.Response(200, json={"choices": [{"index": i, "logprobs": {"top_logprobs": [top]}}
-                                                     for i in range(len(body["prompt"]))]})
+        return httpx.Response(
+            200,
+            json={"choices": [{"index": i, "logprobs": {"top_logprobs": [top]}} for i in range(len(body["prompt"]))]},
+        )
     if path == "/v1/chat/completions":
         body = json.loads(request.content)
         if body.get("stream"):
@@ -2080,6 +2195,7 @@ def test_api_key_is_enforced_when_set(qwen_settings):
 def test_vllm_down_is_503(qwen_settings):
     def down(request):
         raise httpx.ConnectError("down")
+
     with TestClient(create_app(qwen_settings, httpx.MockTransport(down))) as c:
         body = {"state": "s", "questions": {"q": {"type": "noul", "instructions": "ok?"}}}
         assert c.post("/v1/systemone", json=body).status_code == 503
@@ -2094,6 +2210,7 @@ Expected: FAIL with `ModuleNotFoundError: No module named 'gateway.app'`
 
 ```python
 """Chat and every other /v1/* call forwarded to vLLM unchanged, with a route() hook for phase 3."""
+
 import json
 
 import httpx
@@ -2108,15 +2225,20 @@ def route(body: dict) -> dict:
     return body
 
 
-async def proxy(client: httpx.AsyncClient, method: str, path: str, content: bytes,
-                params: dict | None = None) -> StreamingResponse:
+async def proxy(
+    client: httpx.AsyncClient, method: str, path: str, content: bytes, params: dict | None = None
+) -> StreamingResponse:
     """Stream vLLM's response back byte for byte (JSON and SSE alike)."""
-    request = client.build_request(method, path, content=content, params=params,
-                                   headers={"content-type": "application/json"})
+    request = client.build_request(
+        method, path, content=content, params=params, headers={"content-type": "application/json"}
+    )
     upstream = await client.send(request, stream=True)
-    return StreamingResponse(upstream.aiter_raw(), status_code=upstream.status_code,
-                             media_type=upstream.headers.get("content-type"),
-                             background=BackgroundTask(upstream.aclose))
+    return StreamingResponse(
+        upstream.aiter_raw(),
+        status_code=upstream.status_code,
+        media_type=upstream.headers.get("content-type"),
+        background=BackgroundTask(upstream.aclose),
+    )
 
 
 async def chat_completions(client: httpx.AsyncClient, body: dict) -> StreamingResponse:
@@ -2135,6 +2257,7 @@ async def list_models(client: httpx.AsyncClient, served_model: str) -> dict:
 
 ```python
 """FastAPI gateway: /v1/systemone, chat proxy, /v1/models, /health, and /v1/* passthrough to vLLM."""
+
 from contextlib import asynccontextmanager
 
 import httpx
@@ -2200,8 +2323,12 @@ def create_app(settings: Settings | None = None, transport: httpx.AsyncBaseTrans
             ok = (await request.app.state.client.get("/health")).status_code == 200
         except httpx.TransportError:
             ok = False
-        body = {"status": "ok" if ok else "vllm unavailable", "profile": engine.settings.profile,
-                "served_model": engine.settings.served_model, "layouts": sorted(engine.layouts)}
+        body = {
+            "status": "ok" if ok else "vllm unavailable",
+            "profile": engine.settings.profile,
+            "served_model": engine.settings.served_model,
+            "layouts": sorted(engine.layouts),
+        }
         return JSONResponse(body, status_code=200 if ok else 503)
 
     @app.post("/v1/systemone", dependencies=auth)
@@ -2218,8 +2345,9 @@ def create_app(settings: Settings | None = None, transport: httpx.AsyncBaseTrans
 
     @app.api_route("/v1/{path:path}", methods=["GET", "POST"], dependencies=auth)
     async def passthrough(path: str, request: Request):
-        return await chat.proxy(request.app.state.client, request.method, f"/v1/{path}", await request.body(),
-                                dict(request.query_params))
+        return await chat.proxy(
+            request.app.state.client, request.method, f"/v1/{path}", await request.body(), dict(request.query_params)
+        )
 
     return app
 
@@ -2445,15 +2573,20 @@ def test_official_sdk_quickstart(gateway_url):
     with TypeSafeClient(api_key="local", base_url=gateway_url) as client:
         response = client.system_one(
             state="Hi, I've been trying to connect my Stripe account for 3 days and the integration keeps failing. "
-                  "I'm losing sales. Please help ASAP.",
+            "I'm losing sales. Please help ASAP.",
             questions={
-                "department": Choice(instructions="Which team should handle this",
-                                     criteria={"billing": "Payment or subscription issues",
-                                               "technical": "Bugs or integration problems",
-                                               "sales": "Pricing or account questions"}),
-                "frustration": Score(instructions="How frustrated the customer appears",
-                                     criteria=["Calm, just stating facts", "Frustrated but civil",
-                                               "Very angry, strong language"]),
+                "department": Choice(
+                    instructions="Which team should handle this",
+                    criteria={
+                        "billing": "Payment or subscription issues",
+                        "technical": "Bugs or integration problems",
+                        "sales": "Pricing or account questions",
+                    },
+                ),
+                "frustration": Score(
+                    instructions="How frustrated the customer appears",
+                    criteria=["Calm, just stating facts", "Frustrated but civil", "Very angry, strong language"],
+                ),
                 "is_urgent": Noul(instructions="The message conveys urgency or time-sensitivity"),
             },
         )
@@ -2478,16 +2611,23 @@ def choice(n: int) -> dict:
 
 
 def test_null_descriptions_and_bare_noul(gateway_url):
-    body = {"state": "Order 7 arrived broken.", "questions": {
-        "kind": {"type": "choice", "instructions": "Issue?", "criteria": {"damage": None, "late": None}},
-        "refund": {"type": "noul", "instructions": "A refund is appropriate"}}}
+    body = {
+        "state": "Order 7 arrived broken.",
+        "questions": {
+            "kind": {"type": "choice", "instructions": "Issue?", "criteria": {"damage": None, "late": None}},
+            "refund": {"type": "noul", "instructions": "A refund is appropriate"},
+        },
+    }
     r = post(gateway_url, body)
     assert r.status_code == 200
     assert set(r.json()["answers"]["refund"]) == {"type", "noul"}
 
 
 def test_noul_described_without_instructions(gateway_url):
-    body = {"state": "I am furious!!!", "questions": {"q": {"type": "noul", "criteria": {"true": "The writer is angry"}}}}
+    body = {
+        "state": "I am furious!!!",
+        "questions": {"q": {"type": "noul", "criteria": {"true": "The writer is angry"}}},
+    }
     assert post(gateway_url, body).json()["answers"]["q"]["noul"] > 0.5
 
 
@@ -2522,8 +2662,12 @@ pytestmark = pytest.mark.live
 
 
 def test_chat_streams_with_thinking_on(gateway_url, served_model):
-    body = {"model": served_model, "messages": [{"role": "user", "content": "What is 17 * 23?"}],
-            "stream": True, "max_tokens": 512}
+    body = {
+        "model": served_model,
+        "messages": [{"role": "user", "content": "What is 17 * 23?"}],
+        "stream": True,
+        "max_tokens": 512,
+    }
     with httpx.stream("POST", f"{gateway_url}/v1/chat/completions", json=body, timeout=600) as r:
         assert r.status_code == 200
         lines = [line for line in r.iter_lines() if line.startswith("data: ")]
@@ -2543,12 +2687,18 @@ import pytest
 from tests.live.api import post
 
 pytestmark = pytest.mark.live
-BODY = {"state": "Customer: my invoice shows a charge I don't recognise and support hasn't replied in a week.",
-        "questions": {
-            "topic": {"type": "choice", "instructions": "Topic?", "criteria": {"billing": None, "shipping": None,
-                                                                             "account": None, "other": None}},
-            "anger": {"type": "score", "instructions": "Anger", "criteria": ["none", "some", "a lot"]},
-            "escalate": {"type": "noul", "instructions": "Should a manager see this"}}}
+BODY = {
+    "state": "Customer: my invoice shows a charge I don't recognise and support hasn't replied in a week.",
+    "questions": {
+        "topic": {
+            "type": "choice",
+            "instructions": "Topic?",
+            "criteria": {"billing": None, "shipping": None, "account": None, "other": None},
+        },
+        "anger": {"type": "score", "instructions": "Anger", "criteria": ["none", "some", "a lot"]},
+        "escalate": {"type": "noul", "instructions": "Should a manager see this"},
+    },
+}
 
 
 def distribution(answer: dict) -> list[float]:
@@ -2563,9 +2713,15 @@ def test_answers_stable_under_chat_load(gateway_url, served_model):
 
     def chat_load():
         while not stop.is_set():
-            httpx.post(f"{gateway_url}/v1/chat/completions", timeout=600, json={
-                "model": served_model, "max_tokens": 512,
-                "messages": [{"role": "user", "content": "Write a long story about a lighthouse keeper."}]})
+            httpx.post(
+                f"{gateway_url}/v1/chat/completions",
+                timeout=600,
+                json={
+                    "model": served_model,
+                    "max_tokens": 512,
+                    "messages": [{"role": "user", "content": "Write a long story about a lighthouse keeper."}],
+                },
+            )
 
     threads = [threading.Thread(target=chat_load) for _ in range(4)]
     for t in threads:
@@ -2601,8 +2757,9 @@ pytestmark = pytest.mark.live
 
 def prefix_cache_hits(vllm_url: str) -> float:
     lines = httpx.get(f"{vllm_url}/metrics", timeout=10).text.splitlines()
-    return sum(float(line.rsplit(" ", 1)[1]) for line in lines
-               if line.startswith("vllm:") and "prefix_cache_hits" in line)
+    return sum(
+        float(line.rsplit(" ", 1)[1]) for line in lines if line.startswith("vllm:") and "prefix_cache_hits" in line
+    )
 
 
 def test_questions_share_the_state_prefix(gateway_url, vllm_url):
@@ -2667,8 +2824,12 @@ def test_nonce_makes_states_unique(qwen_tok):
 
 
 def test_jevbench_row_mapping():
-    row = {"type": "score", "state": "s", "label": "2",
-           "question": {"instructions": "How bad?", "levels": ["a", "b", "c"]}}
+    row = {
+        "type": "score",
+        "state": "s",
+        "label": "2",
+        "question": {"instructions": "How bad?", "levels": ["a", "b", "c"]},
+    }
     req, gold = jevbench_request(row)
     assert req["questions"]["q"] == {"type": "score", "instructions": "How bad?", "criteria": ["a", "b", "c"]}
     assert gold == "2"
@@ -2689,6 +2850,7 @@ Expected: FAIL with `ModuleNotFoundError: No module named 'scripts.bench_data'`
 
 ```python
 """Benchmark requests: seeded synthetic sweeps, and the JevBench gold rows (Apache-2.0)."""
+
 import functools
 import json
 import random
@@ -2714,25 +2876,32 @@ def state_text(tok, rng: random.Random, n_tokens: int, nonce: bool) -> str:
     """A slice of real prose about n_tokens long; the nonce defeats cross-request prefix caching."""
     ids = corpus_ids(tok)
     start = rng.randrange(0, len(ids) - n_tokens)
-    text = tok.decode(ids[start:start + n_tokens])
+    text = tok.decode(ids[start : start + n_tokens])
     return f"[run {uuid.uuid4().hex[:8]}] {text}" if nonce else text
 
 
 def synthetic_questions(n_questions: int, n_options: int) -> dict:
     """Cycle choice / 5-level score / noul so every type is timed."""
     kinds = [
-        lambda i: {"type": "choice", "instructions": f"Which theme best fits part {i} of the passage?",
-                   "criteria": {f"theme_{j}": f"The passage is mainly about theme {j}" for j in range(n_options)}},
+        lambda i: {
+            "type": "choice",
+            "instructions": f"Which theme best fits part {i} of the passage?",
+            "criteria": {f"theme_{j}": f"The passage is mainly about theme {j}" for j in range(n_options)},
+        },
         lambda i: {"type": "score", "instructions": "How formal is the language?", "criteria": LEVELS},
         lambda i: {"type": "noul", "instructions": f"The passage names at least {i + 1} people"},
     ]
     return {f"q{i}": kinds[i % 3](i) for i in range(n_questions)}
 
 
-def synthetic_request(tok, rng: random.Random, state_tokens: int, n_questions: int, n_options: int,
-                      nonce: bool = True) -> dict:
-    return {"model": "jev-latest", "state": state_text(tok, rng, state_tokens, nonce),
-            "questions": synthetic_questions(n_questions, n_options)}
+def synthetic_request(
+    tok, rng: random.Random, state_tokens: int, n_questions: int, n_options: int, nonce: bool = True
+) -> dict:
+    return {
+        "model": "jev-latest",
+        "state": state_text(tok, rng, state_tokens, nonce),
+        "questions": synthetic_questions(n_questions, n_options),
+    }
 
 
 def jevbench_rows() -> list[dict]:
@@ -2777,6 +2946,7 @@ def prediction(answer: dict) -> str:
 
 usage: uv run python scripts/bench.py --profile qwen3.6-27b [--gateway http://127.0.0.1:9000] [--quick]
 """
+
 import argparse
 import asyncio
 import datetime
@@ -2790,12 +2960,26 @@ from transformers import AutoTokenizer
 from gateway.config import ROOT, Settings
 from scripts.bench_data import jevbench_request, jevbench_rows, prediction, synthetic_request
 
-FULL = {"state_tokens": (256, 2048, 8192), "questions": (1, 4, 16, 64), "options": (2, 26, 255), "repeats": 5,
-        "seconds": 30, "jevbench": None}
-QUICK = {"state_tokens": (256, 2048), "questions": (1, 16), "options": (2, 26), "repeats": 2,
-         "seconds": 10, "jevbench": 50}
-CHAT_PROMPTS = {"short": "Name three prime numbers.",
-                "long": "Explain step by step how a hash map resolves collisions, with an example."}
+FULL = {
+    "state_tokens": (256, 2048, 8192),
+    "questions": (1, 4, 16, 64),
+    "options": (2, 26, 255),
+    "repeats": 5,
+    "seconds": 30,
+    "jevbench": None,
+}
+QUICK = {
+    "state_tokens": (256, 2048),
+    "questions": (1, 16),
+    "options": (2, 26),
+    "repeats": 2,
+    "seconds": 10,
+    "jevbench": 50,
+}
+CHAT_PROMPTS = {
+    "short": "Name three prime numbers.",
+    "long": "Explain step by step how a hash map resolves collisions, with an example.",
+}
 
 
 async def timed_post(client: httpx.AsyncClient, body: dict) -> tuple[float, dict]:
@@ -2820,8 +3004,15 @@ async def sweep(client, tok, rng, grid: dict, warm: bool, records: list) -> None
                 for _ in range(grid["repeats"]):
                     body = fixed if warm else synthetic_request(tok, rng, n_tok, n_q, n_opt)
                     ms, _ = await timed_post(client, body)
-                    records.append({"test": "warm" if warm else "cold", "state_tokens": n_tok, "questions": n_q,
-                                    "options": n_opt, "ms": ms})
+                    records.append(
+                        {
+                            "test": "warm" if warm else "cold",
+                            "state_tokens": n_tok,
+                            "questions": n_q,
+                            "options": n_opt,
+                            "ms": ms,
+                        }
+                    )
 
 
 async def throughput(client, tok, rng, workers: int, seconds: int, records: list) -> None:
@@ -2843,8 +3034,9 @@ async def jevbench(client, limit: int | None, records: list) -> None:
     for row in jevbench_rows()[:limit]:
         body, gold = jevbench_request(row)
         ms, out = await timed_post(client, body)
-        records.append({"test": "jevbench", "type": row["type"], "ms": ms,
-                        "correct": prediction(out["answers"]["q"]) == gold})
+        records.append(
+            {"test": "jevbench", "type": row["type"], "ms": ms, "correct": prediction(out["answers"]["q"]) == gold}
+        )
 
 
 async def chat_once(client, served: str, prompt: str) -> tuple[float, float]:
@@ -2892,11 +3084,17 @@ def summary(records: list) -> str:
     if bench:
         ms = [r["ms"] for r in bench]
         accuracy = sum(r["correct"] for r in bench) / len(bench)
-        lines += ["", f"JevBench gold: {len(bench)} rows, accuracy {accuracy:.3f} (uncalibrated sanity check), "
-                      f"p50 {percentile(ms, 0.5):.0f} ms, p95 {percentile(ms, 0.95):.0f} ms"]
+        lines += [
+            "",
+            f"JevBench gold: {len(bench)} rows, accuracy {accuracy:.3f} (uncalibrated sanity check), "
+            f"p50 {percentile(ms, 0.5):.0f} ms, p95 {percentile(ms, 0.95):.0f} ms",
+        ]
     lines += ["", "| chat prompt | load | TTFT ms | chunks/s |", "|---|---|---|---|"]
-    lines += [f"| {r['prompt']} | {r['load']} | {r['ttft_ms']:.0f} | {r['chunks_per_s']:.1f} |"
-              for r in records if r["test"] == "chat"]
+    lines += [
+        f"| {r['prompt']} | {r['load']} | {r['ttft_ms']:.0f} | {r['chunks_per_s']:.1f} |"
+        for r in records
+        if r["test"] == "chat"
+    ]
     return "\n".join(lines) + "\n"
 
 
@@ -2906,8 +3104,14 @@ async def main(args) -> None:
     grid, rng, records = (QUICK if args.quick else FULL), random.Random(0), []
     async with httpx.AsyncClient(base_url=args.gateway, timeout=600) as client:
         await sweep(client, tok, rng, grid, warm=False, records=records)
-        await sweep(client, tok, rng, grid | {"state_tokens": (2048,), "questions": (16,), "options": (26,)},
-                    warm=True, records=records)
+        await sweep(
+            client,
+            tok,
+            rng,
+            grid | {"state_tokens": (2048,), "questions": (16,), "options": (26,)},
+            warm=True,
+            records=records,
+        )
         for workers in (1, 4, 16):
             await throughput(client, tok, rng, workers, grid["seconds"], records)
         await jevbench(client, grid["jevbench"], records)
@@ -2915,7 +3119,9 @@ async def main(args) -> None:
     out = ROOT / "docs" / "results" / s.profile / datetime.date.today().isoformat()
     out.mkdir(parents=True, exist_ok=True)
     (out / "raw.jsonl").write_text("".join(json.dumps(r) + "\n" for r in records))
-    (out / "summary.md").write_text(f"# {s.profile} benchmark ({'quick' if args.quick else 'full'})\n\n" + summary(records))
+    (out / "summary.md").write_text(
+        f"# {s.profile} benchmark ({'quick' if args.quick else 'full'})\n\n" + summary(records)
+    )
     print((out / "summary.md").read_text())
 
 

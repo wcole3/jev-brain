@@ -1,4 +1,5 @@
 """Probabilities → Jev answers, with TypeSafe's confidence formulas (system-one-adapter confidence_metrics)."""
+
 from gateway.questions import Rendered
 
 DECIMALS = 4
@@ -27,9 +28,16 @@ def answer(q: Rendered, p: list[float]) -> dict:
         return {"type": "noul", "noul": round(p[1], DECIMALS)}
     if q.type == "choice":
         best = max(range(len(p)), key=p.__getitem__)
-        return {"type": "choice", "choice": q.names[best], "confidence": round(choice_confidence(p), DECIMALS),
-                "probabilities": {name: round(x, DECIMALS) for name, x in zip(q.names, p)}}
-    return {"type": "score", "score": round(sum(i * x for i, x in enumerate(p)), DECIMALS),
-            "confidence": round(score_confidence(p), DECIMALS),
-            "legend": {str(i): d for i, d in enumerate(q.legend)},
-            "probabilities": {str(i): round(x, DECIMALS) for i, x in enumerate(p)}}
+        return {
+            "type": "choice",
+            "choice": q.names[best],
+            "confidence": round(choice_confidence(p), DECIMALS),
+            "probabilities": {name: round(x, DECIMALS) for name, x in zip(q.names, p)},
+        }
+    return {
+        "type": "score",
+        "score": round(sum(i * x for i, x in enumerate(p)), DECIMALS),
+        "confidence": round(score_confidence(p), DECIMALS),
+        "legend": {str(i): d for i, d in enumerate(q.legend)},
+        "probabilities": {str(i): round(x, DECIMALS) for i, x in enumerate(p)},
+    }

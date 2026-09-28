@@ -1,4 +1,5 @@
 """Prompt layouts. All prompt wording lives in prompts/<name>.toml; this module only loads and checks it."""
+
 import hashlib
 import tomllib
 from dataclasses import dataclass
@@ -40,10 +41,19 @@ def _check(name: str, data: dict) -> None:
     if missing:
         raise ValueError(f"{name}: missing keys {missing}")
     order = data["order"]
-    if len(order) != len(set(order)) or not set(order) <= set(PARTS) or not {"context", "question", "options"} <= set(order):
+    if (
+        len(order) != len(set(order))
+        or not set(order) <= set(PARTS)
+        or not {"context", "question", "options"} <= set(order)
+    ):
         raise ValueError(f"{name}: order must list context, question, options (and optionally questions) once each")
-    needs = [("context", "{state}"), ("question", "{question}"), ("option", "{label}"), ("described", "{name}"),
-             ("described", "{description}")]
+    needs = [
+        ("context", "{state}"),
+        ("question", "{question}"),
+        ("option", "{label}"),
+        ("described", "{name}"),
+        ("described", "{description}"),
+    ]
     if "questions" in order:
         needs += [("questions", "{questions}"), ("question_item", "{question}")]
     for key, placeholder in needs:

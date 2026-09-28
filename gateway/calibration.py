@@ -1,4 +1,5 @@
 """Softmax temperatures per question type (fitted in phase 2; 1.0 means uncalibrated)."""
+
 import json
 import logging
 import math

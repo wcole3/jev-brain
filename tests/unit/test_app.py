@@ -16,8 +16,10 @@ def fake_vllm(request: httpx.Request) -> httpx.Response:
     if path == "/v1/completions":
         body = json.loads(request.content)
         top = {f"token_id:{t}": -0.001 * t for t in body["logprob_token_ids"]}
-        return httpx.Response(200, json={"choices": [{"index": i, "logprobs": {"top_logprobs": [top]}}
-                                                     for i in range(len(body["prompt"]))]})
+        return httpx.Response(
+            200,
+            json={"choices": [{"index": i, "logprobs": {"top_logprobs": [top]}} for i in range(len(body["prompt"]))]},
+        )
     if path == "/v1/chat/completions":
         body = json.loads(request.content)
         if body.get("stream"):
@@ -94,6 +96,7 @@ def test_api_key_is_enforced_when_set(qwen_settings):
 def test_vllm_down_is_503(qwen_settings):
     def down(request):
         raise httpx.ConnectError("down")
+
     with TestClient(create_app(qwen_settings, httpx.MockTransport(down))) as c:
         body = {"state": "s", "questions": {"q": {"type": "noul", "instructions": "ok?"}}}
         assert c.post("/v1/systemone", json=body).status_code == 503
@@ -102,6 +105,7 @@ def test_vllm_down_is_503(qwen_settings):
 def test_unexpected_error_is_500_with_request_id(qwen_settings, caplog):
     def broken(request):
         return httpx.Response(500)
+
     with TestClient(create_app(qwen_settings, httpx.MockTransport(broken)), raise_server_exceptions=False) as c:
         body = {"state": "s", "questions": {"q": {"type": "noul", "instructions": "ok?"}}}
         r = c.post("/v1/systemone", json=body)

@@ -1,10 +1,11 @@
 """Record decider's token ids for tests/parity/cases.json. Runs in its own venv (decider pins numpy<2):
 
-  uv venv .cache/decider-venv
-  uv pip install --python .cache/decider-venv --no-deps decider-ai==1.5.0
-  uv pip install --python .cache/decider-venv transformers jinja2 "numpy<2" huggingface_hub
-  .cache/decider-venv/bin/python scripts/decider_fixtures.py --profile qwen3.6-27b
+uv venv .cache/decider-venv
+uv pip install --python .cache/decider-venv --no-deps decider-ai==1.5.0
+uv pip install --python .cache/decider-venv transformers jinja2 "numpy<2" huggingface_hub
+.cache/decider-venv/bin/python scripts/decider_fixtures.py --profile qwen3.6-27b
 """
+
 import argparse
 import json
 from pathlib import Path

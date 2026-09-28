@@ -1,4 +1,5 @@
 """FastAPI gateway: /v1/systemone, chat proxy, /v1/models, /health, and /v1/* passthrough to vLLM."""
+
 import logging
 import uuid
 from contextlib import asynccontextmanager
@@ -75,8 +76,12 @@ def create_app(settings: Settings | None = None, transport: httpx.AsyncBaseTrans
             ok = (await request.app.state.client.get("/health")).status_code == 200
         except httpx.TransportError:
             ok = False
-        body = {"status": "ok" if ok else "vllm unavailable", "profile": engine.settings.profile,
-                "served_model": engine.settings.served_model, "layouts": sorted(engine.layouts)}
+        body = {
+            "status": "ok" if ok else "vllm unavailable",
+            "profile": engine.settings.profile,
+            "served_model": engine.settings.served_model,
+            "layouts": sorted(engine.layouts),
+        }
         return JSONResponse(body, status_code=200 if ok else 503)
 
     @app.post("/v1/systemone", dependencies=auth)
@@ -85,8 +90,9 @@ def create_app(settings: Settings | None = None, transport: httpx.AsyncBaseTrans
 
     @app.post("/v1/chat/completions", dependencies=auth)
     async def chat_completions(request: Request):
-        return await chat.chat_completions(request.app.state.client, await request.json(),
-                                           request.app.state.engine.settings.served_model)
+        return await chat.chat_completions(
+            request.app.state.client, await request.json(), request.app.state.engine.settings.served_model
+        )
 
     @app.get("/v1/models", dependencies=auth)
     async def models(request: Request):
@@ -94,8 +100,9 @@ def create_app(settings: Settings | None = None, transport: httpx.AsyncBaseTrans
 
     @app.api_route("/v1/{path:path}", methods=["GET", "POST"], dependencies=auth)
     async def passthrough(path: str, request: Request):
-        return await chat.proxy(request.app.state.client, request.method, f"/v1/{path}", await request.body(),
-                                dict(request.query_params))
+        return await chat.proxy(
+            request.app.state.client, request.method, f"/v1/{path}", await request.body(), dict(request.query_params)
+        )
 
     return app
 

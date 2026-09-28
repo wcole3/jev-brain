@@ -1,4 +1,5 @@
 """Token ids for one question per row, built part by part like decider so shared prefixes match exactly."""
+
 from dataclasses import dataclass
 
 from gateway.labels import NARROW, Labels
@@ -22,8 +23,9 @@ class ChatFrame:
 def chat_frame(tok, layout: Layout) -> ChatFrame:
     """decider's ChatTemplate: one user turn, no system prompt, thinking off."""
     kwargs = {"enable_thinking": False} if "enable_thinking" in str(tok.chat_template) else {}
-    text = tok.apply_chat_template([{"role": "user", "content": SENTINEL}], tokenize=False,
-                                   add_generation_prompt=True, **kwargs)
+    text = tok.apply_chat_template(
+        [{"role": "user", "content": SENTINEL}], tokenize=False, add_generation_prompt=True, **kwargs
+    )
     head, tail = text.split(SENTINEL)
     for opened, closed in CLOSE_THINKING.items():
         if tail.endswith(opened):
@@ -74,8 +76,15 @@ def shared_len(frame: ChatFrame, layout: Layout, parts: dict[str, list[int]]) ->
     return n
 
 
-def build_rows(tok, frame: ChatFrame, layout: Layout, labels: Labels, state: str,
-               questions: dict[str, Rendered], perms: dict[str, list[list[int]]]) -> Batch:
+def build_rows(
+    tok,
+    frame: ChatFrame,
+    layout: Layout,
+    labels: Labels,
+    state: str,
+    questions: dict[str, Rendered],
+    perms: dict[str, list[list[int]]],
+) -> Batch:
     """One row per (question, option order). Parts shared by all rows are encoded once."""
     parts = {"context": encode(tok, layout.context.format(state=state))}
     if "questions" in layout.order:
@@ -91,5 +100,5 @@ def build_rows(tok, frame: ChatFrame, layout: Layout, labels: Labels, state: str
             ids = list(frame.head)
             for part in layout.order:
                 ids += parts[part]
-            rows.append(Row(qid, perm, ids + frame.tail + answer, labels.ids[:len(shown)]))
+            rows.append(Row(qid, perm, ids + frame.tail + answer, labels.ids[: len(shown)]))
     return Batch(rows, shared_len(frame, layout, parts))

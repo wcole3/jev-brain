@@ -2,6 +2,7 @@
 
 usage: uv run python scripts/build_labels.py --profile qwen3.6-27b
 """
+
 import argparse
 
 from transformers import AutoTokenizer

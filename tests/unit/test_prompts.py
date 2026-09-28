@@ -40,8 +40,8 @@ def test_prompts_match_golden(profile, layout_name):
 @pytest.mark.parametrize("layout_name", sorted(LAYOUTS))
 def test_rows_share_the_reported_prefix(qwen_tok, layout_name):
     batch = batch_for(qwen_tok, layout_name)
-    first = batch.rows[0].ids[:batch.shared_len]
-    assert all(r.ids[:batch.shared_len] == first for r in batch.rows)
+    first = batch.rows[0].ids[: batch.shared_len]
+    assert all(r.ids[: batch.shared_len] == first for r in batch.rows)
     assert batch.input_tokens == batch.shared_len + sum(len(r.ids) - batch.shared_len for r in batch.rows)
 
 

@@ -12,8 +12,15 @@ def fake_vllm(seen: list):
         body = json.loads(request.content)
         seen.append(body)
         logprobs = {f"token_id:{t}": -float(t) for t in body["logprob_token_ids"]}
-        return httpx.Response(200, json={"choices": [{"index": i, "logprobs": {"top_logprobs": [logprobs]}}
-                                                     for i in reversed(range(len(body["prompt"])))]})
+        return httpx.Response(
+            200,
+            json={
+                "choices": [
+                    {"index": i, "logprobs": {"top_logprobs": [logprobs]}} for i in reversed(range(len(body["prompt"])))
+                ]
+            },
+        )
+
     return handler
 
 
@@ -48,6 +55,7 @@ async def test_long_shared_prefix_warms_the_first_row_alone():
 async def test_context_too_long_becomes_a_refusal():
     def handler(request):
         return httpx.Response(400, text="This model's maximum context length is 32768 tokens.")
+
     with pytest.raises(RequestError, match="maximum context length"):
         await readout(handler).letter_logprobs([[1]], [[5]], shared_len=0)
 
@@ -55,5 +63,6 @@ async def test_context_too_long_becomes_a_refusal():
 async def test_unreachable_vllm_raises_transport_error():
     def handler(request):
         raise httpx.ConnectError("down")
+
     with pytest.raises(httpx.TransportError):
         await readout(handler).letter_logprobs([[1]], [[5]], shared_len=0)

@@ -1,4 +1,5 @@
 """Read the log-probabilities of each row's option labels at its last position, via vLLM /v1/completions."""
+
 import httpx
 
 from gateway.schema import RequestError
@@ -12,8 +13,9 @@ class Readout:
         self.model = model
         self.warm_min_prefix_tokens = warm_min_prefix_tokens
 
-    async def letter_logprobs(self, prompts: list[list[int]], label_ids: list[list[int]],
-                              shared_len: int) -> list[list[float]]:
+    async def letter_logprobs(
+        self, prompts: list[list[int]], label_ids: list[list[int]], shared_len: int
+    ) -> list[list[float]]:
         """One list per prompt, in the order of that prompt's label_ids."""
         if len(prompts) > 1 and shared_len >= self.warm_min_prefix_tokens:
             # compute the long shared prefix once so the other rows hit vLLM's prefix cache
@@ -25,17 +27,26 @@ class Readout:
         wanted = sorted({i for ids in label_ids for i in ids})
         found: list[dict[int, float]] = [{} for _ in prompts]
         for start in range(0, len(wanted), MAX_LABEL_IDS):
-            for row, got in zip(found, await self._call(prompts, wanted[start:start + MAX_LABEL_IDS])):
+            for row, got in zip(found, await self._call(prompts, wanted[start : start + MAX_LABEL_IDS])):
                 row.update(got)
         return [[row[i] for i in ids] for row, ids in zip(found, label_ids)]
 
     async def _call(self, prompts: list[list[int]], ids: list[int]) -> list[dict[int, float]]:
-        payload = {"model": self.model, "prompt": prompts, "max_tokens": 1, "temperature": 0, "logprobs": 0,
-                   "logprob_token_ids": ids, "return_tokens_as_token_ids": True, "add_special_tokens": False}
+        payload = {
+            "model": self.model,
+            "prompt": prompts,
+            "max_tokens": 1,
+            "temperature": 0,
+            "logprobs": 0,
+            "logprob_token_ids": ids,
+            "return_tokens_as_token_ids": True,
+            "add_special_tokens": False,
+        }
         r = await self.client.post("/v1/completions", json=payload)
         if r.status_code == 400 and "maximum context length" in r.text:
             raise RequestError("prompt is longer than the maximum context length")
         r.raise_for_status()
         choices = sorted(r.json()["choices"], key=lambda c: c["index"])
-        return [{int(k.removeprefix("token_id:")): v for k, v in c["logprobs"]["top_logprobs"][0].items()}
-                for c in choices]
+        return [
+            {int(k.removeprefix("token_id:")): v for k, v in c["logprobs"]["top_logprobs"][0].items()} for c in choices
+        ]

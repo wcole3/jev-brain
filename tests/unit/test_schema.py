@@ -5,8 +5,15 @@ from gateway.schema import SystemOneRequest
 
 
 def test_extra_fields_ignored_and_overrides_parsed():
-    r = SystemOneRequest.model_validate({"state": "s", "model": "jev-latest", "foo": 1, "layout": "header",
-                                         "questions": {"q": {"type": "noul", "extra": 2}}})
+    r = SystemOneRequest.model_validate(
+        {
+            "state": "s",
+            "model": "jev-latest",
+            "foo": 1,
+            "layout": "header",
+            "questions": {"q": {"type": "noul", "extra": 2}},
+        }
+    )
     assert r.layout == "header"
     assert r.option_orders is None
     assert r.questions["q"].type == "noul"

@@ -1,4 +1,5 @@
 """The /v1/systemone flow as one async function, so the phase-3 router can call it in-process."""
+
 import asyncio
 from dataclasses import dataclass
 from typing import Any
@@ -17,6 +18,7 @@ from gateway.schema import RequestError, SystemOneRequest
 @dataclass(frozen=True)
 class Engine:
     """Everything a decision needs, loaded once at startup."""
+
     settings: Settings
     tokenizer: Any
     layouts: dict[str, Layout]
@@ -41,14 +43,23 @@ async def decide(engine: Engine, request: SystemOneRequest) -> dict:
     except ValueError as e:
         raise RequestError(str(e)) from e
 
-    batch = await asyncio.to_thread(build_rows, engine.tokenizer, engine.frames[name], layout, engine.labels[name],
-                                    render_state(request.state), questions, perms)
+    batch = await asyncio.to_thread(
+        build_rows,
+        engine.tokenizer,
+        engine.frames[name],
+        layout,
+        engine.labels[name],
+        render_state(request.state),
+        questions,
+        perms,
+    )
     longest = max(len(row.ids) for row in batch.rows)
     if longest >= s.max_model_len:
         raise RequestError(f"prompt is longer than the maximum context length ({longest} >= {s.max_model_len} tokens)")
 
-    logprobs = await engine.readout.letter_logprobs([r.ids for r in batch.rows], [r.label_ids for r in batch.rows],
-                                                    batch.shared_len)
+    logprobs = await engine.readout.letter_logprobs(
+        [r.ids for r in batch.rows], [r.label_ids for r in batch.rows], batch.shared_len
+    )
     temperatures = engine.temperatures[name]
     reads: dict[str, list] = {qid: [] for qid in questions}
     for row, lp in zip(batch.rows, logprobs, strict=True):
@@ -58,5 +69,8 @@ async def decide(engine: Engine, request: SystemOneRequest) -> dict:
     for qid, q in questions.items():
         probs, perms_used = zip(*reads[qid])
         answers[qid] = answer(q, average_back(list(probs), list(perms_used)))
-    return {"model": s.served_model, "answers": answers,
-            "usage": {"input_tokens": batch.input_tokens, "output_tokens": 0}}
+    return {
+        "model": s.served_model,
+        "answers": answers,
+        "usage": {"input_tokens": batch.input_tokens, "output_tokens": 0},
+    }

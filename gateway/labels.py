@@ -1,4 +1,5 @@
 """Option labels (A..Z, then AA..), each exactly one token. Built once per tokenizer and layout."""
+
 import functools
 import hashlib
 import json
@@ -47,8 +48,13 @@ def build_labels(tok, layout: Layout) -> dict:
     for name, token in zip(labels.names[:NARROW], labels.ids[:NARROW]):
         if tok.encode(layout.answer + name, add_special_tokens=False) != slot + [token]:
             raise ValueError(f"layout {layout.name}: label {name!r} is not one token after {layout.answer!r}")
-    return {"layout": layout.name, "layout_sha256": layout.sha256, "tokenizer_sha256": tokenizer_sha256(tok),
-            "names": labels.names, "ids": labels.ids}
+    return {
+        "layout": layout.name,
+        "layout_sha256": layout.sha256,
+        "tokenizer_sha256": tokenizer_sha256(tok),
+        "names": labels.names,
+        "ids": labels.ids,
+    }
 
 
 def save_labels(path: Path, table: dict) -> None:

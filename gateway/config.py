@@ -1,4 +1,5 @@
 """Settings from the environment (compose) or from a profile file (scripts, tests)."""
+
 import os
 from dataclasses import dataclass
 from pathlib import Path

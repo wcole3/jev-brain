@@ -1,4 +1,5 @@
 """The Jev /v1/systemone request (TypeSafe wire format) and the refusal error."""
+
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict

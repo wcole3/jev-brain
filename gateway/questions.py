@@ -1,4 +1,5 @@
 """Jev questions → option texts, mirroring decider's systemone.render_question and render_state."""
+
 import json
 from dataclasses import dataclass
 from typing import Any
@@ -17,8 +18,10 @@ def annotate_indices(x: Any) -> Any:
     if isinstance(x, list):
         if len(x) < ANNOTATE_MIN:
             return [annotate_indices(v) for v in x]
-        return [{"_index": i, **annotate_indices(v)} if isinstance(v, dict) else {"_index": i, "value": annotate_indices(v)}
-                for i, v in enumerate(x)]
+        return [
+            {"_index": i, **annotate_indices(v)} if isinstance(v, dict) else {"_index": i, "value": annotate_indices(v)}
+            for i, v in enumerate(x)
+        ]
     if isinstance(x, dict):
         return {k: annotate_indices(v) for k, v in x.items()}
     return x
@@ -38,7 +41,9 @@ class Rendered:
 
 
 def described(layout: Layout, name: Any, description: Any) -> str:
-    return str(name) if description in (None, "") else layout.described.format(name=name, description=as_text(description))
+    return (
+        str(name) if description in (None, "") else layout.described.format(name=name, description=as_text(description))
+    )
 
 
 def question_text(q: Question, layout: Layout) -> str:

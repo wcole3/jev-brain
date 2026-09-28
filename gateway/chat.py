@@ -1,4 +1,5 @@
 """Chat and every other /v1/* call forwarded to vLLM unchanged, with a route() hook for phase 3."""
+
 import json
 
 import httpx
@@ -13,15 +14,20 @@ def route(body: dict) -> dict:
     return body
 
 
-async def proxy(client: httpx.AsyncClient, method: str, path: str, content: bytes,
-                params: dict | None = None) -> StreamingResponse:
+async def proxy(
+    client: httpx.AsyncClient, method: str, path: str, content: bytes, params: dict | None = None
+) -> StreamingResponse:
     """Stream vLLM's response back byte for byte (JSON and SSE alike)."""
-    request = client.build_request(method, path, content=content, params=params,
-                                   headers={"content-type": "application/json"})
+    request = client.build_request(
+        method, path, content=content, params=params, headers={"content-type": "application/json"}
+    )
     upstream = await client.send(request, stream=True)
-    return StreamingResponse(upstream.aiter_bytes(), status_code=upstream.status_code,
-                             media_type=upstream.headers.get("content-type"),
-                             background=BackgroundTask(upstream.aclose))
+    return StreamingResponse(
+        upstream.aiter_bytes(),
+        status_code=upstream.status_code,
+        media_type=upstream.headers.get("content-type"),
+        background=BackgroundTask(upstream.aclose),
+    )
 
 
 async def chat_completions(client: httpx.AsyncClient, body: dict, served_model: str) -> StreamingResponse:

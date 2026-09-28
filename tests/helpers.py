@@ -1,4 +1,5 @@
 """Values shared by tests. Import from here, not from conftest or other test modules."""
+
 import functools
 
 from transformers import AutoTokenizer
@@ -16,11 +17,20 @@ def tokenizer_for(profile: str):
 
 
 QUICKSTART = {
-    "department": {"type": "choice", "instructions": "Which team should handle this",
-                   "criteria": {"billing": "Payment or subscription issues", "technical": "Bugs or integration problems",
-                                "sales": "Pricing or account questions"}},
-    "frustration": {"type": "score", "instructions": "How frustrated the customer appears",
-                    "criteria": ["Calm, just stating facts", "Frustrated but civil", "Very angry, strong language"]},
+    "department": {
+        "type": "choice",
+        "instructions": "Which team should handle this",
+        "criteria": {
+            "billing": "Payment or subscription issues",
+            "technical": "Bugs or integration problems",
+            "sales": "Pricing or account questions",
+        },
+    },
+    "frustration": {
+        "type": "score",
+        "instructions": "How frustrated the customer appears",
+        "criteria": ["Calm, just stating facts", "Frustrated but civil", "Very angry, strong language"],
+    },
     "is_urgent": {"type": "noul", "instructions": "The message conveys urgency or time-sensitivity"},
 }
 STATE = "Hi, my Stripe integration keeps failing and I'm losing sales. Please help ASAP."

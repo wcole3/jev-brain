@@ -14,6 +14,7 @@ from tests.helpers import QUICKSTART, STATE
 
 class FavourFirstLabel:
     """Fake readout: label A always most likely (logprobs 0, -1, -2, ...)."""
+
     def __init__(self):
         self.calls = []
 

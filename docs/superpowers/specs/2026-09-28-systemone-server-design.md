@@ -23,7 +23,7 @@ with the official TypeSafe SDK, and has a committed latency report per profile.
 | Models | `Qwen/Qwen3.8-27B`, `Qwen/Qwen3.6-27B`, `google/gemma-4-31B-it`, bf16, one loaded at a time | bf16 is the reference for calibration and index comparison |
 | Thinking | On for chat by default, switchable per request; always off in systemone prompts | Supported per request by both model families |
 | MTP | **Off in phase 1**; investigated in a spike | vLLM cannot disable MTP per request. With MTP on, `logprob_token_ids` requests go through the rejection sampler, which drops them (v0.30.0 `model_runner.py:1552-1583`) |
-| Prompt layout | Token-for-token parity with decider's chat layout | Lets us reuse decider's published temperature (Qwen3.6-27B: 1.943) and compare with its index scores |
+| Prompt layout | Editable prompt files (`prompts/<layout>.toml`), selected per profile. The default `decider_chat` layout matches decider token for token | Wording can change without touching code. The default lets us reuse decider's published temperature (Qwen3.6-27B: 1.943) and compare with its index scores |
 | Label vocabulary | Built ahead of time from each tokenizer and stored with the tokenizer hash | Guarantees every option label is exactly one token |
 | HF weights | Host `~/.cache/huggingface` mounted into the containers | No re-downloads |
 
@@ -45,16 +45,18 @@ gateway/            the FastAPI app (Python package)
   app.py            routes: /v1/systemone, /v1/chat/completions, /v1/models, /health, other /v1/* passthrough
   schema.py         Jev request/response models (pydantic v2)
   labels.py         load + verify the label vocabulary
-  prompts.py        one question → one prompt (decider chat layout, thinking off)
+  prompts.py        fills a prompt layout for one question (no prompt text lives here)
   readout.py        prompts → vLLM → per-question letter logprobs
   answers.py        probabilities → Jev answers + TypeSafe confidence
-  calibration.py    temperatures per profile and question type
+  calibration.py    temperatures per profile, layout and question type
   chat.py           chat proxy + route() hook
+prompts/            prompt layouts as editable text, one TOML file each
+  decider_chat.toml the default; matches decider token for token
 scripts/            build_labels.py, bench.py, bench_data.py (phase 2 adds calibrate.py, evaluate.py)
 tests/unit/         CPU-only, fast
-tests/parity/       our prompts vs decider's, token for token
+tests/parity/       decider_chat prompts vs decider's, token for token
 tests/live/         need the running stack (pytest -m live)
-data/<profile>/     labels.json, calibration.json
+data/<profile>/<layout>/  labels.json, calibration.json
 data/bench/         bundled public-domain text for synthetic states
 docs/results/       benchmark reports
 ```
@@ -78,29 +80,32 @@ One env file per profile. You switch by restarting with a different file:
   - `--enable-auto-tool-choice`
   - KV cache in bf16
   - no `--speculative-config`
-- **Pinning:** each profile sets `HF_REVISION` to the model revision current at bring-up.
-  The label vocabulary and the temperatures are only valid for that revision.
+- **Pinning:** each profile sets `HF_REVISION` to the model revision current at bring-up,
+  and `PROMPT_LAYOUT` (default `decider_chat`). The label vocabulary and the temperatures
+  are only valid for that revision + layout pair.
 - **Gemma access:** the weights are gated, so the HF token is read from the git-ignored
   file `secrets/hf_token`.
 - **Mounts:**
   - `vllm` mounts `~/.cache/huggingface` read-write.
   - `gateway` mounts it read-only, because it only needs the tokenizer.
   - Both services publish their ports on `127.0.0.1` only.
-- **Gateway env:** `VLLM_URL`, `SERVED_MODEL`, `PROFILE`, `HF_REVISION`, and an optional
-  `GATEWAY_API_KEY`.
+- **Gateway env:** `VLLM_URL`, `SERVED_MODEL`, `PROFILE`, `HF_REVISION`, `PROMPT_LAYOUT`,
+  and an optional `GATEWAY_API_KEY`.
 
 ## Label vocabulary (`scripts/build_labels.py`, `gateway/labels.py`)
 
-`build_labels.py --profile X` loads the pinned tokenizer and writes `data/X/labels.json`:
+`build_labels.py --profile X` loads the pinned tokenizer and the profile's prompt layout,
+and writes `data/X/<layout>/labels.json`:
 
 - `labels`: A–Z, then two-letter uppercase codes, up to 255. A code is kept only if it
-  encodes to exactly one token right after `Answer: (`: the rule is
-  `encode(prefix + code) == encode(prefix) + [id]`.
+  encodes to exactly one token right after the layout's answer slot (`Answer: (` in
+  `decider_chat`). The rule is `encode(prefix + code) == encode(prefix) + [id]`.
 - The order matches decider's label order.
-- The file also stores the token ids and a hash of the tokenizer files.
+- The file also stores the token ids, a hash of the tokenizer files, and a hash of the
+  layout file.
 
-At startup the gateway loads this file and recomputes the hash. It refuses to start on a
-mismatch.
+At startup the gateway loads this file and recomputes both hashes. It refuses to start
+on a mismatch, so an edited layout forces a label rebuild.
 
 ## `/v1/systemone` request flow
 
@@ -118,19 +123,34 @@ mismatch.
      - `a choice needs at least two options`
      - `a score takes 2 to 10 levels`
      - `maximum context length`
-2. **Render** (`prompts.py`): one prompt per question, identical to
-   `decider.serve.prepare(..., independent=True, isolated=False, chat=<model template>)`.
-   - Layout: a single user turn containing `Context:` + state, then `Question:` +
-     instructions, then the lettered options. Thinking is off, and the assistant turn ends
-     at `Answer: (`.
-   - Objects and arrays in `state` are rendered as JSON.
-   - `noul` becomes options `(A) no[: <false description>]` and
-     `(B) yes[: <true description>]`. A `noul` without instructions uses
-     `Which answer fits the context?`.
-   - `score` becomes lettered levels, level 0 first.
-   - Choices with 10 or fewer options use the A–J text rendering. Wider choices use one
-     label token per option.
-   - The state always comes first, so all questions share one prefix.
+2. **Render** (`prompts.py`): one prompt per question, built by filling the active
+   layout file. `prompts.py` only fills placeholders and applies the model's chat
+   template with thinking off. All wording lives in `prompts/<layout>.toml`, for example:
+
+   ```toml
+   # prompts/decider_chat.toml (exact whitespace pinned by the parity test)
+   user = "Context:\n{state}\n\nQuestion: {question}\nOptions:{options}"
+   option = "\n({label}) {text}"
+   answer_prefix = "Answer: ("
+   noul_no = "no"
+   noul_yes = "yes"
+   noul_question = "Which answer fits the context?"
+   ```
+
+   The default `decider_chat` layout reproduces
+   `decider.serve.prepare(..., independent=True, isolated=False, chat=<model template>)`:
+   - a single user turn: `Context:` + state, `Question:` + instructions, then the
+     lettered options; the assistant turn ends at `Answer: (`;
+   - objects and arrays in `state` rendered as JSON;
+   - `noul` as options `(A) no[: <false description>]` and
+     `(B) yes[: <true description>]`, and a `noul` without instructions uses
+     `noul_question`;
+   - `score` as lettered levels, level 0 first;
+   - choices with 10 or fewer options in the A–J text rendering, and wider choices with
+     one label token per option.
+
+   Every layout puts the state first, so all questions share one prefix. A new layout
+   means a new TOML file, rebuilt labels, and a refitted temperature. No code changes.
 3. **Read out** (`readout.py`).
    - Public interface: `letter_logprobs(prompts, label_ids) -> list[list[float]]`.
    - The gateway tokenizes the prompts itself and sends **one** batched
@@ -145,7 +165,7 @@ mismatch.
    - More than 128 label ids (vLLM's cap) are split across calls and the results merged.
 4. **Calibrate** (`calibration.py`): each question's probabilities are
    `softmax(logprob / T)` over its own labels.
-   - `T` comes from `data/<profile>/calibration.json`, keyed by question type.
+   - `T` comes from `data/<profile>/<layout>/calibration.json`, keyed by question type.
    - If the file is missing, `T = 1.0` and the gateway logs a warning at startup.
 5. **Answer** (`answers.py`) in the exact Jev shapes.
    - `choice` returns `choice`, `probabilities` keyed by option names, and `confidence`.
@@ -179,16 +199,18 @@ mismatch.
 
 - **Unit** (`tests/unit`, CPU, no server):
   - schema validation and the 422 marker texts;
-  - golden prompt strings for each model template;
+  - golden prompt strings for each layout × model template;
+  - every file in `prompts/` loads and has all required keys and placeholders;
   - the label builder, using the real tokenizers from the HF cache;
   - readout maths: softmax with `T`, and merging the >128-label chunks;
   - confidence formulas: TypeSafe's examples give 0.82 and 0.775 for choice, and
     {0.65, 0.30, 0.05} gives 0.40 for score;
   - answer shapes;
   - the chat proxy against a fake vLLM (`httpx.MockTransport`), streaming included.
-- **Parity** (`tests/parity`): our rendered token ids equal decider's `prepare()` output for
-  a fixed set of requests. decider runs in an isolated uv tool environment because of its
-  `numpy<2` pin.
+- **Parity** (`tests/parity`): with the `decider_chat` layout, our rendered token ids equal
+  decider's `prepare()` output for a fixed set of requests. decider runs in an isolated uv
+  tool environment because of its `numpy<2` pin. Other layouts are deliberately free to
+  differ.
 - **Live** (`tests/live`, `pytest -m live`, needs the stack up):
   - the official `typesafe-sdk` quickstart with `TYPESAFE_BASE_URL` pointed at the gateway;
   - edge cases: `null` option descriptions, `noul` without criteria, 255 options,

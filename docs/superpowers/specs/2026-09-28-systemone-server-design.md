@@ -80,6 +80,8 @@ One env file per profile. You switch by restarting with a different file:
 
 - **Shared vLLM flags:**
   - `--enable-prefix-caching --gpu-memory-utilization 0.90 --max-model-len 32768`
+  - `--max-num-seqs 256`
+    - vLLM's default 1024 exceeds the Mamba cache blocks of the hybrid Qwen models
   - `--enable-auto-tool-choice`
   - KV cache in bf16
   - no `--speculative-config`

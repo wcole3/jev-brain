@@ -1,0 +1,53 @@
+# One model per run: docker compose --env-file profiles/<profile>.env up -d
+services:
+  vllm:
+    image: vllm/vllm-openai:v0.30.0
+    entrypoint: ["/bin/bash", "/opt/jev/vllm-entrypoint.sh"]
+    ipc: host
+    deploy:
+      resources:
+        reservations:
+          devices: [{driver: nvidia, count: all, capabilities: [gpu]}]
+    environment:
+      HF_MODEL: ${HF_MODEL}
+      HF_REVISION: ${HF_REVISION}
+      SERVED_MODEL: ${SERVED_MODEL}
+      MAX_MODEL_LEN: ${MAX_MODEL_LEN}
+      MAX_NUM_SEQS: ${MAX_NUM_SEQS:-256}
+      REASONING_PARSER: ${REASONING_PARSER}
+      TOOL_PARSER: ${TOOL_PARSER}
+      LANGUAGE_MODEL_ONLY: ${LANGUAGE_MODEL_ONLY:-0}
+      CHAT_TEMPLATE: ${CHAT_TEMPLATE:-}
+      CHAT_TEMPLATE_KWARGS: ${CHAT_TEMPLATE_KWARGS:-}
+      HF_TOKEN: ${HF_TOKEN:-}
+    volumes:
+      - ${HOME}/.cache/huggingface:/root/.cache/huggingface
+      - ./docker/vllm-entrypoint.sh:/opt/jev/vllm-entrypoint.sh:ro
+    ports: ["127.0.0.1:8000:8000"]
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 1800s
+
+  gateway:
+    build: {context: ., dockerfile: docker/gateway.Dockerfile}
+    environment:
+      PROFILE: ${PROFILE}
+      HF_MODEL: ${HF_MODEL}
+      HF_REVISION: ${HF_REVISION}
+      SERVED_MODEL: ${SERVED_MODEL}
+      MAX_MODEL_LEN: ${MAX_MODEL_LEN}
+      PROMPT_LAYOUT: ${PROMPT_LAYOUT:-decider_chat}
+      OPTION_ORDERS: ${OPTION_ORDERS:-identity}
+      GATEWAY_API_KEY: ${GATEWAY_API_KEY:-}
+      VLLM_URL: http://vllm:8000
+      HF_HUB_OFFLINE: "1"
+    volumes:
+      - ${HOME}/.cache/huggingface:/root/.cache/huggingface:ro
+      - ./prompts:/app/prompts:ro
+      - ./data:/app/data:ro
+    ports: ["127.0.0.1:9000:9000"]
+    depends_on:
+      vllm: {condition: service_healthy}

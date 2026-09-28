@@ -24,7 +24,9 @@ async def proxy(client: httpx.AsyncClient, method: str, path: str, content: byte
                              background=BackgroundTask(upstream.aclose))
 
 
-async def chat_completions(client: httpx.AsyncClient, body: dict) -> StreamingResponse:
+async def chat_completions(client: httpx.AsyncClient, body: dict, served_model: str) -> StreamingResponse:
+    if body.get("model") in ALIASES:
+        body = body | {"model": served_model}  # vLLM only knows the served model name
     return await proxy(client, "POST", "/v1/chat/completions", json.dumps(route(body)).encode())
 
 

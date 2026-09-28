@@ -1,4 +1,6 @@
 """FastAPI gateway: /v1/systemone, chat proxy, /v1/models, /health, and /v1/* passthrough to vLLM."""
+import logging
+import uuid
 from contextlib import asynccontextmanager
 
 import httpx
@@ -15,6 +17,8 @@ from gateway.layouts import load_layouts
 from gateway.prompts import chat_frame
 from gateway.readout import Readout
 from gateway.schema import RequestError, SystemOneRequest
+
+log = logging.getLogger(__name__)
 
 
 def load_engine(s: Settings, client: httpx.AsyncClient) -> Engine:
@@ -57,6 +61,13 @@ def create_app(settings: Settings | None = None, transport: httpx.AsyncBaseTrans
     async def vllm_down(request: Request, exc: httpx.TransportError):
         return JSONResponse({"error": {"message": "model server unavailable"}}, status_code=503)
 
+    @app.exception_handler(Exception)
+    async def failed(request: Request, exc: Exception):
+        # log the id and error type only, never the request content
+        request_id = uuid.uuid4().hex
+        log.error("request %s failed: %s", request_id, type(exc).__name__)
+        return JSONResponse({"error": {"message": "internal error", "request_id": request_id}}, status_code=500)
+
     @app.get("/health")
     async def health(request: Request):
         engine = request.app.state.engine
@@ -74,7 +85,8 @@ def create_app(settings: Settings | None = None, transport: httpx.AsyncBaseTrans
 
     @app.post("/v1/chat/completions", dependencies=auth)
     async def chat_completions(request: Request):
-        return await chat.chat_completions(request.app.state.client, await request.json())
+        return await chat.chat_completions(request.app.state.client, await request.json(),
+                                           request.app.state.engine.settings.served_model)
 
     @app.get("/v1/models", dependencies=auth)
     async def models(request: Request):

@@ -63,6 +63,11 @@ def test_chat_passthrough_plain_and_streaming(client):
     assert r.headers["content-type"].startswith("text/event-stream")
 
 
+def test_chat_maps_jev_aliases_to_served_model(client):
+    body = {"model": "jev-latest", "messages": [{"role": "user", "content": "hi"}]}
+    assert client.post("/v1/chat/completions", json=body).json() == {"echo": body | {"model": "qwen3.6-27b"}}
+
+
 def test_models_include_jev_aliases(client):
     ids = [m["id"] for m in client.get("/v1/models").json()["data"]]
     assert ids == ["qwen3.6-27b", "jev-latest", "jev-preview"]
@@ -92,3 +97,13 @@ def test_vllm_down_is_503(qwen_settings):
     with TestClient(create_app(qwen_settings, httpx.MockTransport(down))) as c:
         body = {"state": "s", "questions": {"q": {"type": "noul", "instructions": "ok?"}}}
         assert c.post("/v1/systemone", json=body).status_code == 503
+
+
+def test_unexpected_error_is_500_with_request_id(qwen_settings, caplog):
+    def broken(request):
+        return httpx.Response(500)
+    with TestClient(create_app(qwen_settings, httpx.MockTransport(broken)), raise_server_exceptions=False) as c:
+        body = {"state": "s", "questions": {"q": {"type": "noul", "instructions": "ok?"}}}
+        r = c.post("/v1/systemone", json=body)
+    assert r.status_code == 500
+    assert r.json()["error"]["request_id"] in caplog.text

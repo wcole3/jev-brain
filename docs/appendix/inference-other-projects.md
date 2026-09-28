@@ -1,6 +1,6 @@
 # Inference-technique Jev reproductions: the "other" projects
 
-Compiled 2026-09-26. Raw material is in `/home/welb/devspace/jev-onto/.firecrawl/infer2/`: READMEs, docs, source excerpts, GitHub API metadata and two scraped X posts.
+Compiled 2026-09-26. Raw material is in `.firecrawl/infer2/`: READMEs, docs, source excerpts, GitHub API metadata and two scraped X posts.
 Scope: projects that add **no new weights**. They take a stock LLM, prefill it with the shared state, read option-token logits and assemble the answer in code. Several also ship optional trained heads or LoRA; those are noted where they appear.
 Not covered here (another agent has them): decider, simple-jev, reflex, jevfire, openjev-sglang.
 

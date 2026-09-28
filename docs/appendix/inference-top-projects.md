@@ -3,7 +3,7 @@
 Researched 2026-09-26. Target: one server on 1x RTX PRO 6000 Blackwell (96 GB) serving both
 `/v1/chat/completions` and a Jev-style `/v1/systemone` from one loaded model.
 
-Raw material is under `/home/welb/devspace/jev-onto/.firecrawl/infer/`. Files are named `<owner>_<repo>__<path with _>`.
+Raw material is under `.firecrawl/infer/`. Files are named `<owner>_<repo>__<path with _>`.
 Scores are from the Decision Index 0.2.1 data file (`infer/index-v0.2.1.json`, from
 https://huggingface.co/spaces/multimodalart/jev-decision-index/resolve/main/data/index-v0.2.1.json) and
 `notes/leaderboard-summary.txt`. That index runs on one RTX PRO 6000, the same card as the target.

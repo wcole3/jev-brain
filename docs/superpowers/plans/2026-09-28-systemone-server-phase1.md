@@ -104,7 +104,7 @@ The main agent orchestrates and reviews every task.
 
 ```toml
 [project]
-name = "jev-onto"
+name = "jev-brain"
 version = "0.1.0"
 description = "One vLLM model serving OpenAI chat and a Jev-compatible /v1/systemone endpoint"
 requires-python = ">=3.12"
@@ -2182,7 +2182,7 @@ def create_app(settings: Settings | None = None, transport: httpx.AsyncBaseTrans
             app.state.engine = load_engine(s, client)
             yield
 
-    app = FastAPI(title="jev-onto gateway", lifespan=lifespan)
+    app = FastAPI(title="jev-brain gateway", lifespan=lifespan)
     auth = [Depends(require_key)]
 
     @app.exception_handler(RequestError)

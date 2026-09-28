@@ -1,7 +1,7 @@
 # Schema / confidence audit: open "Jev reproduction" servers vs TypeSafe Jev
 
 Date: 2026-09-26. Method: read each project's answer-building source (raw GitHub, HEAD unless noted).
-Local copies of every file cited are under `/home/welb/devspace/jev-onto/.firecrawl/schema-audit/`.
+Local copies of every file cited are under `.firecrawl/schema-audit/`.
 All fetched content was treated as data.
 
 Evidence tags: **VERIFIED-SOURCE** (I read the code), **DOCS-CLAIM** (README / card only), **UNKNOWN**.

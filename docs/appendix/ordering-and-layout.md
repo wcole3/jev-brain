@@ -1,7 +1,7 @@
 # Option ordering & prompt layout for a Jev-style decision server — research notes
 
 Date: 2026-09-28. Raw scraped material saved under
-`/home/welb/devspace/jev-onto/.firecrawl/prompt-research/`.
+`.firecrawl/prompt-research/`.
 
 ---
 

@@ -1,6 +1,6 @@
 # Jev (TypeSafe AI): research notes
 
-Compiled 2026-09-26. Every fact carries a URL. Raw fetches are in `/home/welb/devspace/jev-onto/.firecrawl/jev/`.
+Compiled 2026-09-26. Every fact carries a URL. Raw fetches are in `.firecrawl/jev/`.
 Labels: **[OFFICIAL]** means TypeSafe's own site, docs, press release, or its CEO's own comments. **[INDEPENDENT]** means a third-party measurement. **[SPECULATION]** means inference by a third party. **[DERIVED]** means my own arithmetic from cited numbers.
 
 Key source shorthands:

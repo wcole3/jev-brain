@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this repo is
 
-A single-GPU inference server where one vLLM process serves normal OpenAI chat **and**
+**jev-brain**: a single-GPU inference server where one vLLM process serves normal OpenAI chat **and**
 a Jev-compatible `/v1/systemone` decision endpoint from the same loaded model, plus
 scripts to calibrate, evaluate and benchmark the decision path.
 

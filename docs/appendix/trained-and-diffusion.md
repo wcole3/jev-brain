@@ -1,7 +1,7 @@
 # Open Jev alternatives: (A) diffusion route, (B) trained open-weight models
 
 Research date: 2026-09-26. Target hardware: 1x RTX PRO 6000 Blackwell (96 GB, sm_120).
-Raw material: `/home/welb/devspace/jev-onto/.firecrawl/trained/` (HF cards `hf_*`, GitHub READMEs `gh_*`, blogs `web_*`).
+Raw material: `.firecrawl/trained/` (HF cards `hf_*`, GitHub READMEs `gh_*`, blogs `web_*`).
 Leaderboard figures are from Jev Decision Index 0.2.1 (balanced skill; Jev 1.13 = 57.89, ECE 0.074, p50 524 ms hosted),
 leaderboard data in `.firecrawl/space/data/index-v2.json` (run on 1x RTX PRO 6000). Self-reported numbers from
 model cards are marked as such. The index counts rows an entrant trained on as wrong.

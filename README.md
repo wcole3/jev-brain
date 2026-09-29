@@ -113,9 +113,11 @@ Run these against a running stack. The benchmark measures through the gateway, s
 what clients see.
 
 ```bash
-uv run python scripts/bench.py --profile qwen3.6-27b           # full run, ~25–40 min
-uv run python scripts/bench.py --profile qwen3.6-27b --quick   # smaller grid, a few minutes
-uv run python scripts/bench.py --profile qwen3.6-27b --chat    # also measure chat alone and under decision load
+uv run python scripts/bench.py --profile qwen3.6-27b                  # full run, ~25–40 min
+uv run python scripts/bench.py --profile qwen3.6-27b --quick          # smaller grid, a few minutes
+uv run python scripts/bench.py --profile qwen3.6-27b --jevbench-only  # accuracy only, ~5 min
+uv run python scripts/bench.py --profile qwen3.6-27b --chat           # also measure chat alone and under decision load
+uv run python scripts/bench.py --target jev                           # JevBench against the official Jev API
 ```
 
 - **Default run:** only `/v1/systemone`.
@@ -124,9 +126,27 @@ uv run python scripts/bench.py --profile qwen3.6-27b --chat    # also measure ch
   - A warm run that repeats the same state.
   - Throughput at 1, 4 and 16 clients.
   - The JevBench gold set.
+- **JevBench** is pinned to upstream commit `fcec62f` (1682 gold rows). Its table uses the
+  upstream board's columns: overall, choice and noul accuracy, plus QWK and MAE for
+  ordinal score rows. A failed request counts as a wrong answer, as upstream does.
 - **`--chat` is on demand** until chat/decision contention is fixed (DS-007).
-- **Results** go to `docs/results/<profile>/<date>/`: `raw.jsonl` with every request, and
-  `summary.md` with the tables. The committed reports are the phase-1 baselines.
+- **`--profile` must match the running gateway**; the bench refuses otherwise. It sends
+  `GATEWAY_API_KEY` when set, as do the live tests.
+- **Results** go to `docs/results/<profile>/<date>[-quick][-jevbench]/`: `raw.jsonl` with
+  every request, and `summary.md` with provenance (commit, model revision, layout, vLLM
+  version, JevBench SHA) and the tables.
+
+### Against the official Jev API
+
+`--target jev` runs only JevBench, with the same request mapping and scoring as the
+gateway runs.
+
+- **Key:** from `TYPESAFE_API_KEY`, else `secrets/.jev-key` (git- and docker-ignored).
+- **Cost:** a full pass is ~0.9M input tokens, about $0.04.
+- **Outputs:** the summary goes to `docs/results/jev/`. Jev's per-row answers stay in
+  `.cache/jev-results/`.
+- **Terms:** TypeSafe's terms forbid using Jev outputs to train or calibrate a similar
+  model. Never feed them into calibration or prompt tuning.
 
 ## When you change prompts or tokenizers
 

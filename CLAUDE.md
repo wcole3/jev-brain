@@ -25,7 +25,8 @@ Design specs go in `docs/superpowers/specs/`.
 - Lint: `uv run ruff check .`
 - Label tables (after any tokenizer or `prompts/*.toml` change): `uv run python scripts/build_labels.py --profile <p>`
 - Run a model: `docker compose --env-file profiles/<p>.env up -d --build` (compose project is pinned to `jev-brain`; gateway :9000, vLLM :8000). Switching models: `docker compose --env-file profiles/<old>.env down` first.
-- Benchmark: `uv run python scripts/bench.py --profile <p> [--quick] [--chat]` — the default measures only `/v1/systemone`; `--chat` adds chat alone + chat under systemone load (on demand until DS-007 is fixed).
+- Benchmark: `uv run python scripts/bench.py --profile <p> [--quick] [--jevbench-only] [--chat]` — the default measures only `/v1/systemone`; `--chat` adds chat alone + chat under systemone load (on demand until DS-007 is fixed).
+- Jev reference: `uv run python scripts/bench.py --target jev` (key from `TYPESAFE_API_KEY` or `secrets/.jev-key`). Jev per-row answers stay in `.cache/jev-results/`; never use them for calibration or prompt tuning.
 - Stage explicit paths when committing (`git add <paths>`), never `git add -A` — generated label tables and bench results are committed deliberately per profile.
 
 ## Architecture
@@ -89,7 +90,7 @@ Design specs go in `docs/superpowers/specs/`.
   `reasoning_content`).
 - Systemone decisions are bf16-noisy under load: probabilities can move ~0.03 (one bf16
   logit step); the live stability test allows 0.05 and requires the top answer to hold
-  when the top-two gap > 0.05.
+  when the top-two gap > 0.10.
 - Decision prefill starves chat decode on the shared GPU (DS-007); priority scheduling
   alone fixes TTFT, not decode — see `docs/appendix/ds007-scheduling.md`.
 - Hybrid Qwen prefix caching is 784-token block granular (DS-008).

@@ -266,8 +266,8 @@ The benchmark measures through the gateway over HTTP, so it sees what clients se
   - Each request starts its state with a unique nonce, so it cannot reuse another
     request's cached prefix.
   - A separate `warm` mode repeats states on purpose.
-- **Realistic mix:** the JevBench gold rows (1682 at the 2026-09-28 run; the upstream set
-  grows — pin a commit before phase-2 accuracy work), Apache-2.0, already in Jev format.
+- **Realistic mix:** the JevBench gold rows (1682 rows, pinned to upstream commit `fcec62f`
+  since DS-010), Apache-2.0, already in Jev format.
 - **Chat under load:** fixed short and long prompts with thinking on. Measures
   time-to-first-token and tokens/s, both alone and while the sweep runs at a set
   concurrency.

@@ -1,7 +1,14 @@
+import json
+
 import httpx
 import pytest
 
 pytestmark = pytest.mark.live
+
+
+def has_reasoning(chunk: dict) -> bool:
+    delta = chunk["choices"][0]["delta"]
+    return bool(delta.get("reasoning_content") or delta.get("reasoning"))
 
 
 def test_chat_streams_with_thinking_on(gateway_url, served_model):
@@ -15,4 +22,5 @@ def test_chat_streams_with_thinking_on(gateway_url, served_model):
         assert r.status_code == 200
         lines = [line for line in r.iter_lines() if line.startswith("data: ")]
     assert lines[-1] == "data: [DONE]"
-    assert len(lines) > 3
+    chunks = [json.loads(line.removeprefix("data: ")) for line in lines[:-1]]
+    assert any(has_reasoning(chunk) for chunk in chunks)

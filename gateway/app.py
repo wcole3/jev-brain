@@ -1,12 +1,16 @@
 """FastAPI gateway: /v1/systemone, chat proxy, /v1/models, /health, and /v1/* passthrough to vLLM."""
 
 import logging
+import secrets
 import uuid
+from collections.abc import Mapping
 from contextlib import asynccontextmanager
 
 import httpx
-from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, Response
+from starlette.exceptions import HTTPException
 from transformers import AutoTokenizer
 
 from gateway import chat
@@ -26,6 +30,12 @@ log = logging.getLogger("uvicorn.error")
 CLIENT_CLOSED_REQUEST = 499  # nginx's status for a client that left; nobody reads it
 
 
+def vllm_client(s: Settings, transport: httpx.AsyncBaseTransport | None) -> httpx.AsyncClient:
+    """The gateway's one connection pool to vLLM; every call carries vLLM's key when it has one."""
+    auth = {"Authorization": f"Bearer {s.vllm_api_key}"} if s.vllm_api_key else {}
+    return httpx.AsyncClient(base_url=s.vllm_url, headers=auth, timeout=600, transport=transport)
+
+
 def load_engine(s: Settings, client: httpx.AsyncClient) -> Engine:
     tok = AutoTokenizer.from_pretrained(s.hf_model, revision=s.hf_revision)
     layouts = load_layouts()
@@ -42,12 +52,25 @@ def load_engine(s: Settings, client: httpx.AsyncClient) -> Engine:
 
 def require_key(request: Request) -> None:
     key = request.app.state.engine.settings.api_key
-    if key and request.headers.get("authorization") != f"Bearer {key}":
-        raise HTTPException(status_code=401, detail="invalid or missing API key")
+    given = request.headers.get("authorization", "").encode("latin-1")  # the header's raw bytes
+    if key and not secrets.compare_digest(given, f"Bearer {key}".encode()):
+        raise HTTPException(401, "invalid or missing API key", headers={"WWW-Authenticate": "Bearer"})
 
 
-def error(status: int, message: str) -> JSONResponse:
-    return JSONResponse({"error": {"message": message}}, status_code=status)
+def error(status: int, message: str, headers: Mapping[str, str] | None = None) -> JSONResponse:
+    return JSONResponse({"error": {"message": message}}, status_code=status, headers=headers)
+
+
+def field_path(e: dict) -> str:
+    """'questions.q.type' for ('body', 'questions', 'q', 'type'); 'body' for the body as a whole."""
+    if e["type"] == "json_invalid":
+        return "body"  # its loc ends in a character offset, not a field
+    return ".".join(str(part) for part in e["loc"][1:] or e["loc"])
+
+
+def validation_message(exc: RequestValidationError) -> str:
+    """All errors on one line: '<field>: <msg>', joined by '; '."""
+    return "; ".join(f"{field_path(e)}: {e['msg']}" for e in exc.errors())
 
 
 def client_left(endpoint: str) -> Response:
@@ -75,13 +98,21 @@ def create_app(settings: Settings | None = None, transport: httpx.AsyncBaseTrans
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         s = settings or Settings.from_env()
-        async with httpx.AsyncClient(base_url=s.vllm_url, timeout=600, transport=transport) as client:
+        async with vllm_client(s, transport) as client:
             app.state.client = client
             app.state.engine = load_engine(s, client)
             yield
 
-    app = FastAPI(title="jev-brain gateway", lifespan=lifespan)
+    app = FastAPI(title="jev-brain gateway", lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)
     auth = [Depends(require_key)]
+
+    @app.exception_handler(HTTPException)
+    async def http_error(request: Request, exc: HTTPException):
+        return error(exc.status_code, exc.detail, exc.headers)  # keeps WWW-Authenticate and Allow
+
+    @app.exception_handler(RequestValidationError)
+    async def invalid_body(request: Request, exc: RequestValidationError):
+        return error(422, validation_message(exc))
 
     @app.exception_handler(RequestError)
     async def refused(request: Request, exc: RequestError):
@@ -144,8 +175,9 @@ def create_app(settings: Settings | None = None, transport: httpx.AsyncBaseTrans
 
     @app.api_route("/v1/{path:path}", methods=["GET", "POST"], dependencies=auth)
     async def passthrough(path: str, request: Request):
-        content, params = await request.body(), dict(request.query_params)
-        call = chat.proxy(request.app.state.client, request.method, f"/v1/{path}", content, params)
+        content = await request.body()
+        headers, params = chat.forwarded(request.headers), request.query_params.multi_items()
+        call = chat.proxy(request.app.state.client, request.method, f"/v1/{path}", content, headers, params)
         upstream = await unless_disconnected(request, call)
         return client_left("passthrough") if upstream is None else upstream
 

@@ -1,6 +1,7 @@
 """Chat and every other /v1/* call forwarded to vLLM unchanged, with a route() hook for phase 3."""
 
 import json
+from collections.abc import Mapping
 
 import httpx
 from fastapi.responses import StreamingResponse
@@ -12,17 +13,29 @@ ALIASES = ("jev-latest", "jev-preview")
 # So no read timeout: a client that gives up gets its request cancelled instead (gateway/disconnect.py).
 PROXY_TIMEOUT = httpx.Timeout(600, read=None)
 
+# The only client headers passed on. Never Authorization: it carries the gateway key, not vLLM's.
+FORWARDED_HEADERS = ("content-type", "accept")
+
 
 def route(body: dict) -> dict:
     """Phase 1: pass through. Phase 3 sets thinking and reasoning_effort from systemone answers."""
     return body
 
 
+def forwarded(headers: Mapping[str, str]) -> dict[str, str]:
+    """The client's headers that vLLM should see."""
+    return {name: headers[name] for name in FORWARDED_HEADERS if name in headers}
+
+
 async def proxy(
-    client: httpx.AsyncClient, method: str, path: str, content: bytes, params: dict | None = None
+    client: httpx.AsyncClient,
+    method: str,
+    path: str,
+    content: bytes,
+    headers: dict[str, str],
+    params: list[tuple[str, str]] | None = None,
 ) -> StreamingResponse:
     """Stream vLLM's response back byte for byte (JSON and SSE alike)."""
-    headers = {"content-type": "application/json"}
     request = client.build_request(method, path, content=content, params=params, headers=headers, timeout=PROXY_TIMEOUT)
     upstream = await client.send(request, stream=True)
     return StreamingResponse(
@@ -36,7 +49,8 @@ async def proxy(
 async def chat_completions(client: httpx.AsyncClient, body: dict, served_model: str) -> StreamingResponse:
     if body.get("model") in ALIASES:
         body = body | {"model": served_model}  # vLLM only knows the served model name
-    return await proxy(client, "POST", "/v1/chat/completions", json.dumps(route(body)).encode())
+    content = json.dumps(route(body)).encode()
+    return await proxy(client, "POST", "/v1/chat/completions", content, {"content-type": "application/json"})
 
 
 async def list_models(client: httpx.AsyncClient, served_model: str) -> dict:

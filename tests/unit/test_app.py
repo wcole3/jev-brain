@@ -7,10 +7,37 @@ from fastapi.testclient import TestClient
 from gateway.app import create_app
 from tests.helpers import QUICKSTART, SSE, STATE, fake_vllm
 
+NOUL = {"state": "s", "questions": {"q": {"type": "noul", "instructions": "ok?"}}}
+CHAT = {"model": "qwen3.6-27b", "messages": [{"role": "user", "content": "hi"}]}
+GATEWAY_KEY = {"Authorization": "Bearer gateway-key"}
+
 
 @pytest.fixture
-def client(qwen_settings):
-    with TestClient(create_app(qwen_settings, httpx.MockTransport(fake_vllm))) as c:
+def sent() -> list[httpx.Request]:
+    """Every request the gateway sent to the fake vLLM during the test."""
+    return []
+
+
+@pytest.fixture
+def vllm(sent):
+    def record(request: httpx.Request) -> httpx.Response:
+        sent.append(request)
+        return fake_vllm(request)
+
+    return httpx.MockTransport(record)
+
+
+@pytest.fixture
+def client(qwen_settings, vllm):
+    with TestClient(create_app(qwen_settings, vllm)) as c:
+        yield c
+
+
+@pytest.fixture
+def locked(qwen_settings, vllm):
+    """A gateway that wants the gateway key and holds vLLM's key."""
+    s = dataclasses.replace(qwen_settings, api_key="gateway-key", vllm_api_key="vllm-key")
+    with TestClient(create_app(s, vllm)) as c:
         yield c
 
 
@@ -34,9 +61,8 @@ def test_capacity_refusal_carries_harness_marker(client):
 
 
 def test_chat_passthrough_plain_and_streaming(client):
-    body = {"model": "qwen3.6-27b", "messages": [{"role": "user", "content": "hi"}]}
-    assert client.post("/v1/chat/completions", json=body).json() == {"echo": body}
-    r = client.post("/v1/chat/completions", json=body | {"stream": True})
+    assert client.post("/v1/chat/completions", json=CHAT).json() == {"echo": CHAT}
+    r = client.post("/v1/chat/completions", json=CHAT | {"stream": True})
     assert r.content == SSE
     assert r.headers["content-type"].startswith("text/event-stream")
 
@@ -72,12 +98,85 @@ def test_health(client):
     assert body["prompt_layout"] and body["option_orders"]
 
 
-def test_api_key_is_enforced_when_set(qwen_settings):
-    locked = dataclasses.replace(qwen_settings, api_key="secret")
-    with TestClient(create_app(locked, httpx.MockTransport(fake_vllm))) as c:
-        body = {"state": "s", "questions": {"q": {"type": "noul", "instructions": "ok?"}}}
-        assert c.post("/v1/systemone", json=body).status_code == 401
-        assert c.post("/v1/systemone", json=body, headers={"Authorization": "Bearer secret"}).status_code == 200
+@pytest.mark.parametrize(
+    "authorization", [None, "Bearer wrong", "gateway-key", "bearer gateway-key", "Bearer gateway-kéy".encode()]
+)
+def test_wrong_or_missing_key_is_401(locked, authorization):
+    headers = {} if authorization is None else {"Authorization": authorization}
+    r = locked.post("/v1/systemone", json=NOUL, headers=headers)
+    assert r.status_code == 401
+    assert r.headers["www-authenticate"] == "Bearer"
+    assert r.json() == {"error": {"message": "invalid or missing API key"}}
+
+
+def test_right_key_is_accepted(locked):
+    assert locked.post("/v1/systemone", json=NOUL, headers=GATEWAY_KEY).status_code == 200
+
+
+def test_vllm_calls_carry_the_vllm_key_not_the_gateway_key(locked, sent):
+    locked.post("/v1/systemone", json=NOUL, headers=GATEWAY_KEY)
+    locked.post("/v1/chat/completions", json=CHAT, headers=GATEWAY_KEY)
+    locked.get("/v1/unknown", headers=GATEWAY_KEY)
+    assert [r.url.path for r in sent] == ["/v1/completions", "/v1/chat/completions", "/v1/unknown"]
+    assert all(r.headers["authorization"] == "Bearer vllm-key" for r in sent)
+
+
+def test_gateway_key_never_reaches_vllm(qwen_settings, vllm, sent):
+    s = dataclasses.replace(qwen_settings, api_key="gateway-key")
+    with TestClient(create_app(s, vllm)) as c:
+        c.post("/v1/chat/completions", json=CHAT, headers=GATEWAY_KEY)
+        c.get("/v1/unknown", headers=GATEWAY_KEY)
+    assert len(sent) == 2
+    assert not any("authorization" in r.headers for r in sent)
+
+
+def test_passthrough_forwards_content_type_accept_and_repeated_query_keys(client, sent):
+    headers = {"content-type": "multipart/form-data; boundary=x", "accept": "text/event-stream", "x-other": "1"}
+    client.post("/v1/audio/transcriptions?a=1&a=2&b=3", content=b"--x--", headers=headers)
+    upstream = sent[-1]
+    assert upstream.headers["content-type"] == "multipart/form-data; boundary=x"
+    assert upstream.headers["accept"] == "text/event-stream"
+    assert "x-other" not in upstream.headers
+    assert upstream.url.params.multi_items() == [("a", "1"), ("a", "2"), ("b", "3")]
+    assert upstream.content == b"--x--"
+
+
+def test_unknown_route_is_404_in_the_error_shape(client):
+    r = client.get("/nope")
+    assert r.status_code == 404
+    assert r.json() == {"error": {"message": "Not Found"}}
+
+
+def test_wrong_method_is_405_in_the_error_shape_and_keeps_allow(client):
+    r = client.post("/health")
+    assert r.status_code == 405
+    assert r.json() == {"error": {"message": "Method Not Allowed"}}
+    assert r.headers["allow"] == "GET"
+
+
+@pytest.mark.parametrize("path", ["/docs", "/redoc", "/openapi.json"])
+def test_api_docs_are_off(client, path):
+    assert client.get(path).status_code == 404
+
+
+def test_invalid_body_is_422_with_one_message(client):
+    questions = {"q": {"type": "maybe", "instructions": "?"}, "r": {"instructions": "?"}}
+    r = client.post("/v1/systemone", json={"state": "s", "questions": questions})
+    assert r.status_code == 422
+    message = "questions.q.type: Input should be 'choice', 'score' or 'noul'; questions.r.type: Field required"
+    assert r.json() == {"error": {"message": message}}
+
+
+def test_missing_body_is_422_about_the_body(client):
+    r = client.post("/v1/systemone")
+    assert r.status_code == 422
+    assert r.json() == {"error": {"message": "body: Field required"}}
+
+
+def test_invalid_json_is_422_about_the_body(client):
+    r = client.post("/v1/systemone", content=b"{not json", headers={"content-type": "application/json"})
+    assert r.status_code == 422
+    assert r.json()["error"]["message"].startswith("body: JSON decode error")
 
 
 def test_vllm_down_is_503(qwen_settings):
@@ -85,8 +184,7 @@ def test_vllm_down_is_503(qwen_settings):
         raise httpx.ConnectError("down")
 
     with TestClient(create_app(qwen_settings, httpx.MockTransport(down))) as c:
-        body = {"state": "s", "questions": {"q": {"type": "noul", "instructions": "ok?"}}}
-        assert c.post("/v1/systemone", json=body).status_code == 503
+        assert c.post("/v1/systemone", json=NOUL).status_code == 503
 
 
 def test_vllm_timeout_is_504(qwen_settings):
@@ -94,12 +192,10 @@ def test_vllm_timeout_is_504(qwen_settings):
         raise httpx.ReadTimeout("slow")
 
     with TestClient(create_app(qwen_settings, httpx.MockTransport(slow))) as c:
-        body = {"state": "s", "questions": {"q": {"type": "noul", "instructions": "ok?"}}}
-        r = c.post("/v1/systemone", json=body)
+        r = c.post("/v1/systemone", json=NOUL)
         assert r.status_code == 504
         assert r.json() == {"error": {"message": "model server timed out"}}
-        chat = {"model": "qwen3.6-27b", "messages": [{"role": "user", "content": "hi"}]}
-        assert c.post("/v1/chat/completions", json=chat).status_code == 504
+        assert c.post("/v1/chat/completions", json=CHAT).status_code == 504
 
 
 def test_unexpected_error_is_500_with_request_id(qwen_settings, caplog):
@@ -107,7 +203,6 @@ def test_unexpected_error_is_500_with_request_id(qwen_settings, caplog):
         return httpx.Response(500)
 
     with TestClient(create_app(qwen_settings, httpx.MockTransport(broken)), raise_server_exceptions=False) as c:
-        body = {"state": "s", "questions": {"q": {"type": "noul", "instructions": "ok?"}}}
-        r = c.post("/v1/systemone", json=body)
+        r = c.post("/v1/systemone", json=NOUL)
     assert r.status_code == 500
     assert r.json()["error"]["request_id"] in caplog.text

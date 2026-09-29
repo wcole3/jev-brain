@@ -1,7 +1,7 @@
 """Settings from the environment (compose) or from a profile file (scripts, tests)."""
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -28,7 +28,8 @@ class Settings:
     prompt_layout: str = "decider_chat"
     option_orders: str = "identity"
     vllm_url: str = "http://127.0.0.1:8000"
-    api_key: str | None = None
+    api_key: str | None = field(default=None, repr=False)  # keys never show in logs or tracebacks
+    vllm_api_key: str | None = field(default=None, repr=False)
     warm_min_prefix_tokens: int = 512
     data_root: Path = ROOT / "data"
 
@@ -45,6 +46,7 @@ class Settings:
             option_orders=e.get("OPTION_ORDERS") or "identity",
             vllm_url=e.get("VLLM_URL") or "http://127.0.0.1:8000",
             api_key=e.get("GATEWAY_API_KEY") or None,
+            vllm_api_key=e.get("VLLM_API_KEY") or None,
             warm_min_prefix_tokens=int(e.get("WARM_MIN_PREFIX_TOKENS") or 512),
             data_root=Path(e.get("DATA_ROOT") or ROOT / "data"),
         )

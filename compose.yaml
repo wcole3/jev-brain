@@ -2,8 +2,10 @@
 name: jev-brain
 services:
   vllm:
-    image: vllm/vllm-openai:v0.30.0
+    image: vllm/vllm-openai:v0.30.0@sha256:8a69ffad015f138d7170c4ddc429e230a3bc1c1719f67e14324749df200a4b90
     entrypoint: ["/bin/bash", "/opt/jev/vllm-entrypoint.sh"]
+    # Not unless-stopped: on this GPU workstation the stack must not grab ~86 GB of VRAM at boot.
+    restart: on-failure:3
     ipc: host
     deploy:
       resources:
@@ -20,6 +22,7 @@ services:
       LANGUAGE_MODEL_ONLY: ${LANGUAGE_MODEL_ONLY:-0}
       CHAT_TEMPLATE: ${CHAT_TEMPLATE:-}
       CHAT_TEMPLATE_KWARGS: ${CHAT_TEMPLATE_KWARGS:-}
+      VLLM_API_KEY: ${VLLM_API_KEY:-}
       HF_HUB_OFFLINE: "1"
     volumes:
       - ${HOME}/.cache/huggingface:/root/.cache/huggingface:ro
@@ -34,6 +37,7 @@ services:
 
   gateway:
     build: {context: ., dockerfile: docker/gateway.Dockerfile}
+    restart: on-failure:3
     environment:
       PROFILE: ${PROFILE}
       HF_MODEL: ${HF_MODEL}
@@ -43,6 +47,7 @@ services:
       PROMPT_LAYOUT: ${PROMPT_LAYOUT:-decider_chat}
       OPTION_ORDERS: ${OPTION_ORDERS:-identity}
       GATEWAY_API_KEY: ${GATEWAY_API_KEY:-}
+      VLLM_API_KEY: ${VLLM_API_KEY:-}
       VLLM_URL: http://vllm:8000
       HF_HUB_OFFLINE: "1"
     volumes:
@@ -50,5 +55,11 @@ services:
       - ./prompts:/app/prompts:ro
       - ./data:/app/data:ro
     ports: ["127.0.0.1:9000:9000"]
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:9000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 120s
     depends_on:
       vllm: {condition: service_healthy}

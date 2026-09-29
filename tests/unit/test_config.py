@@ -26,9 +26,23 @@ def test_blank_optional_keys_fall_back_to_defaults():
             "MAX_MODEL_LEN": "1024",
             "PROMPT_LAYOUT": "",
             "GATEWAY_API_KEY": "",
+            "VLLM_API_KEY": "",
         }
     )
     assert s.prompt_layout == "decider_chat"
     assert s.option_orders == "identity"
     assert s.api_key is None
+    assert s.vllm_api_key is None
     assert s.warm_min_prefix_tokens == 512
+
+
+def test_keys_come_from_the_environment():
+    base = {"PROFILE": "p", "HF_MODEL": "m", "HF_REVISION": "r", "SERVED_MODEL": "s", "MAX_MODEL_LEN": "1024"}
+    s = Settings.from_env(base | {"GATEWAY_API_KEY": "g", "VLLM_API_KEY": "v"})
+    assert (s.api_key, s.vllm_api_key) == ("g", "v")
+
+
+def test_keys_stay_out_of_repr():
+    base = {"PROFILE": "p", "HF_MODEL": "m", "HF_REVISION": "r", "SERVED_MODEL": "s", "MAX_MODEL_LEN": "1024"}
+    s = Settings.from_env(base | {"GATEWAY_API_KEY": "gw-secret", "VLLM_API_KEY": "vllm-secret"})
+    assert "secret" not in repr(s)

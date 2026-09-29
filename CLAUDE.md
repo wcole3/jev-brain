@@ -24,6 +24,7 @@ Design specs go in `docs/superpowers/specs/`.
 - Live tests (stack running): `uv run pytest -m live tests/live -v`
 - Lint: `uv run ruff check .`
 - Label tables (after any tokenizer or `prompts/*.toml` change): `uv run python scripts/build_labels.py --profile <p>`
+- Download a model (host, once): `uv run python scripts/fetch_model.py --profile <p>`. vLLM mounts the HF cache read-only and offline, so it can't download or write there.
 - Run a model: `docker compose --env-file profiles/<p>.env up -d --build` (compose project is pinned to `jev-brain`; gateway :9000, vLLM :8000). Switching models: `docker compose --env-file profiles/<old>.env down` first.
 - Benchmark: `uv run python scripts/bench.py --profile <p> [--quick] [--jevbench-only] [--chat]` — the default measures only `/v1/systemone`; `--chat` adds chat alone + chat under systemone load (on demand until DS-007 is fixed).
 - Jev reference: `uv run python scripts/bench.py --target jev` (key from `TYPESAFE_API_KEY` or `secrets/.jev-key`). Jev per-row answers stay in `.cache/jev-results/`; never use them for calibration or prompt tuning.
@@ -94,8 +95,18 @@ Design specs go in `docs/superpowers/specs/`.
 - Decision prefill starves chat decode on the shared GPU (DS-007); priority scheduling
   alone fixes TTFT, not decode — see `docs/appendix/ds007-scheduling.md`.
 - Hybrid Qwen prefix caching is 784-token block granular (DS-008).
-- Gemma 4 31B with the vision tower resident leaves only ~50k KV tokens (1.5x
-  concurrency at 32k).
+- The gateway cancels systemone, non-streaming chat and passthrough work when the client
+  disconnects (`gateway/disconnect.py`), and vLLM then aborts. vLLM 0.30 doesn't count
+  client aborts in `request_success_total` (not even as `abort`); watch
+  `num_requests_running`/`waiting` instead.
+- typesafe-sdk 0.7.2 defaults to a 10 s timeout and 2 retries on timeouts, connection
+  errors, 408, 429 and 5xx. Large requests need `TypeSafeClient(timeout=...)`.
+- Encode many short texts in one tokenizer call (`prompts.encode_each`). Per-call overhead
+  in transformers once cost 1–2.7 s on 64×255-option requests.
+- Gemma 4 31B leaves only ~50k KV tokens (1.5x concurrency at 32k). The vision tower is
+  not the cause: `--language-model-only` measured 49.8k vs 50.5k with vision (DS-011).
+  Its per-token KV is large (50 sliding + 10 full-attention layers); an fp8 KV cache is
+  the lever, tracked in DS-005.
 
 ## Environment
 

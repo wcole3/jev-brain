@@ -17,8 +17,9 @@ Background research is in [docs/README.md](docs/README.md), the design in
   driver, plus Docker with the NVIDIA container toolkit.
 - [uv](https://docs.astral.sh/uv/) for the Python side (tests, scripts). Python 3.12 is
   pinned in `.python-version`.
-- Disk for model weights in `~/.cache/huggingface` (~55–60 GB per model). The containers
-  mount this cache, so weights download once and are shared with the host.
+- Disk for model weights in `~/.cache/huggingface` (~55–60 GB per model). You download them
+  on the host (below). The containers mount this cache read-only, so weights are shared
+  and the containers never write there.
 
 ```bash
 uv sync      # install the gateway, scripts and test dependencies
@@ -35,15 +36,16 @@ Each model is a profile in `profiles/`. Only one runs at a time.
 | `gemma-4-31b` | google/gemma-4-31B-it |
 
 ```bash
+uv run python scripts/fetch_model.py --profile qwen3.6-27b        # once per model: the pinned revision, ~55–60 GB
 docker compose --env-file profiles/qwen3.6-27b.env up -d --build
-docker compose --env-file profiles/qwen3.6-27b.env logs -f vllm   # first start downloads and loads the model
+docker compose --env-file profiles/qwen3.6-27b.env logs -f vllm   # watch the model load
 curl -s localhost:9000/health                                     # {"status":"ok","profile":"qwen3.6-27b",...}
 ```
 
 - The gateway listens on `127.0.0.1:9000` and vLLM on `127.0.0.1:8000`. Clients should
   talk to the gateway.
-- The first start of a model can take 20–30 minutes: download plus load. Later starts
-  take about 10 minutes (weight load and graph capture).
+- A start takes up to ~10 minutes (weight load and graph capture); about 4 when the
+  weights are still in memory from a recent run.
 - To switch models, stop the running profile first:
 
   ```bash
@@ -54,8 +56,10 @@ curl -s localhost:9000/health                                     # {"status":"o
 - Optional settings:
   - `GATEWAY_API_KEY` (in your shell or a git-ignored `.env`) requires
     `Authorization: Bearer <key>` on the gateway.
-  - `HF_TOKEN` raises Hugging Face rate limits.
+  - `HF_TOKEN` raises Hugging Face rate limits for `fetch_model.py`.
   - vLLM's own port stays unauthenticated; binding to loopback is the protection.
+- Older setups let the vLLM container write root-owned files into the cache. If host tools
+  report `Permission denied` there, fix it once with `sudo chown -R $USER: ~/.cache/huggingface`.
 
 ### Try it
 
@@ -74,8 +78,13 @@ curl -sN localhost:9000/v1/chat/completions -H 'content-type: application/json' 
 ```
 
 The official TypeSafe SDK works against the gateway too:
-`TypeSafeClient(api_key="local", base_url="http://127.0.0.1:9000")`. Its default 10 s
-timeout is short for very large requests (see DS-009), so pass `timeout=` if needed.
+`TypeSafeClient(api_key="local", base_url="http://127.0.0.1:9000", timeout=120)`.
+
+- The SDK's default timeout is 10 s, and it retries twice on timeouts and 5xx errors.
+- Large requests (many questions × many options, long states) can take longer, so raise
+  `timeout`.
+- When a client gives up, the gateway cancels its work and vLLM stops too, so retries
+  don't pile up on the GPU.
 
 ## Tests
 
@@ -167,11 +176,11 @@ A layout change also invalidates its fitted temperatures
 
 | Path | What |
 |---|---|
-| `gateway/` | FastAPI gateway: `/v1/systemone` flow (`decide.py`), chat proxy (`chat.py`) |
+| `gateway/` | FastAPI gateway: `/v1/systemone` flow (`decide.py`), chat proxy (`chat.py`), disconnect cancellation (`disconnect.py`) |
 | `prompts/` | Prompt layouts (`decider_chat` default, `header`, `question_first`) |
 | `profiles/` | One env file per model |
 | `data/` | Label tables and temperatures per profile/layout; benchmark corpus |
-| `scripts/` | `build_labels.py`, `bench.py`, `decider_fixtures.py` |
+| `scripts/` | `fetch_model.py`, `build_labels.py`, `bench.py` (+ `bench_data.py`, `bench_report.py`), `decider_fixtures.py` |
 | `tests/` | `unit/`, `parity/`, `live/` |
 | `docker/`, `compose.yaml` | vLLM entrypoint, gateway image, stack definition |
 | `docs/` | Research, spec, plan, benchmark results |

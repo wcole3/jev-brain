@@ -20,9 +20,9 @@ services:
       LANGUAGE_MODEL_ONLY: ${LANGUAGE_MODEL_ONLY:-0}
       CHAT_TEMPLATE: ${CHAT_TEMPLATE:-}
       CHAT_TEMPLATE_KWARGS: ${CHAT_TEMPLATE_KWARGS:-}
-      HF_TOKEN: ${HF_TOKEN:-}
+      HF_HUB_OFFLINE: "1"
     volumes:
-      - ${HOME}/.cache/huggingface:/root/.cache/huggingface
+      - ${HOME}/.cache/huggingface:/root/.cache/huggingface:ro
       - ./docker/vllm-entrypoint.sh:/opt/jev/vllm-entrypoint.sh:ro
     ports: ["127.0.0.1:8000:8000"]
     healthcheck:

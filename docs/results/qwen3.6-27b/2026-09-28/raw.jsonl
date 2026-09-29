@@ -1,0 +1,1874 @@
+{"test": "cold", "state_tokens": 256, "questions": 1, "options": 2, "ms": 90.93360700353514}
+{"test": "cold", "state_tokens": 256, "questions": 1, "options": 2, "ms": 101.95383499376476}
+{"test": "cold", "state_tokens": 256, "questions": 1, "options": 2, "ms": 96.42291699856287}
+{"test": "cold", "state_tokens": 256, "questions": 1, "options": 2, "ms": 118.64366300142137}
+{"test": "cold", "state_tokens": 256, "questions": 1, "options": 2, "ms": 88.91787799802842}
+{"test": "cold", "state_tokens": 256, "questions": 1, "options": 26, "ms": 195.49893099610927}
+{"test": "cold", "state_tokens": 256, "questions": 1, "options": 26, "ms": 195.26665299781598}
+{"test": "cold", "state_tokens": 256, "questions": 1, "options": 26, "ms": 183.12077500013402}
+{"test": "cold", "state_tokens": 256, "questions": 1, "options": 26, "ms": 177.39464299665997}
+{"test": "cold", "state_tokens": 256, "questions": 1, "options": 26, "ms": 151.3962030003313}
+{"test": "cold", "state_tokens": 256, "questions": 1, "options": 255, "ms": 961.8061039946042}
+{"test": "cold", "state_tokens": 256, "questions": 1, "options": 255, "ms": 976.0491709967027}
+{"test": "cold", "state_tokens": 256, "questions": 1, "options": 255, "ms": 1001.555479997478}
+{"test": "cold", "state_tokens": 256, "questions": 1, "options": 255, "ms": 963.4728419987368}
+{"test": "cold", "state_tokens": 256, "questions": 1, "options": 255, "ms": 954.8681270025554}
+{"test": "cold", "state_tokens": 256, "questions": 4, "options": 2, "ms": 247.50352200499037}
+{"test": "cold", "state_tokens": 256, "questions": 4, "options": 2, "ms": 250.11344700033078}
+{"test": "cold", "state_tokens": 256, "questions": 4, "options": 2, "ms": 249.3882359995041}
+{"test": "cold", "state_tokens": 256, "questions": 4, "options": 2, "ms": 271.64787299989257}
+{"test": "cold", "state_tokens": 256, "questions": 4, "options": 2, "ms": 233.1949959989288}
+{"test": "cold", "state_tokens": 256, "questions": 4, "options": 26, "ms": 389.3582150049042}
+{"test": "cold", "state_tokens": 256, "questions": 4, "options": 26, "ms": 346.61122200486716}
+{"test": "cold", "state_tokens": 256, "questions": 4, "options": 26, "ms": 361.74883800413227}
+{"test": "cold", "state_tokens": 256, "questions": 4, "options": 26, "ms": 344.2614110026625}
+{"test": "cold", "state_tokens": 256, "questions": 4, "options": 26, "ms": 363.8578430036432}
+{"test": "cold", "state_tokens": 256, "questions": 4, "options": 255, "ms": 2054.443059001642}
+{"test": "cold", "state_tokens": 256, "questions": 4, "options": 255, "ms": 2086.685683003452}
+{"test": "cold", "state_tokens": 256, "questions": 4, "options": 255, "ms": 2114.420265002991}
+{"test": "cold", "state_tokens": 256, "questions": 4, "options": 255, "ms": 2096.7547690015635}
+{"test": "cold", "state_tokens": 256, "questions": 4, "options": 255, "ms": 2097.358990002249}
+{"test": "cold", "state_tokens": 256, "questions": 16, "options": 2, "ms": 883.6091999983182}
+{"test": "cold", "state_tokens": 256, "questions": 16, "options": 2, "ms": 871.0015420001582}
+{"test": "cold", "state_tokens": 256, "questions": 16, "options": 2, "ms": 839.3231899972307}
+{"test": "cold", "state_tokens": 256, "questions": 16, "options": 2, "ms": 836.9162009985303}
+{"test": "cold", "state_tokens": 256, "questions": 16, "options": 2, "ms": 842.1944260044256}
+{"test": "cold", "state_tokens": 256, "questions": 16, "options": 26, "ms": 1235.672742004681}
+{"test": "cold", "state_tokens": 256, "questions": 16, "options": 26, "ms": 1265.8413500030292}
+{"test": "cold", "state_tokens": 256, "questions": 16, "options": 26, "ms": 1234.6640510004363}
+{"test": "cold", "state_tokens": 256, "questions": 16, "options": 26, "ms": 1244.7804220064427}
+{"test": "cold", "state_tokens": 256, "questions": 16, "options": 26, "ms": 1240.0248990015825}
+{"test": "cold", "state_tokens": 256, "questions": 16, "options": 255, "ms": 6803.52340999525}
+{"test": "cold", "state_tokens": 256, "questions": 16, "options": 255, "ms": 6900.17924199492}
+{"test": "cold", "state_tokens": 256, "questions": 16, "options": 255, "ms": 6868.0751159990905}
+{"test": "cold", "state_tokens": 256, "questions": 16, "options": 255, "ms": 6742.862576000334}
+{"test": "cold", "state_tokens": 256, "questions": 16, "options": 255, "ms": 6828.504490003979}
+{"test": "cold", "state_tokens": 256, "questions": 64, "options": 2, "ms": 3355.3289140036213}
+{"test": "cold", "state_tokens": 256, "questions": 64, "options": 2, "ms": 3423.4910640007}
+{"test": "cold", "state_tokens": 256, "questions": 64, "options": 2, "ms": 3438.2823779960745}
+{"test": "cold", "state_tokens": 256, "questions": 64, "options": 2, "ms": 3491.027080999629}
+{"test": "cold", "state_tokens": 256, "questions": 64, "options": 2, "ms": 3421.4353549978114}
+{"test": "cold", "state_tokens": 256, "questions": 64, "options": 26, "ms": 4984.36951199983}
+{"test": "cold", "state_tokens": 256, "questions": 64, "options": 26, "ms": 4912.790806003613}
+{"test": "cold", "state_tokens": 256, "questions": 64, "options": 26, "ms": 5126.61563000438}
+{"test": "cold", "state_tokens": 256, "questions": 64, "options": 26, "ms": 5087.266941998678}
+{"test": "cold", "state_tokens": 256, "questions": 64, "options": 26, "ms": 4877.677579999727}
+{"test": "cold", "state_tokens": 256, "questions": 64, "options": 255, "ms": 25485.127244995965}
+{"test": "cold", "state_tokens": 256, "questions": 64, "options": 255, "ms": 25689.531317999354}
+{"test": "cold", "state_tokens": 256, "questions": 64, "options": 255, "ms": 26066.186962001666}
+{"test": "cold", "state_tokens": 256, "questions": 64, "options": 255, "ms": 25665.748208004516}
+{"test": "cold", "state_tokens": 256, "questions": 64, "options": 255, "ms": 25961.81123900169}
+{"test": "cold", "state_tokens": 2048, "questions": 1, "options": 2, "ms": 461.60660999885295}
+{"test": "cold", "state_tokens": 2048, "questions": 1, "options": 2, "ms": 409.9095580022549}
+{"test": "cold", "state_tokens": 2048, "questions": 1, "options": 2, "ms": 440.707002999261}
+{"test": "cold", "state_tokens": 2048, "questions": 1, "options": 2, "ms": 436.4225860044826}
+{"test": "cold", "state_tokens": 2048, "questions": 1, "options": 2, "ms": 432.5668500023312}
+{"test": "cold", "state_tokens": 2048, "questions": 1, "options": 26, "ms": 502.20215300214477}
+{"test": "cold", "state_tokens": 2048, "questions": 1, "options": 26, "ms": 515.5161060029059}
+{"test": "cold", "state_tokens": 2048, "questions": 1, "options": 26, "ms": 532.6648469999782}
+{"test": "cold", "state_tokens": 2048, "questions": 1, "options": 26, "ms": 515.2552879953873}
+{"test": "cold", "state_tokens": 2048, "questions": 1, "options": 26, "ms": 507.6899869964109}
+{"test": "cold", "state_tokens": 2048, "questions": 1, "options": 255, "ms": 1420.6913829984842}
+{"test": "cold", "state_tokens": 2048, "questions": 1, "options": 255, "ms": 1390.5990890052635}
+{"test": "cold", "state_tokens": 2048, "questions": 1, "options": 255, "ms": 1386.5651920059463}
+{"test": "cold", "state_tokens": 2048, "questions": 1, "options": 255, "ms": 1395.7678919978207}
+{"test": "cold", "state_tokens": 2048, "questions": 1, "options": 255, "ms": 1422.741144997417}
+{"test": "cold", "state_tokens": 2048, "questions": 4, "options": 2, "ms": 762.3501709967968}
+{"test": "cold", "state_tokens": 2048, "questions": 4, "options": 2, "ms": 797.5363430014113}
+{"test": "cold", "state_tokens": 2048, "questions": 4, "options": 2, "ms": 789.717247003864}
+{"test": "cold", "state_tokens": 2048, "questions": 4, "options": 2, "ms": 772.0346039932338}
+{"test": "cold", "state_tokens": 2048, "questions": 4, "options": 2, "ms": 745.0035169968032}
+{"test": "cold", "state_tokens": 2048, "questions": 4, "options": 26, "ms": 1236.739451996982}
+{"test": "cold", "state_tokens": 2048, "questions": 4, "options": 26, "ms": 1160.5241659999592}
+{"test": "cold", "state_tokens": 2048, "questions": 4, "options": 26, "ms": 1161.4494530003867}
+{"test": "cold", "state_tokens": 2048, "questions": 4, "options": 26, "ms": 1159.8152340011438}
+{"test": "cold", "state_tokens": 2048, "questions": 4, "options": 26, "ms": 1169.1578239988303}
+{"test": "cold", "state_tokens": 2048, "questions": 4, "options": 255, "ms": 3195.934235001914}
+{"test": "cold", "state_tokens": 2048, "questions": 4, "options": 255, "ms": 3198.035847002757}
+{"test": "cold", "state_tokens": 2048, "questions": 4, "options": 255, "ms": 3196.5944789990317}
+{"test": "cold", "state_tokens": 2048, "questions": 4, "options": 255, "ms": 3206.397002002632}
+{"test": "cold", "state_tokens": 2048, "questions": 4, "options": 255, "ms": 3172.3319989978336}
+{"test": "cold", "state_tokens": 2048, "questions": 16, "options": 2, "ms": 1810.164047004946}
+{"test": "cold", "state_tokens": 2048, "questions": 16, "options": 2, "ms": 1845.8500580018153}
+{"test": "cold", "state_tokens": 2048, "questions": 16, "options": 2, "ms": 1831.5489859960508}
+{"test": "cold", "state_tokens": 2048, "questions": 16, "options": 2, "ms": 1858.4599419991719}
+{"test": "cold", "state_tokens": 2048, "questions": 16, "options": 2, "ms": 1806.1071829943103}
+{"test": "cold", "state_tokens": 2048, "questions": 16, "options": 26, "ms": 2567.4945150021813}
+{"test": "cold", "state_tokens": 2048, "questions": 16, "options": 26, "ms": 2521.6467040008865}
+{"test": "cold", "state_tokens": 2048, "questions": 16, "options": 26, "ms": 2557.5175729973125}
+{"test": "cold", "state_tokens": 2048, "questions": 16, "options": 26, "ms": 2613.93132199737}
+{"test": "cold", "state_tokens": 2048, "questions": 16, "options": 26, "ms": 2517.19687700097}
+{"test": "cold", "state_tokens": 2048, "questions": 16, "options": 255, "ms": 8836.12042599998}
+{"test": "cold", "state_tokens": 2048, "questions": 16, "options": 255, "ms": 8932.51469500683}
+{"test": "cold", "state_tokens": 2048, "questions": 16, "options": 255, "ms": 8928.136615002586}
+{"test": "cold", "state_tokens": 2048, "questions": 16, "options": 255, "ms": 8937.142239999957}
+{"test": "cold", "state_tokens": 2048, "questions": 16, "options": 255, "ms": 8916.815367003437}
+{"test": "cold", "state_tokens": 2048, "questions": 64, "options": 2, "ms": 6392.899962003867}
+{"test": "cold", "state_tokens": 2048, "questions": 64, "options": 2, "ms": 6337.57381200121}
+{"test": "cold", "state_tokens": 2048, "questions": 64, "options": 2, "ms": 6407.734437001636}
+{"test": "cold", "state_tokens": 2048, "questions": 64, "options": 2, "ms": 6340.751872994588}
+{"test": "cold", "state_tokens": 2048, "questions": 64, "options": 2, "ms": 6339.8526449964265}
+{"test": "cold", "state_tokens": 2048, "questions": 64, "options": 26, "ms": 8265.070685003593}
+{"test": "cold", "state_tokens": 2048, "questions": 64, "options": 26, "ms": 8263.19611100189}
+{"test": "cold", "state_tokens": 2048, "questions": 64, "options": 26, "ms": 8289.711550001812}
+{"test": "cold", "state_tokens": 2048, "questions": 64, "options": 26, "ms": 8320.502996997675}
+{"test": "cold", "state_tokens": 2048, "questions": 64, "options": 26, "ms": 8363.60900800355}
+{"test": "cold", "state_tokens": 2048, "questions": 64, "options": 255, "ms": 32611.02586400375}
+{"test": "cold", "state_tokens": 2048, "questions": 64, "options": 255, "ms": 32888.2999310008}
+{"test": "cold", "state_tokens": 2048, "questions": 64, "options": 255, "ms": 32742.161252994265}
+{"test": "cold", "state_tokens": 2048, "questions": 64, "options": 255, "ms": 32868.97671299812}
+{"test": "cold", "state_tokens": 2048, "questions": 64, "options": 255, "ms": 32646.375119998993}
+{"test": "cold", "state_tokens": 8192, "questions": 1, "options": 2, "ms": 1492.832964999252}
+{"test": "cold", "state_tokens": 8192, "questions": 1, "options": 2, "ms": 1515.082779005752}
+{"test": "cold", "state_tokens": 8192, "questions": 1, "options": 2, "ms": 1487.534667001455}
+{"test": "cold", "state_tokens": 8192, "questions": 1, "options": 2, "ms": 1482.6195329951588}
+{"test": "cold", "state_tokens": 8192, "questions": 1, "options": 2, "ms": 1536.0990689950995}
+{"test": "cold", "state_tokens": 8192, "questions": 1, "options": 26, "ms": 1637.2993959957967}
+{"test": "cold", "state_tokens": 8192, "questions": 1, "options": 26, "ms": 1640.2748219989007}
+{"test": "cold", "state_tokens": 8192, "questions": 1, "options": 26, "ms": 1656.9194670009892}
+{"test": "cold", "state_tokens": 8192, "questions": 1, "options": 26, "ms": 1656.3541869982146}
+{"test": "cold", "state_tokens": 8192, "questions": 1, "options": 26, "ms": 1633.846328004438}
+{"test": "cold", "state_tokens": 8192, "questions": 1, "options": 255, "ms": 2580.638387997169}
+{"test": "cold", "state_tokens": 8192, "questions": 1, "options": 255, "ms": 2573.006662998523}
+{"test": "cold", "state_tokens": 8192, "questions": 1, "options": 255, "ms": 2595.411096001044}
+{"test": "cold", "state_tokens": 8192, "questions": 1, "options": 255, "ms": 2566.0172930001863}
+{"test": "cold", "state_tokens": 8192, "questions": 1, "options": 255, "ms": 2548.0379949949565}
+{"test": "cold", "state_tokens": 8192, "questions": 4, "options": 2, "ms": 1784.6570190013153}
+{"test": "cold", "state_tokens": 8192, "questions": 4, "options": 2, "ms": 1788.37781099719}
+{"test": "cold", "state_tokens": 8192, "questions": 4, "options": 2, "ms": 1802.416088998143}
+{"test": "cold", "state_tokens": 8192, "questions": 4, "options": 2, "ms": 1802.1212839958025}
+{"test": "cold", "state_tokens": 8192, "questions": 4, "options": 2, "ms": 1781.7523870035075}
+{"test": "cold", "state_tokens": 8192, "questions": 4, "options": 26, "ms": 3410.313471998961}
+{"test": "cold", "state_tokens": 8192, "questions": 4, "options": 26, "ms": 3461.8246409954736}
+{"test": "cold", "state_tokens": 8192, "questions": 4, "options": 26, "ms": 3401.966721001372}
+{"test": "cold", "state_tokens": 8192, "questions": 4, "options": 26, "ms": 3426.838288003637}
+{"test": "cold", "state_tokens": 8192, "questions": 4, "options": 26, "ms": 3456.3906010007486}
+{"test": "cold", "state_tokens": 8192, "questions": 4, "options": 255, "ms": 5542.683610001404}
+{"test": "cold", "state_tokens": 8192, "questions": 4, "options": 255, "ms": 5481.977486000687}
+{"test": "cold", "state_tokens": 8192, "questions": 4, "options": 255, "ms": 5438.776476999919}
+{"test": "cold", "state_tokens": 8192, "questions": 4, "options": 255, "ms": 5528.388541999448}
+{"test": "cold", "state_tokens": 8192, "questions": 4, "options": 255, "ms": 5401.257966004778}
+{"test": "cold", "state_tokens": 8192, "questions": 16, "options": 2, "ms": 2746.8952810013434}
+{"test": "cold", "state_tokens": 8192, "questions": 16, "options": 2, "ms": 2724.1456629999448}
+{"test": "cold", "state_tokens": 8192, "questions": 16, "options": 2, "ms": 2744.106621001265}
+{"test": "cold", "state_tokens": 8192, "questions": 16, "options": 2, "ms": 2710.991728999943}
+{"test": "cold", "state_tokens": 8192, "questions": 16, "options": 2, "ms": 2729.820828004449}
+{"test": "cold", "state_tokens": 8192, "questions": 16, "options": 26, "ms": 4675.068958000338}
+{"test": "cold", "state_tokens": 8192, "questions": 16, "options": 26, "ms": 4711.614253996231}
+{"test": "cold", "state_tokens": 8192, "questions": 16, "options": 26, "ms": 4661.5530570052215}
+{"test": "cold", "state_tokens": 8192, "questions": 16, "options": 26, "ms": 4721.857340999122}
+{"test": "cold", "state_tokens": 8192, "questions": 16, "options": 26, "ms": 4745.076614002755}
+{"test": "cold", "state_tokens": 8192, "questions": 16, "options": 255, "ms": 11160.822550999}
+{"test": "cold", "state_tokens": 8192, "questions": 16, "options": 255, "ms": 11154.830724997737}
+{"test": "cold", "state_tokens": 8192, "questions": 16, "options": 255, "ms": 11098.920719996386}
+{"test": "cold", "state_tokens": 8192, "questions": 16, "options": 255, "ms": 11157.579804996203}
+{"test": "cold", "state_tokens": 8192, "questions": 16, "options": 255, "ms": 11105.198368997662}
+{"test": "cold", "state_tokens": 8192, "questions": 64, "options": 2, "ms": 6617.917236995709}
+{"test": "cold", "state_tokens": 8192, "questions": 64, "options": 2, "ms": 6669.756028000847}
+{"test": "cold", "state_tokens": 8192, "questions": 64, "options": 2, "ms": 6669.431004993385}
+{"test": "cold", "state_tokens": 8192, "questions": 64, "options": 2, "ms": 6647.806973000115}
+{"test": "cold", "state_tokens": 8192, "questions": 64, "options": 2, "ms": 6640.731523002614}
+{"test": "cold", "state_tokens": 8192, "questions": 64, "options": 26, "ms": 9868.55370199919}
+{"test": "cold", "state_tokens": 8192, "questions": 64, "options": 26, "ms": 9778.008396999212}
+{"test": "cold", "state_tokens": 8192, "questions": 64, "options": 26, "ms": 9765.328191999288}
+{"test": "cold", "state_tokens": 8192, "questions": 64, "options": 26, "ms": 10351.498866999464}
+{"test": "cold", "state_tokens": 8192, "questions": 64, "options": 26, "ms": 9765.660864002712}
+{"test": "cold", "state_tokens": 8192, "questions": 64, "options": 255, "ms": 33888.45164899976}
+{"test": "cold", "state_tokens": 8192, "questions": 64, "options": 255, "ms": 34051.95216800348}
+{"test": "cold", "state_tokens": 8192, "questions": 64, "options": 255, "ms": 33962.418289003836}
+{"test": "cold", "state_tokens": 8192, "questions": 64, "options": 255, "ms": 33842.70779500366}
+{"test": "cold", "state_tokens": 8192, "questions": 64, "options": 255, "ms": 34021.033762001025}
+{"test": "warm", "state_tokens": 2048, "questions": 16, "options": 26, "ms": 1233.1540300001507}
+{"test": "warm", "state_tokens": 2048, "questions": 16, "options": 26, "ms": 1275.8896320010535}
+{"test": "warm", "state_tokens": 2048, "questions": 16, "options": 26, "ms": 1254.3158990010852}
+{"test": "warm", "state_tokens": 2048, "questions": 16, "options": 26, "ms": 1241.19406400132}
+{"test": "warm", "state_tokens": 2048, "questions": 16, "options": 26, "ms": 1234.3463039942435}
+{"test": "throughput", "workers": 1, "requests_per_s": 0.3803795370375728}
+{"test": "throughput", "workers": 4, "requests_per_s": 0.3971786506169201}
+{"test": "throughput", "workers": 16, "requests_per_s": 0.3945836815218419}
+{"test": "jevbench", "type": "choice", "ms": 93.74521100107813, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 89.50552900205366, "correct": false}
+{"test": "jevbench", "type": "choice", "ms": 96.71426600107225, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 93.90206699754344, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 132.7810889997636, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 87.21869299915852, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 86.42707800026983, "correct": false}
+{"test": "jevbench", "type": "choice", "ms": 89.54297300078906, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 128.14819299819646, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 87.66763700259617, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 86.63032799813664, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 96.62021799886134, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 103.6365090039908, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 87.61387199774617, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 91.18268299789634, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 86.97881500120275, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 89.06445799948415, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 108.65024300437653, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 91.37240999552887, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 92.64701299980516, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 91.69448300235672, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 89.42178700090153, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 85.8625570035656, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 92.21505199820967, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 137.71874299709452, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 89.09934700204758, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 97.67139799805591, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 108.06775099626975, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 101.16723999817623, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 87.97764100017957, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 87.08178899541963, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 86.00562199717388, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 88.29581199825043, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 116.6966050004703, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 95.86854599911021, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 95.80142599588726, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 100.42806399724213, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 99.92748699733056, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 97.08793999743648, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 95.26864600047702, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 94.45311899617082, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 92.92476299742702, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 85.13764099916443, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 88.23228599794675, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 87.65266299451469, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 86.5122169998358, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 92.095411993796, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 88.65110400074627, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 102.47874099877663, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 95.09571999660693, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 97.4118379963329, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 92.68711099866778, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 83.65454899467295, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 85.98558100493392, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 83.59770799870603, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 96.56579299917212, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 84.98668799438747, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 86.265263002133, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 86.28851400135318, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 87.07424100430217, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 107.2179379989393, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 98.38913099520141, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 94.7782110015396, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 88.8443060030113, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 92.4473630002467, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 88.0356049965485, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 85.21404400380561, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 88.40064799733227, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 89.28453100088518, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 91.08965600171359, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 88.93543599697296, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 88.34579500398831, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 87.31867099413648, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 101.330980003695, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 92.63186599855544, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 85.27709400368622, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 86.59089900174877, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 91.4940239963471, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 96.17587799584726, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 94.12793199589942, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 91.34238099795766, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 84.70223800395615, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 90.29880700109061, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 95.81967200210784, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 85.00248200289207, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 85.96380699600559, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 90.4290239996044, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 96.89691100356868, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 85.23112600232707, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 86.14767400285928, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 716.1382709964528, "correct": false}
+{"test": "jevbench", "type": "choice", "ms": 257.3267859988846, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 247.62865099910414, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 250.5341979995137, "correct": false}
+{"test": "jevbench", "type": "choice", "ms": 259.13466700149, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 272.4411550007062, "correct": false}
+{"test": "jevbench", "type": "choice", "ms": 265.3396989990142, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 247.4307310039876, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 243.73152300540823, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 264.0815049962839, "correct": false}
+{"test": "jevbench", "type": "choice", "ms": 250.02457200025674, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 250.65333300153725, "correct": false}
+{"test": "jevbench", "type": "choice", "ms": 246.26265600090846, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 247.89897199661937, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 244.0633380028885, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 244.8377629989409, "correct": false}
+{"test": "jevbench", "type": "choice", "ms": 245.2865559971542, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 260.61979299993254, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 256.40850399940973, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 265.668412001105, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 243.4626520043821, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 262.4524850034504, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 254.1745339985937, "correct": false}
+{"test": "jevbench", "type": "choice", "ms": 254.0147519976017, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 250.4608739982359, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 255.3488479970838, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 244.1031619964633, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 268.80226800130913, "correct": false}
+{"test": "jevbench", "type": "choice", "ms": 256.29197099624434, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 245.24614099937025, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 244.17735900351545, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 266.2599559989758, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 256.7207510001026, "correct": false}
+{"test": "jevbench", "type": "choice", "ms": 268.4213699976681, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 255.65581299451878, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 255.59011100267526, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 245.86956999701215, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 250.3265659979661, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 240.4980869978317, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 240.69849099760177, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 246.66187800175976, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 256.6461890019127, "correct": false}
+{"test": "jevbench", "type": "choice", "ms": 249.6741340000881, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 253.82297600299353, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 244.5221920061158, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 242.1730740024941, "correct": false}
+{"test": "jevbench", "type": "choice", "ms": 247.82324799889466, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 259.00782299868297, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 240.78964500222355, "correct": false}
+{"test": "jevbench", "type": "choice", "ms": 257.8575629959232, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 254.66672999755247, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 264.20905699342256, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 251.12774100125534, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 240.4389179937425, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 246.88820000301348, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 244.64649699802976, "correct": false}
+{"test": "jevbench", "type": "choice", "ms": 246.25212399405427, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 254.97667099989485, "correct": false}
+{"test": "jevbench", "type": "choice", "ms": 274.3829659957555, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 263.3614629958174, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 258.0937780003296, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 242.47959000058472, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 244.0900670044357, "correct": false}
+{"test": "jevbench", "type": "choice", "ms": 256.78186799632385, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 246.4969399952679, "correct": false}
+{"test": "jevbench", "type": "choice", "ms": 260.1357759995153, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 254.4489150022855, "correct": false}
+{"test": "jevbench", "type": "choice", "ms": 248.98061899875756, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 241.9136799944681, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 249.6659370008274, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 264.0969239946571, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 243.44562100304756, "correct": false}
+{"test": "jevbench", "type": "choice", "ms": 240.25338700448629, "correct": false}
+{"test": "jevbench", "type": "choice", "ms": 247.3868470042362, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 253.21462000283645, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 251.66946399986045, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 245.37429199699545, "correct": false}
+{"test": "jevbench", "type": "choice", "ms": 242.44694300432457, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 245.8195680010249, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 251.2332830010564, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 256.4623889993527, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 266.36438599962275, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 254.3979130059597, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 260.73754800017923, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 260.6053069976042, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 268.74383500398835, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 263.7778500065906, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 250.60370799474185, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 246.3435350000509, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 256.144448001578, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 245.8085959951859, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 250.34287699963897, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 251.98427800205536, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 244.02783300320152, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 259.90916400041897, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 244.85455299873138, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 243.0945879968931, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 251.62397500389488, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 248.699392999697, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 251.91554399498273, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 247.1468180010561, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 255.39216999459313, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 246.24076400505146, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 244.8832570007653, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 260.68514399958076, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 246.15255499520572, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 257.1697950043017, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 252.67521099885926, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 249.70783600292634, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 244.96143899887102, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 242.6107179999235, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 267.05456200579647, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 265.7833299963386, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 257.62265900266357, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 253.14490099844988, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 258.97468800394563, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 249.08438500278862, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 244.76482199679594, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 255.3075070027262, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 246.49910599691793, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 248.62246900011087, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 252.18952200521016, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 246.00634400121635, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 266.1681219979073, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 259.2128260002937, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 250.1245250023203, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 247.55104799987748, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 261.0457960036001, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 244.47521799447713, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 251.08416299917735, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 250.50208800530527, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 250.82919099804712, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 248.32594500185223, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 247.44382700009737, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 251.66396699933102, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 243.22351400041953, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 243.23378800181672, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 243.84239200298907, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 272.6467350003077, "correct": false}
+{"test": "jevbench", "type": "choice", "ms": 261.4885619987035, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 259.0460380015429, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 243.34799499774817, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 247.6242490010918, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 245.04416400304763, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 247.94003200076986, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 241.8119369976921, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 243.24748499930138, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 250.10647399903974, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 250.72732999979053, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 241.025458999502, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 246.31370000133757, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 240.5314229981741, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 248.10969300597208, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 243.2654059957713, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 261.0088429937605, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 242.69130700122332, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 245.499144999485, "correct": false}
+{"test": "jevbench", "type": "choice", "ms": 245.60046900296584, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 246.11021499731578, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 241.66269700072007, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 245.5604589995346, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 252.98861999908695, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 252.48786600423045, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 243.8112239979091, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 255.62584699946456, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 259.3995170027483, "correct": false}
+{"test": "jevbench", "type": "choice", "ms": 262.9511650011409, "correct": false}
+{"test": "jevbench", "type": "choice", "ms": 262.53310500032967, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 246.35392799973488, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 244.3796859952272, "correct": false}
+{"test": "jevbench", "type": "choice", "ms": 257.4563539965311, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 245.0612100001308, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 247.9702280033962, "correct": false}
+{"test": "jevbench", "type": "choice", "ms": 250.54398600332206, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 244.34498300252017, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 248.71330600581132, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 243.4348359965952, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 251.70634999813046, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 256.48774299770594, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 246.24966299597872, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 253.6185349963489, "correct": false}
+{"test": "jevbench", "type": "choice", "ms": 245.58287199761253, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 252.29500199930044, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 251.3347479980439, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 262.54717000119854, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 250.198827998247, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 249.88670799939428, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 248.67874399933498, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 251.76468699646648, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 296.6192219973891, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 267.6915830015787, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 261.9667089966242, "correct": false}
+{"test": "jevbench", "type": "choice", "ms": 317.9757109974162, "correct": false}
+{"test": "jevbench", "type": "choice", "ms": 268.83111700590234, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 244.7693310023169, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 251.24598100228468, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 252.47911699989345, "correct": false}
+{"test": "jevbench", "type": "choice", "ms": 254.36273599916603, "correct": false}
+{"test": "jevbench", "type": "choice", "ms": 245.1281169996946, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 243.32775799848605, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 244.7246440060553, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 243.42677199456375, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 259.4780500003253, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 248.088057996938, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 248.32600600348087, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 242.94287199882092, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 242.72922000091057, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 251.42692900408292, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 244.78151500079548, "correct": false}
+{"test": "jevbench", "type": "choice", "ms": 240.45089099672623, "correct": false}
+{"test": "jevbench", "type": "choice", "ms": 284.15573199890787, "correct": false}
+{"test": "jevbench", "type": "choice", "ms": 256.2326830011443, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 247.6194869959727, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 244.55745200248202, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 247.39151899848366, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 245.05734999547713, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 247.8103480025311, "correct": false}
+{"test": "jevbench", "type": "choice", "ms": 249.50758900376968, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 263.2223429973237, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 258.2835530047305, "correct": false}
+{"test": "jevbench", "type": "choice", "ms": 268.11408800131176, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 245.08861800131854, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 242.49350799800595, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 244.88544500491116, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 270.4416999986279, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 254.6135580050759, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 261.97533599770395, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 242.7297680042102, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 241.97054200340062, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 245.37852299545193, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 252.66530700173462, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 244.63349099823972, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 247.7394900051877, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 249.72691999573726, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 258.6231550012599, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 243.40088499593548, "correct": false}
+{"test": "jevbench", "type": "choice", "ms": 243.00691000098595, "correct": false}
+{"test": "jevbench", "type": "choice", "ms": 247.3364430043148, "correct": false}
+{"test": "jevbench", "type": "choice", "ms": 250.75491899769986, "correct": false}
+{"test": "jevbench", "type": "choice", "ms": 246.61848400137387, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 247.9496209998615, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 251.10652199509786, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 253.60533699858934, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 247.69823499809718, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 254.9019979996956, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 259.2941639959463, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 257.92637699487386, "correct": false}
+{"test": "jevbench", "type": "choice", "ms": 254.9605970052653, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 251.77202499617124, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 251.14102799852844, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 251.4040589958313, "correct": false}
+{"test": "jevbench", "type": "choice", "ms": 241.85092599509517, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 244.03377599810483, "correct": false}
+{"test": "jevbench", "type": "choice", "ms": 256.56070400145836, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 244.00542299554218, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 252.42225900001358, "correct": false}
+{"test": "jevbench", "type": "choice", "ms": 246.10160999873187, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 253.16455899883294, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 247.09556299785618, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 241.33777400129475, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 251.26052500127116, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 243.93097100255545, "correct": false}
+{"test": "jevbench", "type": "choice", "ms": 251.7217040003743, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 244.48162900080206, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 243.40811499860138, "correct": false}
+{"test": "jevbench", "type": "choice", "ms": 247.99777700536652, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 261.3333609988331, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 242.39976399985608, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 250.15237699699355, "correct": false}
+{"test": "jevbench", "type": "choice", "ms": 244.13544299750356, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 250.13767700147582, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 265.643867001927, "correct": false}
+{"test": "jevbench", "type": "choice", "ms": 263.94307000009576, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 262.72815500124125, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 256.0123180010123, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 245.67143100284738, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 259.3938529971638, "correct": false}
+{"test": "jevbench", "type": "choice", "ms": 251.37568500213092, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 245.37107899959665, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 246.96954999672016, "correct": false}
+{"test": "jevbench", "type": "choice", "ms": 254.33586400322383, "correct": false}
+{"test": "jevbench", "type": "choice", "ms": 246.4262779976707, "correct": false}
+{"test": "jevbench", "type": "choice", "ms": 252.32764999964274, "correct": false}
+{"test": "jevbench", "type": "choice", "ms": 244.19761700119125, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 254.22603500192054, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 254.24911099980818, "correct": false}
+{"test": "jevbench", "type": "choice", "ms": 245.29112900199834, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 246.88471500121523, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 247.11549500352703, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 247.21272899478208, "correct": false}
+{"test": "jevbench", "type": "choice", "ms": 251.80629300302826, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 245.18518800323363, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 254.6427470006165, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 247.9694110006676, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 255.25579900568118, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 243.5419770044973, "correct": false}
+{"test": "jevbench", "type": "choice", "ms": 246.54473699774826, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 249.21519499912392, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 274.879664000764, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 304.3238600002951, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 111.10991700115846, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 101.24695200647693, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 88.19158199912636, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 87.28315700136591, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 85.29421200364595, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 81.85688300000038, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 82.85480299673509, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 83.52770999772474, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 82.39223599957768, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 102.09038900211453, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 88.72969200456282, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 85.4292779986281, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 83.93922599498183, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 81.83563600323396, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 87.51485899847466, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 109.4808709967765, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 84.13525200012373, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 81.50387500063516, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 90.5950730011682, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 86.16641099797562, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 87.9523820040049, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 82.84685300168348, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 88.29485299793305, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 89.00521400209982, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 97.2567569988314, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 81.80742900003679, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 87.61504400172271, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 86.775146999571, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 91.561412998999, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 90.79491400188999, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 83.94894699449651, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 100.05247500521364, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 86.4507730002515, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 81.90010700491257, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 82.48448000085773, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 88.29677599715069, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 90.58937300142134, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 86.82902200234821, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 84.21725699736271, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 87.30801799538312, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 93.75343899591826, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 164.5419470005436, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 96.09476699552033, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 101.82411600544583, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 86.2326700007543, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 87.78336200339254, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 107.35232500155689, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 95.43976299755741, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 110.60146300587803, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 90.92740200139815, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 91.75747500557918, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 111.24639199988451, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 89.16861999750836, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 102.00921800424112, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 83.18510399840306, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 94.63957899424713, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 82.22115099488292, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 86.40020999882836, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 96.31487699516583, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 107.26679999788757, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 102.21268500026781, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 89.5391349986312, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 88.92450800340157, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 87.46925000014016, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 84.32056700257817, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 82.10199599852785, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 82.552334999491, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 95.82751400012057, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 100.68435499852058, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 94.62497600179631, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 99.21172699978342, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 103.80548499961151, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 114.62773099628976, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 91.10467999562388, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 94.50564900180325, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 95.25795999797992, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 84.29928999976255, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 92.57776800222928, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 88.78441800334258, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 87.94712599774357, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 85.32097900024382, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 81.62119399639778, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 86.51514400116866, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 82.2435059963027, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 94.11315900069894, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 94.81963900179835, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 86.46106800006237, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 81.32592499896418, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 82.09359900502022, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 86.60814899485558, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 89.38747199863428, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 88.87424299609847, "correct": false}
+{"test": "jevbench", "type": "choice", "ms": 86.70633899600944, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 92.29594399948837, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 93.28057700622594, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 84.80294199398486, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 81.33370499854209, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 88.09847499651369, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 90.73248600179795, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 83.32177899865201, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 134.39054999616928, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 133.74896999448538, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 89.71304399892688, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 98.70299699832685, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 90.36814300634433, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 134.03455600200687, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 155.4447060043458, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 142.9501340026036, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 157.745160999184, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 111.42106800252805, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 86.93409799889196, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 96.56446699955268, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 133.36509199871216, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 129.19310399593087, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 96.59085800376488, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 96.27249700133689, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 96.8990479959757, "correct": false}
+{"test": "jevbench", "type": "choice", "ms": 88.48103700438514, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 103.40033099782886, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 95.55425599683076, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 115.54963600065093, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 109.70261700276751, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 108.70441800216213, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 127.71437299670652, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 129.28893500065897, "correct": false}
+{"test": "jevbench", "type": "choice", "ms": 106.80973099806579, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 90.04108000226552, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 109.37960099545307, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 95.13147299730917, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 110.40848500124412, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 91.43563999532489, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 93.10350699524861, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 92.37884300091537, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 84.24018599907868, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 89.69100799731677, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 98.83552999963285, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 101.92685000220081, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 101.14243999851169, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 116.4393779981765, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 99.44840899697738, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 132.60160299978452, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 139.99802099715453, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 136.42053800140275, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 95.41591299785068, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 107.22449400054757, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 87.83812900219345, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 107.14102700148942, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 110.02498099696822, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 92.85754599841312, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 111.52348800533218, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 108.90452599414857, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 110.03548899316229, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 93.45734999806155, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 92.22064600180602, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 92.86449100181926, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 93.81526100332849, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 93.46294699935243, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 95.66481599904364, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 92.7904559939634, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 93.12339799362235, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 93.34562499861931, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 93.25140199507587, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 94.64183600357501, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 106.23349500383483, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 96.13180999440374, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 95.63181400153553, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 91.34006699605379, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 97.779718998936, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 98.79556699888781, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 90.98937699309317, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 92.2088880033698, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 92.82171599625144, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 90.65680799540132, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 91.50264500203775, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 92.36223900370533, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 93.90816800441826, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 98.64746300445404, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 98.08429300028365, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 93.33111500018276, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 97.50937100034207, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 97.8241769989836, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 92.37438199488679, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 93.0063450068701, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 92.84396000293782, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 92.23788100644015, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 95.70372800226323, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 96.05509899847675, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 98.92900900013046, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 93.96164300414966, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 104.13835999497678, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 100.92936300497968, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 91.76809899508953, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 96.762574998138, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 106.77493699768092, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 91.58769900386687, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 93.63386000040919, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 93.4884019952733, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 96.88040699984413, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 93.06459900108166, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 99.15997299685841, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 96.03914299805183, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 92.59779800049728, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 91.37666199967498, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 95.2974300016649, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 98.58901000552578, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 101.67576200183248, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 104.16673300642287, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 103.78501399827655, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 95.75176199723501, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 98.77111099922331, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 109.02986799919745, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 96.09335899585858, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 101.68913300003624, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 92.35712700319709, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 92.23589999601245, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 95.14246199978516, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 91.47523999854457, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 102.48679399956018, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 94.10717800346902, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 90.66569900460308, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 90.81417699781014, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 91.20731500297552, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 92.97256699937861, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 118.7962059993879, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 99.21389899682254, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 94.27775599760935, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 100.43802599830087, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 103.45141499419697, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 95.389193003939, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 93.0543900030898, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 92.1007360011572, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 96.36254100041697, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 93.60470700630685, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 92.42344299855176, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 93.89803500380367, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 97.2982419989421, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 96.21936099574668, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 98.0249969943543, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 94.39080800075317, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 93.17514099529944, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 91.70456099673174, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 93.69057400181191, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 93.60277700034203, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 93.7998189983773, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 94.46133700112114, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 92.49559099407634, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 91.62341999763157, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 105.23531299986644, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 101.51080100331455, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 94.45463900192408, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 95.21479700197233, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 93.66703900013817, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 96.5076840002439, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 99.88796499965247, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 92.88540800480405, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 93.07820099638775, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 93.40712000266649, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 97.85651700076414, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 93.4187969978666, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 94.13479999784613, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 94.79125600046245, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 92.39076099765953, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 92.07591399899684, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 95.91694100527093, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 94.11907899630023, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 97.40255599899683, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 99.67315499670804, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 98.37846900336444, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 94.07531800388824, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 99.44667300442234, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 93.13701200153446, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 98.21983399888268, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 94.17509400373092, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 104.49765300290892, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 140.86864700220758, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 106.52310399746057, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 102.21503100183327, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 95.22124700015411, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 94.09151400177507, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 101.86529200291261, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 97.02446599840187, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 93.54693500063149, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 93.68875899963314, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 95.9061780013144, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 94.90398799971445, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 93.76207500463352, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 99.40307500073686, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 93.0437159986468, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 91.90231300453888, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 99.96828799921786, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 93.89310699771158, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 94.07443399686599, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 92.3484320010175, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 93.02753899828531, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 101.31563199684024, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 94.90695699787466, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 94.65805099898716, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 94.59007099940209, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 97.90331399563001, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 92.47543700621463, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 91.2452630000189, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 91.54251300060423, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 92.55627600214211, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 101.76006999972742, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 104.61391200078651, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 95.06064200104447, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 103.33226100192405, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 96.95042900420958, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 93.81600400229217, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 91.67549600533675, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 92.87236499949358, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 96.9522559971665, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 92.54086899454705, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 95.15806299896212, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 91.77245300088543, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 96.62034800567199, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 95.18597400165163, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 99.20252500160132, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 94.47754199936753, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 93.84330199827673, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 94.24115799629362, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 92.21663899370469, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 106.61375200288603, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 105.87472900078865, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 91.95741399889812, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 91.41021899995394, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 93.97716100647813, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 93.14675300265662, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 127.58108900015941, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 94.40008400270017, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 94.59650599455927, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 101.68883599544642, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 93.51529300329275, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 92.150299999048, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 93.35750700120116, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 94.92166499694576, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 109.46725399844581, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 96.32360200339463, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 99.13647600478726, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 95.1267860000371, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 94.36022500449326, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 93.59882400167407, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 111.33516299742041, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 108.3954600035213, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 111.93217200343497, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 99.47725999518298, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 103.01782500027912, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 91.11039800336584, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 97.73644799861358, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 99.81332600000314, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 93.01061899896013, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 92.82108700426761, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 107.26232899469323, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 105.73924599884776, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 109.39634199894499, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 107.10792300233152, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 108.83123199891998, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 113.8077789946692, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 107.58454399910988, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 105.3656240037526, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 104.74976599653019, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 92.8649220004445, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 105.38315400481224, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 111.62662100105081, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 108.80792399984784, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 108.19359600282041, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 114.37240899977041, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 109.5913089957321, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 113.89918699569535, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 102.38632099935785, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 114.92609300330514, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 102.81312400184106, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 110.94191200390924, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 109.27210799854947, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 108.35577500256477, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 117.31838800187688, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 110.95047399430769, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 107.79060699860565, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 108.23039599927142, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 105.4443100001663, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 107.95707299985224, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 107.34369700367097, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 110.38483399897814, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 104.9738410001737, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 101.30791500705527, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 105.96130799967796, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 105.81334900052752, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 95.97741699690232, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 93.24650700000348, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 106.35111900046468, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 106.47574500035262, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 107.82050699344836, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 106.16243900585687, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 106.62765100278193, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 110.81598600139841, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 107.24996600038139, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 106.5649209995172, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 108.51048299809918, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 97.1608159961761, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 106.89573000126984, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 106.57758000161266, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 97.10117099893978, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 106.27482200652594, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 106.43194099975517, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 106.14070999872638, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 106.83096299908357, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 112.44133700529346, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 112.98008399899118, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 115.30139200476697, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 117.38678999972763, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 111.16818899608916, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 115.43084999721032, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 111.9285349996062, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 108.69634200207656, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 109.48265000479296, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 106.44059799960814, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 106.68558099860093, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 93.09305100032361, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 120.24744100199314, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 106.02324199862778, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 105.1603209998575, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 106.63401799683925, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 109.0083150047576, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 106.44284100271761, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 107.90098099823808, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 107.48235600476619, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 106.16773500078125, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 113.881745004619, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 94.52957200119272, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 97.2808740043547, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 110.26693199528381, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 97.05600799497915, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 107.20047699578572, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 108.12355900270632, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 107.0337369965273, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 107.46251200180268, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 128.01284799934365, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 112.4622079951223, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 105.07070099993143, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 107.15369699755684, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 109.52740000357153, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 96.44553600082872, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 104.61894799664151, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 105.47701000177767, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 97.40443900227547, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 109.78216499643167, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 101.74896500393515, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 106.61596699355869, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 108.19518099742709, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 107.19743200024823, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 110.33986099937465, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 122.74468699615682, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 96.83122600108618, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 106.0715759958839, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 102.9833009961294, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 92.19391400256427, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 130.7696199946804, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 88.76867299841251, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 90.4180399957113, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 96.97161599615356, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 85.60435199615313, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 142.82575200195424, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 94.5615570017253, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 109.46993600373389, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 81.05287200305611, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 96.49049299332546, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 106.10468700178899, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 89.6249169963994, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 95.32963400124572, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 100.9824060020037, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 105.91925400512991, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 93.9493109981413, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 90.74065000459086, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 104.98105000442592, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 92.80929300439311, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 92.36900999530917, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 92.30556099646492, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 90.75266600120813, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 80.65963599801762, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 87.44110300176544, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 88.17551399988588, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 124.76201100071194, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 99.93292600120185, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 89.36461900157155, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 91.05342400289373, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 106.12994700204581, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 90.54839899908984, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 98.60723500605673, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 82.42468100070255, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 83.56978000665549, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 85.74147799663479, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 84.23265800229274, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 94.25241300050402, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 83.76696899358649, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 85.35462399595417, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 81.55417699890677, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 85.42462699551834, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 83.54041999700712, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 89.7896180031239, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 90.1189880023594, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 85.0834910015692, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 83.49813200038625, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 84.58685599907767, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 84.18215400160989, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 81.64646699879086, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 89.97500499390299, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 83.40493799914839, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 84.1040770028485, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 82.22716599993873, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 85.58681399881607, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 90.49451300234068, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 94.2426300025545, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 90.94460400228854, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 90.38446100021247, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 88.15206500003114, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 95.81723299925216, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 94.96792800200637, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 83.63616000133334, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 82.35850500204833, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 84.09963799931575, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 82.55894100147998, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 81.48571100173285, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 85.29672000440769, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 84.40780200180598, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 89.90838400495704, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 94.00402800383745, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 93.16333600145299, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 86.95954699942376, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 83.2453280017944, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 91.63602599437581, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 95.07223199761938, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 83.15602500078967, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 80.46489800472045, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 88.77247299824376, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 92.13059399917256, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 82.90988099906826, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 89.71195400226861, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 82.75395900272997, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 94.84694200364174, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 98.48244099703152, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 82.70345499477116, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 82.69289299641969, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 88.07894800702343, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 84.62550800322788, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 85.28608199412702, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 97.02984400064452, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 91.51376100635389, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 98.46034699876327, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 92.9714910016628, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 98.78579799988074, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 88.07418100332143, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 98.82017600466497, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 93.95556300296448, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 83.259270999406, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 81.84891299606534, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 84.40813899505883, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 99.92340900498675, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 87.89770099974703, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 84.34151799883693, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 86.8119669976295, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 85.47661900229286, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 98.15277200686978, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 89.03756200015778, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 89.99602100084303, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 91.35366499685915, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 94.40129200083902, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 93.01794800558127, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 82.67704299942125, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 86.92803300073138, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 84.30045400018571, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 93.67128799931379, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 85.66050599620212, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 84.41426300123567, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 83.47877299820539, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 88.22484900156269, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 84.26876500016078, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 90.29620199726196, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 90.2853090010467, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 92.7462990002823, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 102.02765499707311, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 90.36081199883483, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 85.70975199836539, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 87.40045200102031, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 85.91372099908767, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 94.08186300424859, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 82.97301700076787, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 84.31182499771239, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 80.89152799948351, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 84.89068600465544, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 83.53591899503954, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 94.53125599975465, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 88.85278399975505, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 103.600385999016, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 83.06282799458131, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 83.49613100290298, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 86.65587499854155, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 83.37879699683981, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 81.58690400159685, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 84.07023399922764, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 82.18426300300052, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 80.91320799576351, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 89.34825400501722, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 113.98043100052746, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 94.82276999915484, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 85.32441100396682, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 88.38419799576513, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 88.79507700476097, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 111.3558249999187, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 87.0598629990127, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 82.71675300056813, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 83.43336699908832, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 89.21725399704883, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 97.73464800673537, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 90.40551399812102, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 83.2740100013325, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 82.96151700051269, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 103.32160400139401, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 105.09081799682463, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 81.4776589977555, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 83.17219599848613, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 90.67181400314439, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 105.95178299990948, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 95.05401799833635, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 90.72560500499094, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 110.24732300575124, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 90.87891299714101, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 91.39902199967764, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 102.83359999448294, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 93.30429299734533, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 97.05110899813008, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 83.91728299466195, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 81.11810799891828, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 82.0382179954322, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 91.05680100037716, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 109.52556099800859, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 91.0768950052443, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 84.56852899689693, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 81.61621999897761, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 91.02543799963314, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 88.54791700287024, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 85.29848499892978, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 123.3951639951556, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 100.1664939976763, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 87.58571599901188, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 87.65033300005598, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 82.95196700055385, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 106.57307800283888, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 88.24642500258051, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 90.64613700320479, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 89.8506619996624, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 92.03082699968945, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 89.88900499389274, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 85.64700799615821, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 92.59387100610184, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 91.89741099544335, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 92.15188000234775, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 83.46703800634714, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 82.25712099374505, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 88.79252400220139, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 98.52391599997645, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 98.55152599629946, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 96.27793600520818, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 98.12911300105043, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 101.41769099573139, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 96.33142399979988, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 112.02367900114041, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 102.44008999870857, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 104.55595199891832, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 97.31143400131259, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 89.78895699692657, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 89.21140099846525, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 87.96524499484804, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 93.60019099403871, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 95.43175600265386, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 88.2307200008654, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 88.13569699850632, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 85.95139200042468, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 90.84202099620597, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 89.28377499978524, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 87.68043600139208, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 81.98620899929665, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 89.52179300104035, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 87.5571989963646, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 84.30150600179331, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 82.50236599997152, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 83.88293600000907, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 94.84755800076528, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 91.02933800022583, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 87.31098299904261, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 86.64495900302427, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 102.31069199653575, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 87.96852300292812, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 84.315209001943, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 93.01390100154094, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 90.1187889976427, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 104.54666100122267, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 91.25976500217803, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 96.07809700537473, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 84.68351799820084, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 93.82235299563035, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 90.76404599909438, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 85.37996799714165, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 84.41708399914205, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 89.50448499672348, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 93.15488699940033, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 86.99631800118368, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 99.98196100059431, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 86.57574799872236, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 85.92635000240989, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 84.26342200255021, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 88.18978100316599, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 85.73912900465075, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 90.6285469973227, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 89.14770699630026, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 85.34844800306018, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 87.95642499899259, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 99.38140000303974, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 99.72687699337257, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 96.88042700145161, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 86.46339900587918, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 83.82459400309017, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 83.5544400033541, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 84.20435899461154, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 82.50160700117704, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 83.37717699760105, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 89.67225199739914, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 98.8285600033123, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 92.64681100466987, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 88.79958800389431, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 98.93507599917939, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 92.5960419990588, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 84.20885600207839, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 83.91111299715703, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 85.15262600121787, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 83.34292699873913, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 95.13263600092614, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 84.12558599957265, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 81.84050299314549, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 86.15186499810079, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 89.66284599591745, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 100.04271200159565, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 84.82151499629254, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 91.01721600018209, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 87.87485099310288, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 89.27696500177262, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 83.86961799988057, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 81.92548300576163, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 84.57257500413107, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 85.9860840064357, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 95.2453060017433, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 91.46103700186359, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 92.73958199628396, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 86.82044200395467, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 104.06676399725256, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 101.80641600163653, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 91.37395000288961, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 88.64377799909562, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 99.88560600322671, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 101.91856299934443, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 83.03494100255193, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 80.95434400456725, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 85.62266399530927, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 85.11515399732161, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 90.81306199368555, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 81.52107999922009, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 84.44963000511052, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 85.96991100057494, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 85.87402800185373, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 100.67969899682794, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 102.1632359988871, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 96.08004099573009, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 95.00564100017073, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 99.2468740005279, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 86.68070899875602, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 91.08347599976696, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 93.59159700397868, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 86.30860200355528, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 82.91707599710207, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 86.16167300351663, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 80.61668000300415, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 99.16126699681627, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 101.96654900209978, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 91.20438899844885, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 89.46519900200656, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 85.97258500230964, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 95.82208799838554, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 92.98728899739217, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 89.72368299873779, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 82.85460700426484, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 81.42119599506259, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 87.23270500195213, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 83.52998299960745, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 94.1351939982269, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 92.74686600110726, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 86.0102669976186, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 85.68093799840426, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 82.91949999693315, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 81.75568399747135, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 82.58568599558203, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 80.95084199885605, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 83.0286589989555, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 82.2791739992681, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 83.57013999921037, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 87.11568700528005, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 89.1291040024953, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 83.84405600372702, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 81.80640399950789, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 102.17101899615955, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 94.99474099720828, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 83.24818599794526, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 85.05346500169253, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 85.98510100273415, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 80.9233160034637, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 82.51421299792128, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 83.0257999987225, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 82.29541400214657, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 88.42452899989439, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 88.28453699970851, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 89.65599899966037, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 83.9251800061902, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 87.40196399594424, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 87.38874700065935, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 83.79604700166965, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 82.3297220049426, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 81.70860999962315, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 86.8679780032835, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 80.97149800596526, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 102.55916399910348, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 110.20030199870234, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 137.28432599600637, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 108.25499999918975, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 102.04163599701133, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 91.38211100071203, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 104.11066099914024, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 88.50168199569453, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 100.05577899573836, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 89.26703900215216, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 81.61762699455721, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 83.21352300117724, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 81.0211510033696, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 84.70175199909136, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 86.49488799710525, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 83.38592100335518, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 88.1682510007522, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 92.24637399893254, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 98.48490600415971, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 96.36599900113652, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 96.59136999835027, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 94.22470100253122, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 92.890358006116, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 94.11264499794925, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 98.1491670027026, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 90.26230100425892, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 91.11500599829014, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 85.48432400129968, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 81.83164399815723, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 82.05649699812056, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 84.67945200391114, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 90.75794199452503, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 85.29268599522766, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 82.18547500291606, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 82.19167099741753, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 82.3506329979864, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 84.86177799932193, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 82.75374199729413, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 84.600745998614, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 81.65797800029395, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 95.02491299645044, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 91.65173600194976, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 87.38975600135745, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 87.4886739984504, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 99.57646200200543, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 88.27835400006734, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 82.73192300111987, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 84.51702000456862, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 82.40891999594169, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 93.11997899931157, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 85.77769999828888, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 92.95327799918596, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 84.13354100048309, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 88.80804300133605, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 84.9319100016146, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 83.36286299891071, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 81.4947030012263, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 95.71485900232801, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 99.30115699535236, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 83.44488999864552, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 90.8921759983059, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 82.08786199975293, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 82.18890100397402, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 85.0098410010105, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 86.62936099426588, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 81.62364199961303, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 89.27181299804943, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 93.75500500027556, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 89.54826899571344, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 84.80257900373545, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 85.17839300475316, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 87.44150400161743, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 94.75761499925284, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 83.82688100391533, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 89.20780000335071, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 88.09076200122945, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 79.48149399453541, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 83.00396599952364, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 81.04531299613882, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 81.68843999737874, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 81.18004399875645, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 84.10324199940078, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 80.53867799753789, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 79.83934199728537, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 89.20306299842196, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 87.11219800170511, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 88.10408399585867, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 88.34958900115453, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 82.77812600135803, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 81.35016900632763, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 83.42341399838915, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 100.78493499895558, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 97.44222400331637, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 98.6412529964582, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 93.50735200132476, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 101.97285300091607, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 105.1018229991314, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 97.8757479970227, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 86.04579299571924, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 95.30227699724492, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 89.96173699415522, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 83.50577999954112, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 82.82066100218799, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 83.03401599550853, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 82.08050899702357, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 82.46218499698443, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 84.05050400324399, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 88.09370499511715, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 92.29100400261814, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 93.53927899792325, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 90.48732999508502, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 87.63687100145034, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 83.06448399525834, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 89.20843399391742, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 85.76695899682818, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 85.75974900304573, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 87.34023599390639, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 81.7029210011242, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 97.83106599934399, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 86.99573600461008, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 83.57283499935875, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 83.80420699540991, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 85.69791899935808, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 98.67134000523947, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 89.21112799725961, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 84.01851000235183, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 89.10330100479769, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 86.45417499792529, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 81.26608099701116, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 91.37116700003389, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 83.09234700573143, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 78.90745800250443, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 83.4344700051588, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 80.75575799739454, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 79.44868299819063, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 82.1727880029357, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 87.72710199991707, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 103.49592700367793, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 89.9703059985768, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 88.82279699901119, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 88.11061100277584, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 91.3732000044547, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 87.08704900345765, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 80.35324299999047, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 85.84497700212523, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 81.79256600124063, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 83.61331099877134, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 81.49586400395492, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 83.16252499935217, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 82.70064200041816, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 93.72913099650759, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 94.73722300026566, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 88.64532900042832, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 81.79065900185378, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 81.1247169986018, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 83.534438002971, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 94.5223930029897, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 85.51178599736886, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 81.2427819982986, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 82.8876770028728, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 102.99086400482338, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 91.4588969972101, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 92.01190000021597, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 90.76693400129443, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 91.86935799516505, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 95.46994900301797, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 84.65567699749954, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 81.76059000106761, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 82.41012399957981, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 86.3872270056163, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 95.60463199886726, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 88.18186300050002, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 90.55139399424661, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 101.8177350051701, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 86.21658299671253, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 90.89739000046393, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 98.86845800065203, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 90.24407299875747, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 82.11790700443089, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 84.09872300399002, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 84.38048500102013, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 87.40846800355939, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 87.23073200235376, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 90.34381899982691, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 87.81535300659016, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 81.61010700132465, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 81.38274700468173, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 90.3758150016074, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 96.29247900011251, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 90.65605499927187, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 86.51235500292387, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 88.08259099896532, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 90.4259520029882, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 92.84882499923697, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 88.78398899832973, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 92.47711700299988, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 86.356951003836, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 83.31737499975134, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 82.89584899466718, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 84.20860300248023, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 82.92455499758944, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 87.83314700121991, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 91.79603200027486, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 87.11488699918846, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 85.89013400342083, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 85.75420000124723, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 99.32703700178536, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 84.43355099734617, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 84.58095700189006, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 81.17905299877748, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 91.05863200238673, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 85.91871699900366, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 82.21236100507667, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 85.63440500438446, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 81.71372200013138, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 91.09556699695531, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 91.13139400142245, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 88.81304100214038, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 82.97770799981663, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 81.94664999609813, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 80.79330899636261, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 83.64914100093301, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 86.87211600044975, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 89.08347100077663, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 83.95188100257656, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 90.34451399929821, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 84.12885799771175, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 85.70117899944307, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 99.26471499784384, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 112.59425999742234, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 86.3471459961147, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 83.25052299915114, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 83.20207000360824, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 89.71881499746814, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 92.83337600209052, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 88.25490600429475, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 84.22701100062113, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 83.6272779997671, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 89.30696800234728, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 93.32105499925092, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 85.64170199679211, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 90.35940399917308, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 90.82326199859381, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 84.90158999484265, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 90.15056000498589, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 95.45118600362912, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 93.3292839981732, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 94.92108300037216, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 92.08580499398522, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 98.00981199805392, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 91.80448300321586, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 96.7019320014515, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 103.61793000629405, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 92.79860399692552, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 90.95568799966713, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 89.983525002026, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 90.30293600517325, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 81.97971199842868, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 83.43734400114045, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 83.26398200006224, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 86.8677500038757, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 82.55742199980887, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 89.03298099903623, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 91.38793400052236, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 87.35068100213539, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 85.47006000299007, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 87.1010920018307, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 92.72920199873624, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 89.5012789987959, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 84.3416259958758, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 115.01883700111648, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 93.93119099695468, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 83.62348200171255, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 83.08911100175465, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 93.42892700078664, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 86.55087799706962, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 86.51464900322026, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 84.28701800585259, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 93.2229819954955, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 93.44245200190926, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 90.96639200288337, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 89.1300549992593, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 93.45585299888626, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 83.86818099825177, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 83.7612059985986, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 83.50299499579705, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 86.62663499853807, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 86.08577999984846, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 81.20484699611552, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 82.72476500133052, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 85.65094300138298, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 85.99733300070511, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 86.40054700663313, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 98.71204299997771, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 89.73591300309636, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 82.71002699621022, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 86.76918600394856, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 100.59736500261351, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 86.07959400251275, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 85.06313100224361, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 83.40458200109424, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 88.01379400392761, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 90.89215599669842, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 92.27280900086043, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 84.94810500269523, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 84.4237279961817, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 94.96271399984835, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 86.03976599988528, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 81.61553800164256, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 80.71942099923035, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 81.10226899589179, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 84.00041700224392, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 84.08644099836238, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 84.43268200062448, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 84.56475600542035, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 93.8042309935554, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 85.96301700163167, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 88.03112200257601, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 88.62785100063775, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 94.14786900015315, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 96.50976899865782, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 122.21591499837814, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 93.82626200385857, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 91.05830200132914, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 107.92338899773313, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 97.14779600471957, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 83.19071999721928, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 97.13221099809743, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 96.62504399602767, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 94.21307300362969, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 100.05506399465958, "correct": false}
+{"test": "jevbench", "type": "choice", "ms": 95.12940100103151, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 95.51076700154226, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 95.47598100471077, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 92.13160899525974, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 97.07157799857669, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 89.84324600169202, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 88.33081199554726, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 89.19268300087424, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 88.54076099669328, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 86.81259999866597, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 92.23585099971388, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 93.72180799982743, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 88.29136200074572, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 93.23184999811929, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 95.73571300279582, "correct": false}
+{"test": "jevbench", "type": "noul", "ms": 102.65414300374687, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 90.07687799748965, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 88.89074800390517, "correct": true}
+{"test": "jevbench", "type": "noul", "ms": 86.75521700206446, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 92.48074700008146, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 92.54725199571112, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 90.55273100238992, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 92.45194599498063, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 94.41507500014268, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 92.69914100150345, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 105.73412200028542, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 104.34413200709969, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 91.28066999983275, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 94.57883599679917, "correct": false}
+{"test": "jevbench", "type": "score", "ms": 90.16634299769066, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 92.62552900327137, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 92.24216200527735, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 107.57434100378305, "correct": true}
+{"test": "jevbench", "type": "score", "ms": 91.80544899572851, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 83.71425700170221, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 95.78400700411294, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 88.55510300054448, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 92.70788000139873, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 89.42311899591004, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 83.26165300240973, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 82.59150399680948, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 84.18707900273148, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 83.29662700271001, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 81.3085210029385, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 92.75322200119263, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 110.18843900092179, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 99.72898300475208, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 95.22749700408895, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 94.25145400018664, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 82.60080499894684, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 104.06846199475694, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 94.55642499960959, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 83.4786979976343, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 82.54395199764986, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 85.62322900252184, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 91.02832100325031, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 89.47785800410202, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 89.24020300037228, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 86.26234400435351, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 90.54740799911087, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 83.74930900026811, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 80.9900789972744, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 82.29804399888963, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 90.69017199362861, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 105.44524199940497, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 103.18688000552356, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 108.06649399455637, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 114.27731000003405, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 91.73998799815308, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 90.17884900094941, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 90.80766199622303, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 81.9873459986411, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 80.39151299453806, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 84.721968996746, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 80.95483399665682, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 85.45469799719285, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 90.74638899619458, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 115.73455299367197, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 90.8226229948923, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 85.88295400113566, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 85.53285200468963, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 93.82655000081286, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 84.21848899888573, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 86.19391099637141, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 81.43441999709466, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 82.96289900317788, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 81.16105099907145, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 81.1279600020498, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 90.69977000035578, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 91.08530700177653, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 83.4192600013921, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 82.14160000352422, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 80.35341500362847, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 84.35629200539552, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 81.11409500270383, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 80.68229299533414, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 82.05562300281599, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 81.71754000068177, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 86.83940500486642, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 93.14953300054185, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 98.24232199753169, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 90.75100199697772, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 86.84667899797205, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 87.3730000021169, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 82.56686599634122, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 94.86708600161364, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 83.68129999871599, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 81.30122900183778, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 88.38306499819737, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 92.75947900459869, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 104.06343700014986, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 103.23526900174329, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 93.76958099892363, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 87.46952599904034, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 91.16235699912068, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 91.640800004825, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 94.33245300169801, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 85.2204350012471, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 86.46239999507088, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 85.82166200358188, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 102.09052999562118, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 103.91353600425646, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 95.11124099662993, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 92.66663099697325, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 86.74170899757883, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 95.91150499909418, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 96.73823200137122, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 109.72440500336234, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 89.71515300072497, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 83.55119400221156, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 83.46663499833085, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 93.33234600489959, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 89.04136500495952, "correct": true}
+{"test": "jevbench", "type": "choice", "ms": 85.23112299735658, "correct": true}
+{"test": "chat", "load": "none", "prompt": "short", "ttft_ms": 140.0377820027643, "chunks_per_s": 26.623035215097637}
+{"test": "chat", "load": "none", "prompt": "long", "ttft_ms": 143.5727650023182, "chunks_per_s": 26.765744506565728}
+{"test": "chat", "load": "4 systemone", "prompt": "short", "ttft_ms": 104.71311600122135, "chunks_per_s": 1.2160291540292323}
+{"test": "chat", "load": "4 systemone", "prompt": "long", "ttft_ms": 3287.204495005426, "chunks_per_s": 1.172813860503667}

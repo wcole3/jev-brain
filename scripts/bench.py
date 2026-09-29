@@ -78,8 +78,12 @@ async def throughput(client, tok, rng, workers: int, seconds: int, records: list
     async def worker():
         nonlocal done
         while time.perf_counter() < stop:
-            await timed_post(client, synthetic_request(tok, rng, 2048, 16, 26))
-            done += 1
+            # A transient failure shouldn't abort the run; record it and keep going.
+            try:
+                await timed_post(client, synthetic_request(tok, rng, 2048, 16, 26))
+                done += 1
+            except httpx.HTTPError as e:
+                records.append({"test": "throughput", "error": type(e).__name__})
 
     start = time.perf_counter()
     await asyncio.gather(*(worker() for _ in range(workers)))
@@ -116,7 +120,11 @@ async def chat_under_load(client, tok, rng, served: str, records: list) -> None:
 
     async def decisions():
         while not stop.is_set():
-            await timed_post(client, synthetic_request(tok, rng, 2048, 16, 26))
+            # Same rationale as throughput()'s worker: don't let one failure kill the load.
+            try:
+                await timed_post(client, synthetic_request(tok, rng, 2048, 16, 26))
+            except httpx.HTTPError as e:
+                records.append({"test": "chat_load", "error": type(e).__name__})
 
     load = [asyncio.create_task(decisions()) for _ in range(4)]
     for label, prompt in CHAT_PROMPTS.items():
@@ -128,15 +136,16 @@ async def chat_under_load(client, tok, rng, served: str, records: list) -> None:
 
 def summary(records: list) -> str:
     lines = ["| test | state tokens | questions | options | p50 ms | p95 ms |", "|---|---|---|---|---|---|"]
+    ok = [r for r in records if "error" not in r]  # error records carry no ms/workers/ttft to tabulate
     groups: dict[tuple, list] = {}
-    for r in records:
+    for r in ok:
         if r["test"] in ("cold", "warm"):
             groups.setdefault((r["test"], r["state_tokens"], r["questions"], r["options"]), []).append(r["ms"])
     for key, ms in groups.items():
         lines.append(f"| {' | '.join(map(str, key))} | {percentile(ms, 0.5):.0f} | {percentile(ms, 0.95):.0f} |")
     lines += ["", "| workers | requests/s |", "|---|---|"]
-    lines += [f"| {r['workers']} | {r['requests_per_s']:.1f} |" for r in records if r["test"] == "throughput"]
-    bench = [r for r in records if r["test"] == "jevbench"]
+    lines += [f"| {r['workers']} | {r['requests_per_s']:.1f} |" for r in ok if r["test"] == "throughput"]
+    bench = [r for r in ok if r["test"] == "jevbench"]
     if bench:
         ms = [r["ms"] for r in bench]
         accuracy = sum(r["correct"] for r in bench) / len(bench)
@@ -150,9 +159,15 @@ def summary(records: list) -> str:
     lines += ["", "| chat prompt | load | TTFT ms | chunks/s |", "|---|---|---|---|"]
     lines += [
         f"| {r['prompt']} | {r['load']} | {r['ttft_ms']:.0f} | {r['chunks_per_s']:.1f} |"
-        for r in records
+        for r in ok
         if r["test"] == "chat"
     ]
+    errors = [r for r in records if "error" in r]
+    if errors:
+        counts: dict[str, int] = {}
+        for r in errors:
+            counts[r["test"]] = counts.get(r["test"], 0) + 1
+        lines += ["", "Errors: " + ", ".join(f"{test} {n}" for test, n in sorted(counts.items()))]
     return "\n".join(lines) + "\n"
 
 
@@ -160,26 +175,29 @@ async def main(args) -> None:
     s = Settings.from_profile(args.profile)
     tok = AutoTokenizer.from_pretrained(s.hf_model, revision=s.hf_revision)
     grid, rng, records = (QUICK if args.quick else FULL), random.Random(0), []
-    async with httpx.AsyncClient(base_url=args.gateway, timeout=600) as client:
-        await sweep(client, tok, rng, grid, warm=False, records=records)
-        await sweep(
-            client,
-            tok,
-            rng,
-            grid | {"state_tokens": (2048,), "questions": (16,), "options": (26,)},
-            warm=True,
-            records=records,
-        )
-        for workers in (1, 4, 16):
-            await throughput(client, tok, rng, workers, grid["seconds"], records)
-        await jevbench(client, grid["jevbench"], records)
-        await chat_under_load(client, tok, rng, s.served_model, records)
     out = ROOT / "docs" / "results" / s.profile / datetime.datetime.now().astimezone().date().isoformat()
-    out.mkdir(parents=True, exist_ok=True)
-    (out / "raw.jsonl").write_text("".join(json.dumps(r) + "\n" for r in records))
-    (out / "summary.md").write_text(
-        f"# {s.profile} benchmark ({'quick' if args.quick else 'full'})\n\n" + summary(records)
-    )
+    try:
+        async with httpx.AsyncClient(base_url=args.gateway, timeout=600) as client:
+            await sweep(client, tok, rng, grid, warm=False, records=records)
+            await sweep(
+                client,
+                tok,
+                rng,
+                grid | {"state_tokens": (2048,), "questions": (16,), "options": (26,)},
+                warm=True,
+                records=records,
+            )
+            for workers in (1, 4, 16):
+                await throughput(client, tok, rng, workers, grid["seconds"], records)
+            await jevbench(client, grid["jevbench"], records)
+            await chat_under_load(client, tok, rng, s.served_model, records)
+    finally:
+        # Write whatever we collected even if a step above raised, so no run is a total loss.
+        out.mkdir(parents=True, exist_ok=True)
+        (out / "raw.jsonl").write_text("".join(json.dumps(r) + "\n" for r in records))
+        (out / "summary.md").write_text(
+            f"# {s.profile} benchmark ({'quick' if args.quick else 'full'})\n\n" + summary(records)
+        )
     print((out / "summary.md").read_text())
 
 

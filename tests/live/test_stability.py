@@ -7,6 +7,12 @@ import pytest
 from tests.live.api import post
 
 pytestmark = pytest.mark.live
+
+# bf16 logits near 20 step by 0.125, which moves a ~0.5 probability by ~0.03;
+# batch makeup under load picks the step.
+MAX_DRIFT = 0.05
+DECISIVE_GAP = 0.05
+
 BODY = {
     "state": "Customer: my invoice shows a charge I don't recognise and support hasn't replied in a week.",
     "questions": {
@@ -56,7 +62,7 @@ def test_answers_stable_under_chat_load(gateway_url, served_model):
     for run in loaded:
         for qid, answer in idle.items():
             p0, p1 = distribution(answer), distribution(run[qid])
-            assert max(abs(a - b) for a, b in zip(p0, p1)) <= 0.02
+            assert max(abs(a - b) for a, b in zip(p0, p1)) <= MAX_DRIFT
             first, second = sorted(p0, reverse=True)[:2]
-            if first - second > 0.05:
+            if first - second > DECISIVE_GAP:
                 assert p0.index(max(p0)) == p1.index(max(p1))

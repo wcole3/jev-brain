@@ -247,7 +247,7 @@ on a mismatch, so an edited layout forces a label rebuild.
   - streaming chat with thinking on;
   - letter probabilities stable whether the server is idle or under a concurrent chat
     load: the same top answer wherever the top-two gap exceeds 0.05, and no probability
-    moving by more than 0.02 (bf16 results vary slightly with batch makeup);
+    moving by more than 0.05 (bf16 results vary slightly with batch makeup);
   - prefix-cache hits visible in vLLM `/metrics`.
 
 ## Benchmark (`scripts/bench.py`, `scripts/bench_data.py`)

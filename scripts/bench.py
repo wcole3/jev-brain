@@ -1,6 +1,6 @@
 """Latency benchmark through the gateway, so it measures what clients see.
 
-usage: uv run python scripts/bench.py --profile qwen3.6-27b [--gateway http://127.0.0.1:9000] [--quick]
+usage: uv run python scripts/bench.py --profile qwen3.6-27b [--gateway URL] [--quick] [--chat]
 """
 
 import argparse
@@ -156,12 +156,10 @@ def summary(records: list) -> str:
                 f"p50 {percentile(ms, 0.5):.0f} ms, p95 {percentile(ms, 0.95):.0f} ms"
             ),
         ]
-    lines += ["", "| chat prompt | load | TTFT ms | chunks/s |", "|---|---|---|---|"]
-    lines += [
-        f"| {r['prompt']} | {r['load']} | {r['ttft_ms']:.0f} | {r['chunks_per_s']:.1f} |"
-        for r in ok
-        if r["test"] == "chat"
-    ]
+    chat = [r for r in ok if r["test"] == "chat"]
+    if chat:
+        lines += ["", "| chat prompt | load | TTFT ms | chunks/s |", "|---|---|---|---|"]
+        lines += [f"| {r['prompt']} | {r['load']} | {r['ttft_ms']:.0f} | {r['chunks_per_s']:.1f} |" for r in chat]
     errors = [r for r in records if "error" in r]
     if errors:
         counts: dict[str, int] = {}
@@ -190,20 +188,27 @@ async def main(args) -> None:
             for workers in (1, 4, 16):
                 await throughput(client, tok, rng, workers, grid["seconds"], records)
             await jevbench(client, grid["jevbench"], records)
-            await chat_under_load(client, tok, rng, s.served_model, records)
+            if args.chat:
+                await chat_under_load(client, tok, rng, s.served_model, records)
     finally:
         # Write whatever we collected even if a step above raised, so no run is a total loss.
         out.mkdir(parents=True, exist_ok=True)
         (out / "raw.jsonl").write_text("".join(json.dumps(r) + "\n" for r in records))
-        (out / "summary.md").write_text(
-            f"# {s.profile} benchmark ({'quick' if args.quick else 'full'})\n\n" + summary(records)
-        )
+        size = "quick" if args.quick else "full"
+        scope = "with chat" if args.chat else "systemone only"
+        (out / "summary.md").write_text(f"# {s.profile} benchmark ({size}, {scope})\n\n" + summary(records))
     print((out / "summary.md").read_text())
 
 
-if __name__ == "__main__":
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--profile", required=True)
     parser.add_argument("--gateway", default="http://127.0.0.1:9000")
     parser.add_argument("--quick", action="store_true")
-    asyncio.run(main(parser.parse_args()))
+    # Chat-vs-systemone contention testing waits on a scheduling fix (DS-007); off by default.
+    parser.add_argument("--chat", action="store_true")
+    return parser.parse_args(argv)
+
+
+if __name__ == "__main__":
+    asyncio.run(main(parse_args()))

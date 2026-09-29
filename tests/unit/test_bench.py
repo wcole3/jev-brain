@@ -1,4 +1,4 @@
-from scripts.bench import summary
+from scripts.bench import parse_args, summary
 
 
 def test_summary_ignores_errors_and_reports_their_count():
@@ -12,3 +12,16 @@ def test_summary_ignores_errors_and_reports_their_count():
     assert "| cold | 256 | 1 | 2 | 100 | 100 |" in out
     assert "| 1 | 0.5 |" in out
     assert "Errors: chat_load 1, throughput 1" in out
+
+
+def test_summary_omits_chat_table_when_no_chat_records():
+    records = [{"test": "cold", "state_tokens": 256, "questions": 1, "options": 2, "ms": 100}]
+    assert "chat prompt" not in summary(records)
+
+
+def test_parse_args_chat_defaults_off():
+    assert parse_args(["--profile", "p"]).chat is False
+
+
+def test_parse_args_chat_flag_turns_it_on():
+    assert parse_args(["--profile", "p", "--chat"]).chat is True

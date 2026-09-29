@@ -147,6 +147,7 @@ gateway runs.
   `.cache/jev-results/`.
 - **Terms:** TypeSafe's terms forbid using Jev outputs to train or calibrate a similar
   model. Never feed them into calibration or prompt tuning.
+- **Latest comparison:** [docs/results/jevbench-vs-jev.md](docs/results/jevbench-vs-jev.md).
 
 ## When you change prompts or tokenizers
 

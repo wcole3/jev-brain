@@ -16,6 +16,31 @@ Background research (read before designing anything): `docs/README.md`. Key docs
 Plan and task tracking live in DoStuff tickets (use the `dostuff-tickets` skill).
 Design specs go in `docs/superpowers/specs/`.
 
+## Commands
+
+- Install: `uv sync`
+- Unit tests (CPU): `uv run pytest -q`; a single test: `uv run pytest tests/unit/test_prompts.py::test_rows_share_the_reported_prefix -q`
+- Parity with decider: `uv run pytest tests/parity -q` (fixtures from `scripts/decider_fixtures.py`, run in `.cache/decider-venv`)
+- Live tests (stack running): `uv run pytest -m live tests/live -v`
+- Lint: `uv run ruff check .`
+- Label tables (after any tokenizer or `prompts/*.toml` change): `uv run python scripts/build_labels.py --profile <p>`
+- Run a model: `docker compose --env-file profiles/<p>.env up -d --build` (compose project is pinned to `jev-brain`; gateway :9000, vLLM :8000). Switching models: `docker compose --env-file profiles/<old>.env down` first.
+- Benchmark: `uv run python scripts/bench.py --profile <p> [--quick] [--chat]` — the default measures only `/v1/systemone`; `--chat` adds chat alone + chat under systemone load (on demand until DS-007 is fixed).
+- Stage explicit paths when committing (`git add <paths>`), never `git add -A` — generated label tables and bench results are committed deliberately per profile.
+
+## Architecture
+
+- `gateway/decide.py` is the whole `/v1/systemone` flow, in order:
+  1. `questions.render_question` turns each question into option texts;
+  2. `orders.option_orders` chooses the option orders;
+  3. `prompts.build_rows` builds the token ids piecewise (chat frame + layout parts);
+  4. `readout.Readout` asks vLLM `/v1/completions` with `max_tokens=1` and `logprob_token_ids`;
+  5. `calibration.softmax` applies the temperature;
+  6. `orders.average_back` maps probabilities back to the caller's options;
+  7. `answers.answer` builds the Jev answer.
+- Prompt wording lives only in `prompts/<layout>.toml`. Editing it requires rebuilding the labels (the gateway refuses stale hashes) and refitting temperatures.
+- `chat.route()` is the phase-3 hook where systemone answers will steer chat requests.
+
 ## Working conventions (from the repo owner)
 
 - Code must read like a tutorial: small focused files, obvious names, and a flow that
@@ -57,6 +82,18 @@ Design specs go in `docs/superpowers/specs/`.
   model + precision + prompt layout. Refit after any change.
 - **Never train or calibrate on Jev API outputs.** TypeSafe's customer agreement forbids
   distillation and imitation. Calibrate on labelled public or our own data.
+- `--max-num-seqs 256` is required: vLLM's default 1024 exceeds the hybrid Qwen models'
+  Mamba cache blocks (638 at 0.90) and startup fails.
+- vLLM 0.30 streams thinking tokens in the delta key `reasoning` (older versions
+  `reasoning_content`).
+- Systemone decisions are bf16-noisy under load: probabilities can move ~0.03 (one bf16
+  logit step); the live stability test allows 0.05 and requires the top answer to hold
+  when the top-two gap > 0.05.
+- Decision prefill starves chat decode on the shared GPU (DS-007); priority scheduling
+  alone fixes TTFT, not decode — see `docs/appendix/ds007-scheduling.md`.
+- Hybrid Qwen prefix caching is 784-token block granular (DS-008).
+- Gemma 4 31B with the vision tower resident leaves only ~50k KV tokens (1.5x
+  concurrency at 32k).
 
 ## Environment
 

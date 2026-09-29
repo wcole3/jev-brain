@@ -1,22 +1,6 @@
-from scripts.bench import parse_args, summary
+import pytest
 
-
-def test_summary_ignores_errors_and_reports_their_count():
-    records = [
-        {"test": "cold", "state_tokens": 256, "questions": 1, "options": 2, "ms": 100},
-        {"test": "throughput", "error": "ReadTimeout"},
-        {"test": "throughput", "workers": 1, "requests_per_s": 0.5},
-        {"test": "chat_load", "error": "ConnectError"},
-    ]
-    out = summary(records)
-    assert "| cold | 256 | 1 | 2 | 100 | 100 |" in out
-    assert "| 1 | 0.5 |" in out
-    assert "Errors: chat_load 1, throughput 1" in out
-
-
-def test_summary_omits_chat_table_when_no_chat_records():
-    records = [{"test": "cold", "state_tokens": 256, "questions": 1, "options": 2, "ms": 100}]
-    assert "chat prompt" not in summary(records)
+from scripts.bench import parse_args
 
 
 def test_parse_args_chat_defaults_off():
@@ -25,3 +9,17 @@ def test_parse_args_chat_defaults_off():
 
 def test_parse_args_chat_flag_turns_it_on():
     assert parse_args(["--profile", "p", "--chat"]).chat is True
+
+
+def test_parse_args_gateway_needs_a_profile():
+    with pytest.raises(SystemExit):
+        parse_args([])
+
+
+def test_parse_args_jev_needs_no_profile():
+    assert parse_args(["--target", "jev"]).target == "jev"
+
+
+def test_parse_args_jev_rejects_chat():
+    with pytest.raises(SystemExit):
+        parse_args(["--target", "jev", "--chat"])

@@ -1,3 +1,5 @@
+import os
+
 import pytest
 from typesafe_sdk import Choice, Noul, Score, TypeSafeClient
 
@@ -5,7 +7,7 @@ pytestmark = pytest.mark.live
 
 
 def test_official_sdk_quickstart(gateway_url):
-    with TypeSafeClient(api_key="local", base_url=gateway_url) as client:
+    with TypeSafeClient(api_key=os.environ.get("GATEWAY_API_KEY") or "local", base_url=gateway_url) as client:
         response = client.system_one(
             state="Hi, I've been trying to connect my Stripe account for 3 days and the integration keeps failing. "
             "I'm losing sales. Please help ASAP.",

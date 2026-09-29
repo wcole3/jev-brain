@@ -1,6 +1,13 @@
 import random
 
-from scripts.bench_data import jevbench_request, prediction, synthetic_request
+from scripts.bench_data import (
+    JEVBENCH_RAW,
+    JEVBENCH_SHA,
+    JEVBENCH_TREE,
+    jevbench_request,
+    prediction,
+    synthetic_request,
+)
 
 
 def test_synthetic_request_sizes(qwen_tok):
@@ -33,3 +40,12 @@ def test_prediction_per_type():
     assert prediction({"type": "choice", "choice": "x"}) == "x"
     assert prediction({"type": "noul", "noul": 0.7}) == "yes"
     assert prediction({"type": "score", "probabilities": {"0": 0.1, "1": 0.6, "2": 0.3}}) == "1"
+
+
+def test_jevbench_urls_are_pinned_to_the_sha():
+    assert JEVBENCH_SHA in JEVBENCH_TREE
+    assert JEVBENCH_SHA in JEVBENCH_RAW
+
+
+def test_score_prediction_falls_back_to_rounded_level():
+    assert prediction({"type": "score", "score": 1.6}) == "2"

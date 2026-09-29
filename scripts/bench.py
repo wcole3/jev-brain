@@ -1,20 +1,24 @@
-"""Latency benchmark through the gateway, so it measures what clients see.
+"""Benchmark through the gateway (so it measures what clients see), or JevBench against the official Jev API.
 
-usage: uv run python scripts/bench.py --profile qwen3.6-27b [--gateway URL] [--quick] [--chat]
+usage: uv run python scripts/bench.py --profile qwen3.6-27b [--gateway URL] [--quick] [--jevbench-only] [--chat]
+       uv run python scripts/bench.py --target jev [--quick]   (JevBench against the official Jev API)
 """
 
 import argparse
 import asyncio
 import datetime
 import json
+import os
 import random
+import subprocess
 import time
 
 import httpx
 from transformers import AutoTokenizer
 
 from gateway.config import ROOT, Settings
-from scripts.bench_data import jevbench_request, jevbench_rows, prediction, synthetic_request
+from scripts.bench_data import JEVBENCH_SHA, jevbench_request, jevbench_rows, prediction, synthetic_request
+from scripts.bench_report import provenance, summary
 
 FULL = {
     "state_tokens": (256, 2048, 8192),
@@ -32,6 +36,8 @@ QUICK = {
     "seconds": 10,
     "jevbench": 50,
 }
+JEV_URL = "https://api.typesafe.ai"
+JEV_KEY_FILE = ROOT / "secrets" / ".jev-key"
 CHAT_PROMPTS = {
     "short": "Name three prime numbers.",
     "long": "Explain step by step how a hash map resolves collisions, with an example.",
@@ -45,30 +51,25 @@ async def timed_post(client: httpx.AsyncClient, body: dict) -> tuple[float, dict
     return (time.perf_counter() - start) * 1000, r.json()
 
 
-def percentile(values: list[float], q: float) -> float:
-    ordered = sorted(values)
-    return ordered[min(len(ordered) - 1, int(q * len(ordered)))]
-
-
 async def sweep(client, tok, rng, grid: dict, warm: bool, records: list) -> None:
     """Sequential latency per (state length, questions, options); warm repeats one state."""
     for n_tok in grid["state_tokens"]:
         for n_q in grid["questions"]:
             for n_opt in grid["options"]:
                 fixed = synthetic_request(tok, rng, n_tok, n_q, n_opt, nonce=False)
-                await timed_post(client, fixed)
+                test = "warm" if warm else "cold"
+                try:
+                    await timed_post(client, fixed)
+                except httpx.HTTPError as e:
+                    records.append({"test": test, "error": type(e).__name__})
                 for _ in range(grid["repeats"]):
                     body = fixed if warm else synthetic_request(tok, rng, n_tok, n_q, n_opt)
-                    ms, _ = await timed_post(client, body)
-                    records.append(
-                        {
-                            "test": "warm" if warm else "cold",
-                            "state_tokens": n_tok,
-                            "questions": n_q,
-                            "options": n_opt,
-                            "ms": ms,
-                        }
-                    )
+                    try:
+                        ms, _ = await timed_post(client, body)
+                    except httpx.HTTPError as e:
+                        records.append({"test": test, "error": type(e).__name__})
+                        continue
+                    records.append({"test": test, "state_tokens": n_tok, "questions": n_q, "options": n_opt, "ms": ms})
 
 
 async def throughput(client, tok, rng, workers: int, seconds: int, records: list) -> None:
@@ -90,12 +91,18 @@ async def throughput(client, tok, rng, workers: int, seconds: int, records: list
     records.append({"test": "throughput", "workers": workers, "requests_per_s": done / (time.perf_counter() - start)})
 
 
-async def jevbench(client, limit: int | None, records: list) -> None:
-    for row in jevbench_rows()[:limit]:
+async def jevbench(client, rows: list[dict], records: list) -> None:
+    for row in rows:
         body, gold = jevbench_request(row)
-        ms, out = await timed_post(client, body)
+        record = {"test": "jevbench", "id": row["id"], "type": row["type"], "eval_metric": row["eval_metric"]}
+        try:
+            ms, out = await timed_post(client, body)
+        except httpx.HTTPError as e:
+            records.append(record | {"gold": gold, "pred": None, "correct": False, "error": type(e).__name__})
+            continue
+        pred = prediction(out["answers"]["q"])
         records.append(
-            {"test": "jevbench", "type": row["type"], "ms": ms, "correct": prediction(out["answers"]["q"]) == gold}
+            record | {"gold": gold, "pred": pred, "correct": pred == gold, "ms": ms, "model": out.get("model")}
         )
 
 
@@ -134,80 +141,105 @@ async def chat_under_load(client, tok, rng, served: str, records: list) -> None:
     await asyncio.gather(*load)
 
 
-def summary(records: list) -> str:
-    lines = ["| test | state tokens | questions | options | p50 ms | p95 ms |", "|---|---|---|---|---|---|"]
-    ok = [r for r in records if "error" not in r]  # error records carry no ms/workers/ttft to tabulate
-    groups: dict[tuple, list] = {}
-    for r in ok:
-        if r["test"] in ("cold", "warm"):
-            groups.setdefault((r["test"], r["state_tokens"], r["questions"], r["options"]), []).append(r["ms"])
-    for key, ms in groups.items():
-        lines.append(f"| {' | '.join(map(str, key))} | {percentile(ms, 0.5):.0f} | {percentile(ms, 0.95):.0f} |")
-    lines += ["", "| workers | requests/s |", "|---|---|"]
-    lines += [f"| {r['workers']} | {r['requests_per_s']:.1f} |" for r in ok if r["test"] == "throughput"]
-    bench = [r for r in ok if r["test"] == "jevbench"]
-    if bench:
-        ms = [r["ms"] for r in bench]
-        accuracy = sum(r["correct"] for r in bench) / len(bench)
-        lines += [
-            "",
-            (
-                f"JevBench gold: {len(bench)} rows, accuracy {accuracy:.3f} (uncalibrated sanity check), "
-                f"p50 {percentile(ms, 0.5):.0f} ms, p95 {percentile(ms, 0.95):.0f} ms"
-            ),
-        ]
-    chat = [r for r in ok if r["test"] == "chat"]
-    if chat:
-        lines += ["", "| chat prompt | load | TTFT ms | chunks/s |", "|---|---|---|---|"]
-        lines += [f"| {r['prompt']} | {r['load']} | {r['ttft_ms']:.0f} | {r['chunks_per_s']:.1f} |" for r in chat]
-    errors = [r for r in records if "error" in r]
-    if errors:
-        counts: dict[str, int] = {}
-        for r in errors:
-            counts[r["test"]] = counts.get(r["test"], 0) + 1
-        lines += ["", "Errors: " + ", ".join(f"{test} {n}" for test, n in sorted(counts.items()))]
-    return "\n".join(lines) + "\n"
+def git_revision() -> str:
+    def git(*args: str) -> str:
+        return subprocess.run(["git", *args], cwd=ROOT, capture_output=True, text=True, check=True).stdout.strip()
+
+    # Uncommitted results from earlier runs don't make the code dirty.
+    dirty = git("status", "--porcelain", "--", ".", ":(exclude)docs/results")
+    return git("rev-parse", "--short", "HEAD") + ("-dirty" if dirty else "")
+
+
+def jev_key() -> str:
+    key = os.environ.get("TYPESAFE_API_KEY")
+    if not key and JEV_KEY_FILE.exists():
+        key = JEV_KEY_FILE.read_text().strip()
+    if not key:
+        raise SystemExit(f"--target jev needs an API key: set TYPESAFE_API_KEY or write it to {JEV_KEY_FILE}")
+    return key
+
+
+def connection(args) -> tuple[str, dict]:
+    """(base url, auth headers); the key is never printed or recorded."""
+    if args.target == "jev":
+        return JEV_URL, {"Authorization": f"Bearer {jev_key()}"}
+    key = os.environ.get("GATEWAY_API_KEY")
+    return args.gateway, {"Authorization": f"Bearer {key}"} if key else {}
+
+
+async def gateway_health(client, profile: str) -> dict:
+    health = (await client.get("/health")).json()
+    if health["profile"] != profile:
+        raise SystemExit(f"gateway serves profile {health['profile']!r} but --profile is {profile!r}")
+    return health
 
 
 async def main(args) -> None:
-    s = Settings.from_profile(args.profile)
-    tok = AutoTokenizer.from_pretrained(s.hf_model, revision=s.hf_revision)
+    jev, revision = args.target == "jev", git_revision()
+    jevbench_only = jev or args.jevbench_only
+    base_url, headers = connection(args)
+    started = datetime.datetime.now().astimezone()
+    suffix = started.date().isoformat() + ("-quick" if args.quick else "") + ("-jevbench" if jevbench_only else "")
     grid, rng, records = (QUICK if args.quick else FULL), random.Random(0), []
-    out = ROOT / "docs" / "results" / s.profile / datetime.datetime.now().astimezone().date().isoformat()
-    try:
-        async with httpx.AsyncClient(base_url=args.gateway, timeout=600) as client:
-            await sweep(client, tok, rng, grid, warm=False, records=records)
-            await sweep(
-                client,
-                tok,
-                rng,
-                grid | {"state_tokens": (2048,), "questions": (16,), "options": (26,)},
-                warm=True,
-                records=records,
-            )
-            for workers in (1, 4, 16):
-                await throughput(client, tok, rng, workers, grid["seconds"], records)
-            await jevbench(client, grid["jevbench"], records)
+    name = "jev" if jev else args.profile
+    out = ROOT / "docs" / "results" / name / suffix
+    # TypeSafe's terms forbid using Jev outputs for training or calibration, so keep them out of the repo.
+    raw = ROOT / ".cache" / "jev-results" / suffix if jev else out
+    async with httpx.AsyncClient(base_url=base_url, headers=headers, timeout=600) as client:
+        meta = {"timestamp": started.isoformat(), "repo commit": revision, "target": args.target}
+        if not jev:
+            health = await gateway_health(client, args.profile)
+        gold_rows = jevbench_rows()
+        rows = gold_rows[: grid["jevbench"]]
+        meta |= {"JevBench SHA": JEVBENCH_SHA, "gold rows available": len(gold_rows), "rows run": len(rows)}
+        if jev:
+            meta["base URL"] = base_url
+        else:
+            keys = ("profile", "hf_model", "hf_revision", "prompt_layout", "option_orders", "vllm_version")
+            meta |= {key: health.get(key) for key in keys}
+        try:
+            if not jevbench_only or args.chat:
+                s = Settings.from_profile(args.profile)
+                tok = AutoTokenizer.from_pretrained(s.hf_model, revision=s.hf_revision)
+            if not jevbench_only:
+                await sweep(client, tok, rng, grid, warm=False, records=records)
+                warm_grid = grid | {"state_tokens": (2048,), "questions": (16,), "options": (26,)}
+                await sweep(client, tok, rng, warm_grid, warm=True, records=records)
+                for workers in (1, 4, 16):
+                    await throughput(client, tok, rng, workers, grid["seconds"], records)
+            await jevbench(client, rows, records)
             if args.chat:
                 await chat_under_load(client, tok, rng, s.served_model, records)
-    finally:
-        # Write whatever we collected even if a step above raised, so no run is a total loss.
-        out.mkdir(parents=True, exist_ok=True)
-        (out / "raw.jsonl").write_text("".join(json.dumps(r) + "\n" for r in records))
-        size = "quick" if args.quick else "full"
-        scope = "with chat" if args.chat else "systemone only"
-        (out / "summary.md").write_text(f"# {s.profile} benchmark ({size}, {scope})\n\n" + summary(records))
+        finally:
+            # Write whatever we collected even if a step above raised, so no run is a total loss.
+            if jev:
+                meta["models returned"] = sorted({r["model"] for r in records if r.get("model")})
+            raw.mkdir(parents=True, exist_ok=True)
+            (raw / "raw.jsonl").write_text("".join(json.dumps(r) + "\n" for r in records))
+            size = "quick" if args.quick else "full"
+            scope = "JevBench only" if jevbench_only else "with chat" if args.chat else "systemone only"
+            out.mkdir(parents=True, exist_ok=True)
+            (out / "summary.md").write_text(
+                f"# {name} benchmark ({size}, {scope})\n\n{provenance(meta)}\n{summary(records)}"
+            )
     print((out / "summary.md").read_text())
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--profile", required=True)
+    parser.add_argument("--target", choices=("gateway", "jev"), default="gateway")
+    parser.add_argument("--profile")
     parser.add_argument("--gateway", default="http://127.0.0.1:9000")
     parser.add_argument("--quick", action="store_true")
+    parser.add_argument("--jevbench-only", action="store_true")
     # Chat-vs-systemone contention testing waits on a scheduling fix (DS-007); off by default.
     parser.add_argument("--chat", action="store_true")
-    return parser.parse_args(argv)
+    args = parser.parse_args(argv)
+    if args.target == "gateway" and not args.profile:
+        parser.error("--profile is required with --target gateway")
+    if args.target == "jev" and args.chat:
+        parser.error("--chat needs the gateway target")
+    return args
 
 
 if __name__ == "__main__":

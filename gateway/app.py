@@ -42,6 +42,13 @@ def require_key(request: Request) -> None:
         raise HTTPException(status_code=401, detail="invalid or missing API key")
 
 
+async def vllm_version(client: httpx.AsyncClient) -> str | None:
+    try:
+        return (await client.get("/version")).json()["version"]
+    except (httpx.HTTPError, ValueError, KeyError):
+        return None
+
+
 def create_app(settings: Settings | None = None, transport: httpx.AsyncBaseTransport | None = None) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -76,10 +83,16 @@ def create_app(settings: Settings | None = None, transport: httpx.AsyncBaseTrans
             ok = (await request.app.state.client.get("/health")).status_code == 200
         except httpx.TransportError:
             ok = False
+        s = engine.settings
         body = {
             "status": "ok" if ok else "vllm unavailable",
-            "profile": engine.settings.profile,
-            "served_model": engine.settings.served_model,
+            "profile": s.profile,
+            "served_model": s.served_model,
+            "hf_model": s.hf_model,
+            "hf_revision": s.hf_revision,
+            "prompt_layout": s.prompt_layout,
+            "option_orders": s.option_orders,
+            "vllm_version": await vllm_version(request.app.state.client) if ok else None,
             "layouts": sorted(engine.layouts),
         }
         return JSONResponse(body, status_code=200 if ok else 503)

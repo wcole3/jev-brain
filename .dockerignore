@@ -6,3 +6,5 @@ docs
 tests
 data
 prompts
+secrets
+.env

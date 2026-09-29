@@ -4,7 +4,7 @@ import time
 import httpx
 import pytest
 
-from tests.live.api import post
+from tests.live.api import auth, post
 
 pytestmark = pytest.mark.live
 
@@ -42,6 +42,7 @@ def test_answers_stable_under_chat_load(gateway_url, served_model):
         while not stop.is_set():
             httpx.post(
                 f"{gateway_url}/v1/chat/completions",
+                headers=auth(),
                 timeout=600,
                 json={
                     "model": served_model,

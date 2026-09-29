@@ -29,6 +29,8 @@ def fake_vllm(request: httpx.Request) -> httpx.Response:
         return httpx.Response(200, json={"object": "list", "data": [{"id": "qwen3.6-27b", "object": "model"}]})
     if path == "/health":
         return httpx.Response(200)
+    if path == "/version":
+        return httpx.Response(200, json={"version": "0.30.0"})
     return httpx.Response(404, json={"path": path})
 
 
@@ -82,7 +84,11 @@ def test_other_v1_paths_pass_through(client):
 
 
 def test_health(client):
-    assert client.get("/health").json()["status"] == "ok"
+    body = client.get("/health").json()
+    assert body["status"] == "ok"
+    assert body["vllm_version"] == "0.30.0"
+    assert body["hf_model"] and body["hf_revision"]
+    assert body["prompt_layout"] and body["option_orders"]
 
 
 def test_api_key_is_enforced_when_set(qwen_settings):

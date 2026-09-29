@@ -10,9 +10,10 @@ import httpx
 from gateway.config import ROOT
 
 CORPUS = ROOT / "data" / "bench" / "corpus.txt"
-JEVBENCH_CACHE = ROOT / ".cache" / "jevbench"
-JEVBENCH_TREE = "https://api.github.com/repos/model-collapse/jev-bench/git/trees/main?recursive=1"
-JEVBENCH_RAW = "https://raw.githubusercontent.com/model-collapse/jev-bench/main/"
+JEVBENCH_SHA = "fcec62f13ce961115af0d16317f0ff15986a9a25"
+JEVBENCH_CACHE = ROOT / ".cache" / "jevbench" / JEVBENCH_SHA
+JEVBENCH_TREE = f"https://api.github.com/repos/model-collapse/jev-bench/git/trees/{JEVBENCH_SHA}?recursive=1"
+JEVBENCH_RAW = f"https://raw.githubusercontent.com/model-collapse/jev-bench/{JEVBENCH_SHA}/"
 LEVELS = ["Very casual", "Casual", "Neutral", "Formal", "Very formal"]
 
 
@@ -54,7 +55,7 @@ def synthetic_request(
 
 
 def jevbench_rows() -> list[dict]:
-    """JevBench gold rows, downloaded once into .cache/jevbench/."""
+    """JevBench gold rows, pinned to JEVBENCH_SHA, cached under .cache/jevbench/."""
     JEVBENCH_CACHE.mkdir(parents=True, exist_ok=True)
     listing = JEVBENCH_CACHE / "files.json"
     if not listing.exists():
@@ -85,4 +86,5 @@ def prediction(answer: dict) -> str:
         return answer["choice"]
     if answer["type"] == "noul":
         return "yes" if answer["noul"] >= 0.5 else "no"
-    return max(answer["probabilities"], key=answer["probabilities"].get)
+    probs = answer.get("probabilities")  # upstream's fallback: round the weighted level
+    return max(probs, key=probs.get) if probs else str(round(answer["score"]))

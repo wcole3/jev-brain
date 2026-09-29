@@ -14,6 +14,10 @@ def test_settings():
         option_orders(3, "cyclic:0")
 
 
+def test_cyclic_k_is_clamped_to_n():
+    assert option_orders(3, "cyclic:1000000000") == [[0, 1, 2], [1, 2, 0], [2, 0, 1]]
+
+
 def test_average_back_maps_positions_to_caller_options():
     # identity favours shown position 0 (option 0); reversed favours shown position 0 (option 2)
     probs = [[0.7, 0.2, 0.1], [0.7, 0.2, 0.1]]

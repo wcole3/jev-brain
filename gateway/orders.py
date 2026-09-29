@@ -12,6 +12,7 @@ def option_orders(n: int, setting: str) -> list[list[int]]:
         k = int(setting.removeprefix("cyclic:"))
         if k < 1:
             raise ValueError("cyclic:<k> needs k >= 1")
+        k = min(k, n)  # more shifts than options is pointless and stalls the loop
         shifts = sorted({round(i * n / k) % n for i in range(k)})
         return [identity[s:] + identity[:s] for s in shifts]
     raise ValueError(f"unknown option_orders {setting!r}: use identity, identity+reversed or cyclic:<k>")

@@ -63,8 +63,9 @@ Design specs go in `docs/superpowers/specs/`.
   divided by a fitted temperature.
 - **Where vLLM returns the label logprobs:**
   `choices[i].logprobs.top_logprobs[0]["token_id:<id>"]`.
-- **Letters must be single tokens *in context*:** check that
-  `encode(prompt + "A") == encode(prompt) + [id_A]` at startup.
+- **Letters must be single tokens *in context*:** `scripts/build_labels.py` checks that
+  `encode(prompt + "A") == encode(prompt) + [id_A]`. Gateway startup only verifies the
+  stored tokenizer and layout hashes, not this in-context property.
 - **Jev answer contract:**
   - `noul` is a float P(true) with no `confidence` field.
   - `score` is the probability-weighted level, with a `legend`.
@@ -100,3 +101,5 @@ Design specs go in `docs/superpowers/specs/`.
 - 1× RTX PRO 6000 Blackwell (96 GB, sm_120), WSL2, CUDA 13.x.
 - Owner's other projects run vLLM via Docker Compose on `vllm/vllm-openai` images, with
   ports bound to `127.0.0.1` and the HF token passed as a secret.
+- vLLM's port 8000 is unauthenticated even when `GATEWAY_API_KEY` is set; loopback-only
+  binding is the protection.

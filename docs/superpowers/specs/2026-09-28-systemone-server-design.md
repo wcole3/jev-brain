@@ -221,6 +221,10 @@ on a mismatch, so an edited layout forces a label rebuild.
 - Known limitation: a chat client that asks for top-k logprobs can get `-inf` values if
   its request shares a batch with a systemone request (vLLM PR #51789, open). The
   generated text is unaffected.
+- Known limitation: decision prefill starves chat decode on the shared GPU — measured on
+  qwen3.6-27b with 4 concurrent systemone clients: chat 26.6 → 1.2 chunks/s, long-prompt
+  TTFT 144 → 3287 ms; tracked in ticket DS-007 (priority scheduling + smaller step budget
+  + prefix alignment DS-008; see `docs/appendix/ds007-scheduling.md`).
 
 ## Testing
 
@@ -246,8 +250,8 @@ on a mismatch, so an edited layout forces a label rebuild.
     more than 128 options, and oversized requests (expect 422);
   - streaming chat with thinking on;
   - letter probabilities stable whether the server is idle or under a concurrent chat
-    load: the same top answer wherever the top-two gap exceeds 0.05, and no probability
-    moving by more than 0.05 (bf16 results vary slightly with batch makeup);
+    load: the same top answer wherever the idle top-two gap exceeds 0.10, and no
+    probability moving by more than 0.05 (bf16 results vary slightly with batch makeup);
   - prefix-cache hits visible in vLLM `/metrics`.
 
 ## Benchmark (`scripts/bench.py`, `scripts/bench_data.py`)
@@ -262,10 +266,13 @@ The benchmark measures through the gateway over HTTP, so it sees what clients se
   - Each request starts its state with a unique nonce, so it cannot reuse another
     request's cached prefix.
   - A separate `warm` mode repeats states on purpose.
-- **Realistic mix:** the JevBench gold set (232 rows, Apache-2.0, already in Jev format).
+- **Realistic mix:** the JevBench gold rows (1682 at the 2026-09-28 run; the upstream set
+  grows — pin a commit before phase-2 accuracy work), Apache-2.0, already in Jev format.
 - **Chat under load:** fixed short and long prompts with thinking on. Measures
   time-to-first-token and tokens/s, both alone and while the sweep runs at a set
   concurrency.
+- The default run measures only `/v1/systemone`; chat-under-load runs only with `--chat`
+  (owner decision until DS-007 is fixed).
 - **Metrics:** sequential p50/p95, throughput at concurrency 1/4/16, and chat
   time-to-first-token deltas.
 - **Output:** raw per-request timings as JSONL plus a summary table in

@@ -11,7 +11,8 @@ pytestmark = pytest.mark.live
 # bf16 logits near 20 step by 0.125, which moves a ~0.5 probability by ~0.03;
 # batch makeup under load picks the step.
 MAX_DRIFT = 0.05
-DECISIVE_GAP = 0.05
+# a 0.05 move in each of two probabilities can close a 0.10 gap.
+DECISIVE_GAP = 2 * MAX_DRIFT
 
 BODY = {
     "state": "Customer: my invoice shows a charge I don't recognise and support hasn't replied in a week.",

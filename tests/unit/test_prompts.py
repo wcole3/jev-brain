@@ -4,7 +4,7 @@ import pytest
 
 from gateway.labels import label_table
 from gateway.layouts import load_layouts
-from gateway.prompts import build_rows, chat_frame
+from gateway.prompts import build_rows, chat_frame, encode, encode_each
 from gateway.questions import render_question
 from gateway.schema import Question
 from tests.helpers import PROFILES, QUICKSTART, STATE, tokenizer_for
@@ -72,3 +72,10 @@ def test_reversed_order_shows_options_reversed(qwen_tok):
     row = batch_for(qwen_tok, "decider_chat", two, orders=[[1, 0]]).rows[0]
     assert "(A) second\n(B) first" in qwen_tok.decode(row.ids)
     assert row.perm == [1, 0]
+
+
+@pytest.mark.parametrize("profile", PROFILES)
+def test_encode_each_matches_one_encode_per_text(profile):
+    tok = tokenizer_for(profile)
+    texts = [") billing", ")  two  spaces", ") naïve café ☕", ") \n", ') code_7: {"a": 1}', ")", ") 東京"]
+    assert encode_each(tok, texts) == [encode(tok, t) for t in texts]

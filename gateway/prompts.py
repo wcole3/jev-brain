@@ -14,6 +14,11 @@ def encode(tok, text: str) -> list[int]:
     return tok.encode(text, add_special_tokens=False)
 
 
+def encode_each(tok, texts: list[str]) -> list[list[int]]:
+    """Each text encoded on its own, in one tokenizer call (per-call overhead dominates short texts)."""
+    return tok(texts, add_special_tokens=False)["input_ids"]
+
+
 @dataclass(frozen=True)
 class ChatFrame:
     head: list[int]  # chat template before the user content
@@ -60,9 +65,11 @@ def option_ids(tok, layout: Layout, labels: Labels, texts: list[str]) -> list[in
     """Up to 10 options: one text encode. More: label token ids spliced in so every label is one token."""
     if len(texts) <= NARROW:
         return encode(tok, "".join(layout.option.format(label=labels.names[j], text=t) for j, t in enumerate(texts)))
+    opening = encode(tok, layout.option_open)
+    closings = encode_each(tok, [layout.option_close.format(text=text) for text in texts])
     ids = []
-    for j, text in enumerate(texts):
-        ids += encode(tok, layout.option_open) + [labels.ids[j]] + encode(tok, layout.option_close.format(text=text))
+    for j, closing in enumerate(closings):
+        ids += opening + [labels.ids[j]] + closing
     return ids
 
 

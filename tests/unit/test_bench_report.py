@@ -80,3 +80,52 @@ def test_jevbench_only_run_has_no_latency_or_throughput_tables():
 
 def test_provenance_renders_bullets_in_order():
     assert provenance({"b": 1, "a": "x"}) == "## Provenance\n\n- b: 1\n- a: x\n"
+
+
+def vllm_row(phase: str, prompt: int, cached: int) -> dict:
+    return {
+        "test": "vllm",
+        "phase": phase,
+        "prompt_tokens": prompt,
+        "cached_prompt_tokens": cached,
+        "generation_tokens": 7,
+        "preemptions": 2,
+        "kv_peak": 0.5,
+        "kv_mean": 0.25,
+        "waiting_peak": 3,
+        "running_peak": 4,
+    }
+
+
+def test_vllm_table_sets_usage_beside_prompt_computed_and_cached():
+    records = [
+        {
+            "test": "warm",
+            "phase": "warm",
+            "state_tokens": 1,
+            "questions": 1,
+            "options": 2,
+            "ms": 5,
+            "input_tokens": 300,
+        },
+        {"test": "warmup", "phase": "warm", "input_tokens": 200},
+        vllm_row("warm", 1000, 750),
+        vllm_row("chat", 0, 0),
+    ]
+    out = summary(records)
+    assert "| phase | usage input tokens | vLLM prompt tokens | computed tokens | cached % |" in out
+    assert "| warm | 500 | 1000 | 250 | 75.0 | 7 | 50.0 | 25.0 | 3 | 2 |" in out
+    assert "| chat | 0 | 0 | 0 | n/a | 7 | 50.0 | 25.0 | 3 | 2 |" in out
+
+
+def test_vllm_table_is_omitted_without_vllm_records_and_samples_are_ignored():
+    sample = {"test": "vllm_sample", "phase": "cold", "t": 0.1, "kv": 0.2, "running": 1, "waiting": 0}
+    out = summary([bench_row("choice", True), sample])
+    assert "vLLM prompt tokens" not in out
+    assert out == summary([bench_row("choice", True)])
+
+
+def test_jev_summary_reports_input_tokens_and_cost():
+    records = [{**bench_row("choice", True), "phase": "jevbench", "input_tokens": 500_000}]
+    assert "Jev usage: 500000 input tokens, about $0.02 at $0.042 per million." in summary(records, jev=True)
+    assert "Jev usage" not in summary(records)

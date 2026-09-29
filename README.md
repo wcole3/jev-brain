@@ -196,6 +196,15 @@ uv run python scripts/bench.py --target jev                           # JevBench
   upstream board's columns: overall, choice and noul accuracy, plus QWK and MAE for
   ordinal score rows. A failed request counts as a wrong answer, as upstream does.
 - **`--chat` is on demand** until chat/decision contention is fixed (DS-007).
+- **vLLM's view of each phase:** the bench samples vLLM's `/metrics` (`--vllm`, default
+  `VLLM_URL` or `http://127.0.0.1:8000`) and adds one table row per phase:
+  - KV cache peak and mean use, waiting-queue peak, preemptions;
+  - prompt tokens, how many came from the prefix cache, generation tokens;
+  - the Jev-style `usage.input_tokens` the gateway reported.
+
+  Computed (uncached) tokens close to usage means prefix sharing works; far above it
+  means cache misses. vLLM's counters are server-wide, so run on an otherwise idle
+  stack. Gauge samples go to `raw.jsonl` for plots.
 - **`--profile` must match the running gateway**; the bench refuses otherwise. It sends
   `GATEWAY_API_KEY` when set.
 - **Results** go to `docs/results/<profile>/<date>[-quick][-jevbench]/`:
@@ -209,7 +218,8 @@ uv run python scripts/bench.py --target jev                           # JevBench
 gateway runs.
 
 - **Key:** from `TYPESAFE_API_KEY`, else `secrets/.jev-key` (git- and docker-ignored).
-- **Cost:** a full pass is ~0.9M input tokens, about $0.04.
+- **Cost:** a full pass is ~0.9M input tokens, about $0.04. The summary reports the
+  actual tokens and estimated cost.
 - **Outputs:** the summary goes to `docs/results/jev/`. Jev's per-row answers stay in
   `.cache/jev-results/`.
 - **Terms:** TypeSafe's terms forbid using Jev outputs to train or calibrate a similar

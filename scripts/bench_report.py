@@ -1,5 +1,7 @@
 """Render bench records as markdown: latency tables, the JevBench board columns, provenance."""
 
+JEV_USD_PER_M_INPUT = 0.042
+
 
 def percentile(values: list[float], q: float) -> float:
     ordered = sorted(values)
@@ -52,7 +54,32 @@ def jevbench_section(bench: list[dict]) -> list[str]:
     ]
 
 
-def summary(records: list) -> str:
+def vllm_section(records: list, usage: dict[str, int]) -> list[str]:
+    """One row per phase: Jev-style usage beside what vLLM prefilled (prompt minus prefix-cache hits)."""
+    lines = [
+        (
+            "| phase | usage input tokens | vLLM prompt tokens | computed tokens | cached % | generation tokens "
+            "| KV peak % | KV mean % | waiting peak | preemptions |"
+        ),
+        "|---|---|---|---|---|---|---|---|---|---|",
+    ]
+    for r in records:
+        prompt, cached = r["prompt_tokens"], r["cached_prompt_tokens"]
+        cached_text = f"{100 * cached / prompt:.1f}" if prompt else "n/a"
+        lines.append(
+            f"| {r['phase']} | {usage.get(r['phase'], 0)} | {prompt} | {prompt - cached} | {cached_text} "
+            f"| {r['generation_tokens']} | {100 * r['kv_peak']:.1f} | {100 * r['kv_mean']:.1f} "
+            f"| {r['waiting_peak']:.0f} | {r['preemptions']} |"
+        )
+    return lines
+
+
+def jev_cost_line(total_tokens: int) -> str:
+    cost = total_tokens * JEV_USD_PER_M_INPUT / 1e6
+    return f"Jev usage: {total_tokens} input tokens, about ${cost:.2f} at ${JEV_USD_PER_M_INPUT} per million."
+
+
+def summary(records: list, jev: bool = False) -> str:
     ok = [r for r in records if "error" not in r]  # error records carry no ms/workers/ttft to tabulate
     lines: list[str] = []
     groups: dict[tuple, list] = {}
@@ -74,6 +101,15 @@ def summary(records: list) -> str:
     if chat:
         lines += ["", "| chat prompt | load | TTFT ms | chunks/s |", "|---|---|---|---|"]
         lines += [f"| {r['prompt']} | {r['load']} | {r['ttft_ms']:.0f} | {r['chunks_per_s']:.1f} |" for r in chat]
+    usage: dict[str, int] = {}  # phase -> summed usage.input_tokens
+    for r in ok:
+        if "input_tokens" in r:
+            usage[r["phase"]] = usage.get(r["phase"], 0) + r["input_tokens"]
+    watched = [r for r in ok if r["test"] == "vllm"]
+    if watched:
+        lines += ["", *vllm_section(watched, usage)]
+    if jev:
+        lines += ["", jev_cost_line(sum(usage.values()))]
     errors = [r for r in records if "error" in r]
     if errors:
         counts: dict[str, int] = {}

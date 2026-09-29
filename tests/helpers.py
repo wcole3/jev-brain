@@ -1,7 +1,9 @@
 """Values shared by tests. Import from here, not from conftest or other test modules."""
 
 import functools
+import json
 
+import httpx
 from transformers import AutoTokenizer
 
 from gateway.config import Settings
@@ -34,3 +36,29 @@ QUICKSTART = {
     "is_urgent": {"type": "noul", "instructions": "The message conveys urgency or time-sensitivity"},
 }
 STATE = "Hi, my Stripe integration keeps failing and I'm losing sales. Please help ASAP."
+
+SSE = b'data: {"choices": []}\n\ndata: [DONE]\n\n'
+
+
+def fake_vllm(request: httpx.Request) -> httpx.Response:
+    """A stand-in vLLM: label logprobs for completions, chat echoed back, and the GET routes the gateway uses."""
+    path = request.url.path
+    if path == "/v1/completions":
+        body = json.loads(request.content)
+        top = {f"token_id:{t}": -0.001 * t for t in body["logprob_token_ids"]}
+        return httpx.Response(
+            200,
+            json={"choices": [{"index": i, "logprobs": {"top_logprobs": [top]}} for i in range(len(body["prompt"]))]},
+        )
+    if path == "/v1/chat/completions":
+        body = json.loads(request.content)
+        if body.get("stream"):
+            return httpx.Response(200, content=SSE, headers={"content-type": "text/event-stream"})
+        return httpx.Response(200, json={"echo": body})
+    if path == "/v1/models":
+        return httpx.Response(200, json={"object": "list", "data": [{"id": "qwen3.6-27b", "object": "model"}]})
+    if path == "/health":
+        return httpx.Response(200)
+    if path == "/version":
+        return httpx.Response(200, json={"version": "0.30.0"})
+    return httpx.Response(404, json={"path": path})

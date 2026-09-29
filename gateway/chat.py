@@ -8,6 +8,10 @@ from starlette.background import BackgroundTask
 
 ALIASES = ("jev-latest", "jev-preview")
 
+# vLLM answers a non-streaming request only once done, which long thinking can push past 600 s.
+# So no read timeout: a client that gives up gets its request cancelled instead (gateway/disconnect.py).
+PROXY_TIMEOUT = httpx.Timeout(600, read=None)
+
 
 def route(body: dict) -> dict:
     """Phase 1: pass through. Phase 3 sets thinking and reasoning_effort from systemone answers."""
@@ -18,9 +22,8 @@ async def proxy(
     client: httpx.AsyncClient, method: str, path: str, content: bytes, params: dict | None = None
 ) -> StreamingResponse:
     """Stream vLLM's response back byte for byte (JSON and SSE alike)."""
-    request = client.build_request(
-        method, path, content=content, params=params, headers={"content-type": "application/json"}
-    )
+    headers = {"content-type": "application/json"}
+    request = client.build_request(method, path, content=content, params=params, headers=headers, timeout=PROXY_TIMEOUT)
     upstream = await client.send(request, stream=True)
     return StreamingResponse(
         upstream.aiter_bytes(),

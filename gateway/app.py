@@ -6,20 +6,24 @@ from contextlib import asynccontextmanager
 
 import httpx
 from fastapi import Depends, FastAPI, HTTPException, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from transformers import AutoTokenizer
 
 from gateway import chat
 from gateway.calibration import load_temperatures
 from gateway.config import Settings
 from gateway.decide import Engine, decide
+from gateway.disconnect import unless_disconnected
 from gateway.labels import load_labels
 from gateway.layouts import load_layouts
 from gateway.prompts import chat_frame
 from gateway.readout import Readout
 from gateway.schema import RequestError, SystemOneRequest
 
-log = logging.getLogger(__name__)
+# uvicorn's logger is the one configured in the container, so INFO lines reach its log.
+log = logging.getLogger("uvicorn.error")
+
+CLIENT_CLOSED_REQUEST = 499  # nginx's status for a client that left; nobody reads it
 
 
 def load_engine(s: Settings, client: httpx.AsyncClient) -> Engine:
@@ -40,6 +44,24 @@ def require_key(request: Request) -> None:
     key = request.app.state.engine.settings.api_key
     if key and request.headers.get("authorization") != f"Bearer {key}":
         raise HTTPException(status_code=401, detail="invalid or missing API key")
+
+
+def error(status: int, message: str) -> JSONResponse:
+    return JSONResponse({"error": {"message": message}}, status_code=status)
+
+
+def client_left(endpoint: str) -> Response:
+    log.info("%s cancelled: client disconnected", endpoint)
+    return Response(status_code=CLIENT_CLOSED_REQUEST)
+
+
+async def json_object(request: Request) -> dict | None:
+    """The body as a JSON object, or None when it is not one."""
+    try:
+        body = await request.json()
+    except ValueError:  # invalid JSON or invalid UTF-8
+        return None
+    return body if isinstance(body, dict) else None
 
 
 async def vllm_version(client: httpx.AsyncClient) -> str | None:
@@ -63,11 +85,15 @@ def create_app(settings: Settings | None = None, transport: httpx.AsyncBaseTrans
 
     @app.exception_handler(RequestError)
     async def refused(request: Request, exc: RequestError):
-        return JSONResponse({"error": {"message": str(exc)}}, status_code=422)
+        return error(422, str(exc))
 
     @app.exception_handler(httpx.TransportError)
     async def vllm_down(request: Request, exc: httpx.TransportError):
-        return JSONResponse({"error": {"message": "model server unavailable"}}, status_code=503)
+        return error(503, "model server unavailable")
+
+    @app.exception_handler(httpx.TimeoutException)
+    async def vllm_slow(request: Request, exc: httpx.TimeoutException):
+        return error(504, "model server timed out")
 
     @app.exception_handler(Exception)
     async def failed(request: Request, exc: Exception):
@@ -99,13 +125,18 @@ def create_app(settings: Settings | None = None, transport: httpx.AsyncBaseTrans
 
     @app.post("/v1/systemone", dependencies=auth)
     async def systemone(body: SystemOneRequest, request: Request):
-        return await decide(request.app.state.engine, body)
+        answer = await unless_disconnected(request, decide(request.app.state.engine, body))
+        return client_left("systemone") if answer is None else answer
 
     @app.post("/v1/chat/completions", dependencies=auth)
     async def chat_completions(request: Request):
-        return await chat.chat_completions(
-            request.app.state.client, await request.json(), request.app.state.engine.settings.served_model
-        )
+        body = await json_object(request)
+        if body is None:
+            return error(400, "request body must be a JSON object")
+        served_model = request.app.state.engine.settings.served_model
+        call = chat.chat_completions(request.app.state.client, body, served_model)
+        upstream = await unless_disconnected(request, call)
+        return client_left("chat") if upstream is None else upstream
 
     @app.get("/v1/models", dependencies=auth)
     async def models(request: Request):
@@ -113,9 +144,10 @@ def create_app(settings: Settings | None = None, transport: httpx.AsyncBaseTrans
 
     @app.api_route("/v1/{path:path}", methods=["GET", "POST"], dependencies=auth)
     async def passthrough(path: str, request: Request):
-        return await chat.proxy(
-            request.app.state.client, request.method, f"/v1/{path}", await request.body(), dict(request.query_params)
-        )
+        content, params = await request.body(), dict(request.query_params)
+        call = chat.proxy(request.app.state.client, request.method, f"/v1/{path}", content, params)
+        upstream = await unless_disconnected(request, call)
+        return client_left("passthrough") if upstream is None else upstream
 
     return app
 

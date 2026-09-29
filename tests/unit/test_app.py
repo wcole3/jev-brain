@@ -1,37 +1,11 @@
 import dataclasses
-import json
 
 import httpx
 import pytest
 from fastapi.testclient import TestClient
 
 from gateway.app import create_app
-from tests.helpers import QUICKSTART, STATE
-
-SSE = b'data: {"choices": []}\n\ndata: [DONE]\n\n'
-
-
-def fake_vllm(request: httpx.Request) -> httpx.Response:
-    path = request.url.path
-    if path == "/v1/completions":
-        body = json.loads(request.content)
-        top = {f"token_id:{t}": -0.001 * t for t in body["logprob_token_ids"]}
-        return httpx.Response(
-            200,
-            json={"choices": [{"index": i, "logprobs": {"top_logprobs": [top]}} for i in range(len(body["prompt"]))]},
-        )
-    if path == "/v1/chat/completions":
-        body = json.loads(request.content)
-        if body.get("stream"):
-            return httpx.Response(200, content=SSE, headers={"content-type": "text/event-stream"})
-        return httpx.Response(200, json={"echo": body})
-    if path == "/v1/models":
-        return httpx.Response(200, json={"object": "list", "data": [{"id": "qwen3.6-27b", "object": "model"}]})
-    if path == "/health":
-        return httpx.Response(200)
-    if path == "/version":
-        return httpx.Response(200, json={"version": "0.30.0"})
-    return httpx.Response(404, json={"path": path})
+from tests.helpers import QUICKSTART, SSE, STATE, fake_vllm
 
 
 @pytest.fixture
@@ -65,6 +39,13 @@ def test_chat_passthrough_plain_and_streaming(client):
     r = client.post("/v1/chat/completions", json=body | {"stream": True})
     assert r.content == SSE
     assert r.headers["content-type"].startswith("text/event-stream")
+
+
+@pytest.mark.parametrize("content", [b"{not json", b"[1, 2]", b"\xff"])
+def test_chat_body_must_be_a_json_object(client, content):
+    r = client.post("/v1/chat/completions", content=content, headers={"content-type": "application/json"})
+    assert r.status_code == 400
+    assert r.json() == {"error": {"message": "request body must be a JSON object"}}
 
 
 def test_chat_maps_jev_aliases_to_served_model(client):
@@ -106,6 +87,19 @@ def test_vllm_down_is_503(qwen_settings):
     with TestClient(create_app(qwen_settings, httpx.MockTransport(down))) as c:
         body = {"state": "s", "questions": {"q": {"type": "noul", "instructions": "ok?"}}}
         assert c.post("/v1/systemone", json=body).status_code == 503
+
+
+def test_vllm_timeout_is_504(qwen_settings):
+    def slow(request):
+        raise httpx.ReadTimeout("slow")
+
+    with TestClient(create_app(qwen_settings, httpx.MockTransport(slow))) as c:
+        body = {"state": "s", "questions": {"q": {"type": "noul", "instructions": "ok?"}}}
+        r = c.post("/v1/systemone", json=body)
+        assert r.status_code == 504
+        assert r.json() == {"error": {"message": "model server timed out"}}
+        chat = {"model": "qwen3.6-27b", "messages": [{"role": "user", "content": "hi"}]}
+        assert c.post("/v1/chat/completions", json=chat).status_code == 504
 
 
 def test_unexpected_error_is_500_with_request_id(qwen_settings, caplog):

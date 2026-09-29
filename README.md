@@ -11,6 +11,21 @@ same loaded model.
 Background research is in [docs/README.md](docs/README.md), the design in
 [docs/superpowers/specs/](docs/superpowers/specs/2026-09-28-systemone-server-design.md).
 
+## Where it stands
+
+JevBench, all 1682 gold rows, exact-match accuracy in %. Stock models, bf16, no
+calibration yet:
+
+| Model | Overall | Choice | Noul | p50 latency |
+|---|---|---|---|---|
+| Jev (`jev-1.13.0`, hosted API) | 91.3 | 92.0 | 95.7 | 194 ms (network included) |
+| gemma-4-31b | 87.1 | 92.1 | 87.5 | 62 ms |
+| qwen3.8-27b | 86.3 | 90.3 | 86.2 | 88 ms |
+| qwen3.6-27b | 84.4 | 91.9 | 83.7 | 89 ms |
+
+Choice is level with Jev; most of the gap is in noul and score. Details and caveats:
+[docs/results/jevbench-vs-jev.md](docs/results/jevbench-vs-jev.md).
+
 ## Requirements
 
 - An NVIDIA GPU with ~96 GB of memory (built on an RTX PRO 6000 Blackwell) and a recent
@@ -18,8 +33,7 @@ Background research is in [docs/README.md](docs/README.md), the design in
 - [uv](https://docs.astral.sh/uv/) for the Python side (tests, scripts). Python 3.12 is
   pinned in `.python-version`.
 - Disk for model weights in `~/.cache/huggingface` (~55–60 GB per model). You download them
-  on the host (below). The containers mount this cache read-only, so weights are shared
-  and the containers never write there.
+  on the host; the containers mount this cache read-only, so they never write there.
 
 ```bash
 uv sync      # install the gateway, scripts and test dependencies
@@ -42,8 +56,8 @@ docker compose --env-file profiles/qwen3.6-27b.env logs -f vllm   # watch the mo
 curl -s localhost:9000/health                                     # {"status":"ok","profile":"qwen3.6-27b",...}
 ```
 
-- The gateway listens on `127.0.0.1:9000` and vLLM on `127.0.0.1:8000`. Clients should
-  talk to the gateway.
+- The gateway listens on `127.0.0.1:9000` and vLLM on `127.0.0.1:8000`. Clients talk to
+  the gateway.
 - A start takes up to ~10 minutes (weight load and graph capture); about 4 when the
   weights are still in memory from a recent run.
 - To switch models, stop the running profile first:
@@ -53,13 +67,9 @@ curl -s localhost:9000/health                                     # {"status":"o
   docker compose --env-file profiles/gemma-4-31b.env up -d --build
   ```
 
-- Optional settings:
-  - `GATEWAY_API_KEY` (in your shell or a git-ignored `.env`) requires
-    `Authorization: Bearer <key>` on the gateway.
-  - `HF_TOKEN` raises Hugging Face rate limits for `fetch_model.py`.
-  - vLLM's own port stays unauthenticated; binding to loopback is the protection.
-- Older setups let the vLLM container write root-owned files into the cache. If host tools
-  report `Permission denied` there, fix it once with `sudo chown -R $USER: ~/.cache/huggingface`.
+- `HF_TOKEN` in your shell raises Hugging Face rate limits for `fetch_model.py`.
+- If host tools report `Permission denied` in the HF cache (older setups let the vLLM
+  container write there as root), fix it once with `sudo chown -R $USER: ~/.cache/huggingface`.
 
 ### Try it
 
@@ -78,13 +88,59 @@ curl -sN localhost:9000/v1/chat/completions -H 'content-type: application/json' 
 ```
 
 The official TypeSafe SDK works against the gateway too:
-`TypeSafeClient(api_key="local", base_url="http://127.0.0.1:9000", timeout=120)`.
 
-- The SDK's default timeout is 10 s, and it retries twice on timeouts and 5xx errors.
-- Large requests (many questions × many options, long states) can take longer, so raise
-  `timeout`.
-- When a client gives up, the gateway cancels its work and vLLM stops too, so retries
-  don't pile up on the GPU.
+```python
+TypeSafeClient(api_key="local", base_url="http://127.0.0.1:9000", timeout=120)
+```
+
+- **Timeout:** the SDK's default is 10 s, and it retries twice on timeouts and 5xx
+  errors. Large requests (many questions × many options, long states) can take longer,
+  so raise `timeout`.
+- **Abandoned requests:** when a client gives up, the gateway cancels its work and vLLM
+  stops too, so retries don't pile up on the GPU.
+
+### Errors
+
+Every error body is `{"error": {"message": "..."}}`.
+
+| Status | When |
+|---|---|
+| 400 | Chat body is not a JSON object |
+| 401 | Missing or wrong gateway key (with `WWW-Authenticate: Bearer`) |
+| 404 / 405 | Unknown path or method |
+| 422 | Invalid request, or over a capacity limit (too many options, levels or tokens) |
+| 499 | The client disconnected; the work was cancelled (nobody receives this) |
+| 500 | Unexpected error; the message carries a `request_id` for the gateway log |
+| 503 / 504 | vLLM is unreachable / timed out |
+
+## Security
+
+The defaults suit a single workstation: both ports bind to `127.0.0.1` and no keys are
+needed.
+
+- **`GATEWAY_API_KEY`:** requires `Authorization: Bearer <key>` on the gateway's `/v1/*`.
+  `/health` stays open.
+- **`VLLM_API_KEY`:** vLLM then requires that key on its own `/v1/*`, and the gateway sends
+  it automatically. vLLM's `/health`, `/metrics`, `/version` and `/tokenize` stay open,
+  so never publish port 8000 beyond loopback.
+- **Where to set them:** in your shell, or in a git-ignored `.env` passed as a second env
+  file. A `.env` alone is ignored when `--env-file` is given:
+
+  ```bash
+  docker compose --env-file profiles/qwen3.6-27b.env --env-file .env up -d --build
+  ```
+
+- **Already in place:**
+  - API docs (`/docs`, `/openapi.json`) are off.
+  - The passthrough never forwards the client's `Authorization` to vLLM.
+  - Keys never appear in logs.
+  - Images are pinned by digest.
+  - Both services restart on failure (up to 3 times) but not at boot, so the stack never
+    grabs the GPU on its own.
+- **Before exposing the gateway beyond localhost:**
+  - set both keys;
+  - publish only the gateway port (edit its `127.0.0.1:9000:9000` binding);
+  - put a TLS proxy in front, since the gateway speaks plain HTTP.
 
 ## Tests
 
@@ -93,21 +149,22 @@ The official TypeSafe SDK works against the gateway too:
 | Unit tests | `uv run pytest -q` | CPU only. Downloads tokenizers once. |
 | One test | `uv run pytest tests/unit/test_prompts.py::test_rows_share_the_reported_prefix -q` | CPU |
 | Parity with decider | `uv run pytest tests/parity -q` | CPU. Committed fixtures. |
-| Live end-to-end | `uv run pytest -m live tests/live -v` | A running stack |
+| Live end-to-end | `uv run pytest -m live tests/live -v` | A running, idle stack |
 | Lint | `uv run ruff check .` | |
 
-- Live tests cover:
+- **Live tests cover:**
   - the official SDK quickstart;
   - capacity limits (422 errors);
   - streaming chat with reasoning;
   - answer stability under chat load;
-  - prefix-cache hits.
-- Live tests target `GATEWAY_URL` (default `http://127.0.0.1:9000`) and `VLLM_URL`
-  (default `http://127.0.0.1:8000`). They skip if the gateway isn't up.
-- The parity test proves the default `decider_chat` prompt layout reproduces decider's
-  tokens exactly.
-- To regenerate its fixtures (rarely needed), use a separate venv, because decider pins
-  `numpy<2`:
+  - prefix-cache hits;
+  - vLLM stopping work when a client gives up.
+- **Targets:** `GATEWAY_URL` (default `http://127.0.0.1:9000`) and `VLLM_URL` (default
+  `http://127.0.0.1:8000`). The tests skip if the gateway isn't up, and send
+  `GATEWAY_API_KEY` when it is set.
+- **Parity test:** proves the default `decider_chat` prompt layout reproduces decider's
+  tokens exactly. To regenerate its fixtures (rarely needed), use a separate venv, because
+  decider pins `numpy<2`:
 
   ```bash
   uv venv .cache/decider-venv
@@ -140,10 +197,11 @@ uv run python scripts/bench.py --target jev                           # JevBench
   ordinal score rows. A failed request counts as a wrong answer, as upstream does.
 - **`--chat` is on demand** until chat/decision contention is fixed (DS-007).
 - **`--profile` must match the running gateway**; the bench refuses otherwise. It sends
-  `GATEWAY_API_KEY` when set, as do the live tests.
-- **Results** go to `docs/results/<profile>/<date>[-quick][-jevbench]/`: `raw.jsonl` with
-  every request, and `summary.md` with provenance (commit, model revision, layout, vLLM
-  version, JevBench SHA) and the tables.
+  `GATEWAY_API_KEY` when set.
+- **Results** go to `docs/results/<profile>/<date>[-quick][-jevbench]/`:
+  - `raw.jsonl` with every request;
+  - `summary.md` with provenance (commit, model revision, layout, vLLM version, JevBench
+    SHA) and the tables.
 
 ### Against the official Jev API
 
@@ -156,7 +214,6 @@ gateway runs.
   `.cache/jev-results/`.
 - **Terms:** TypeSafe's terms forbid using Jev outputs to train or calibrate a similar
   model. Never feed them into calibration or prompt tuning.
-- **Latest comparison:** [docs/results/jevbench-vs-jev.md](docs/results/jevbench-vs-jev.md).
 
 ## When you change prompts or tokenizers
 

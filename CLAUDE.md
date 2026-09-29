@@ -1,117 +1,82 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+**jev-brain:** one vLLM process serves OpenAI chat and a Jev-compatible `/v1/systemone`
+decision endpoint from the same model, behind a small FastAPI gateway.
 
-## What this repo is
-
-**jev-brain**: a single-GPU inference server where one vLLM process serves normal OpenAI chat **and**
-a Jev-compatible `/v1/systemone` decision endpoint from the same loaded model, plus
-scripts to calibrate, evaluate and benchmark the decision path.
-
-Background research (read before designing anything): `docs/README.md`. Key docs:
-- `docs/1-what-is-jev.md`: the Jev wire format we must match.
-- `docs/5-combined-server.md`: chosen architecture and engine pitfalls.
-- `docs/6-answer-compatibility.md`: exact answer semantics and `confidence` formulas.
-
-Plan and task tracking live in DoStuff tickets (use the `dostuff-tickets` skill).
-Design specs go in `docs/superpowers/specs/`.
-
-## Commands
-
-- Install: `uv sync`
-- Unit tests (CPU): `uv run pytest -q`; a single test: `uv run pytest tests/unit/test_prompts.py::test_rows_share_the_reported_prefix -q`
-- Parity with decider: `uv run pytest tests/parity -q` (fixtures from `scripts/decider_fixtures.py`, run in `.cache/decider-venv`)
-- Live tests (stack running): `uv run pytest -m live tests/live -v`
-- Lint: `uv run ruff check .`
-- Label tables (after any tokenizer or `prompts/*.toml` change): `uv run python scripts/build_labels.py --profile <p>`
-- Download a model (host, once): `uv run python scripts/fetch_model.py --profile <p>`. vLLM mounts the HF cache read-only and offline, so it can't download or write there.
-- Run a model: `docker compose --env-file profiles/<p>.env up -d --build` (compose project is pinned to `jev-brain`; gateway :9000, vLLM :8000). Switching models: `docker compose --env-file profiles/<old>.env down` first.
-- Benchmark: `uv run python scripts/bench.py --profile <p> [--quick] [--jevbench-only] [--chat]` — the default measures only `/v1/systemone`; `--chat` adds chat alone + chat under systemone load (on demand until DS-007 is fixed).
-- Jev reference: `uv run python scripts/bench.py --target jev` (key from `TYPESAFE_API_KEY` or `secrets/.jev-key`). Jev per-row answers stay in `.cache/jev-results/`; never use them for calibration or prompt tuning.
-- Stage explicit paths when committing (`git add <paths>`), never `git add -A` — generated label tables and bench results are committed deliberately per profile.
-
-## Architecture
-
-- `gateway/decide.py` is the whole `/v1/systemone` flow, in order:
-  1. `questions.render_question` turns each question into option texts;
-  2. `orders.option_orders` chooses the option orders;
-  3. `prompts.build_rows` builds the token ids piecewise (chat frame + layout parts);
-  4. `readout.Readout` asks vLLM `/v1/completions` with `max_tokens=1` and `logprob_token_ids`;
-  5. `calibration.softmax` applies the temperature;
-  6. `orders.average_back` maps probabilities back to the caller's options;
-  7. `answers.answer` builds the Jev answer.
-- Prompt wording lives only in `prompts/<layout>.toml`. Editing it requires rebuilding the labels (the gateway refuses stale hashes) and refitting temperatures.
-- `chat.route()` is the phase-3 hook where systemone answers will steer chat requests.
+- **Running, testing, benchmarking, security:** `README.md`.
+- **Research:** `docs/README.md`. Jev wire format in `docs/1-what-is-jev.md`, answer
+  semantics and `confidence` formulas in `docs/6-answer-compatibility.md`.
+- **Tickets:** DoStuff (`dostuff-tickets` skill).
+- **Specs:** `docs/superpowers/specs/`.
 
 ## Working conventions (from the repo owner)
 
-- Code must read like a tutorial: small focused files, obvious names, and a flow that
-  can be explained quickly. Never trade correctness or performance for this.
+- Code reads like a tutorial: small focused files, obvious names, a flow that can be
+  explained quickly. Never trade correctness or performance for this.
 - Comments: at most two lines. Needing more means the code is too complex; simplify it.
-- Commit messages: caveman style (`caveman:caveman-commit` skill), Conventional Commits,
-  subject ≤ 50 chars.
+- Commits:
+  - caveman style (`caveman:caveman-commit` skill), Conventional Commits, subject ≤ 50
+    chars;
+  - stage explicit paths, never `git add -A`: label tables and bench results are committed
+    deliberately per profile.
 - Ask the owner when unsure or when a decision is theirs to make.
-- Orchestration: the main agent plans, delegates and reviews all code. Routine,
-  well-specified tasks go to Sonnet subagents; complex or subtle work goes to Opus
-  subagents.
+- Orchestration: the main agent plans, delegates and reviews all code. Routine tasks go to
+  Sonnet subagents; complex or subtle work goes to Opus subagents.
 - Web research: Firecrawl CLI; raw output goes in `.firecrawl/` (git-ignored).
 
-## Hard-won facts (verified during research, Sept 2026)
+## Commands
 
-- **Decision readout:** render each question with the model's chat template (thinking
-  off), end at the answer slot (`Answer: (`), then call vLLM `/v1/completions` with
-  `max_tokens: 1`, `temperature: 0`, `logprob_token_ids: [letter ids]`,
-  `return_tokens_as_token_ids: true`. Softmax the returned logprobs over the letters,
-  divided by a fitted temperature.
-- **Where vLLM returns the label logprobs:**
-  `choices[i].logprobs.top_logprobs[0]["token_id:<id>"]`.
-- **Letters must be single tokens *in context*:** `scripts/build_labels.py` checks that
-  `encode(prompt + "A") == encode(prompt) + [id_A]`. Gateway startup only verifies the
-  stored tokenizer and layout hashes, not this in-context property.
-- **Jev answer contract:**
-  - `noul` is a float P(true) with no `confidence` field.
-  - `score` is the probability-weighted level, with a `legend`.
-  - `confidence` uses TypeSafe's formulas: choice `(p_max − 1/K)/(1 − 1/K)`; score is
-    mode-distance based. See `typesafe-ai/system-one-adapter-python`, file
-    `confidence_metrics.py`.
-- **vLLM limits and open bugs:**
-  - `logprob_token_ids` is capped at 128 ids per request (`MAX_LOGPROB_TOKEN_IDS`).
-  - Speculative decoding plus label scoring can crash vLLM (issue #42592).
-  - Top-k logprobs of co-batched requests can become `-inf` (PR #51789).
-  - LoRA may be a silent no-op on Qwen3.5/3.6 hybrid models (issue #49354).
-- **Do not use SGLang for mixed chat and decision traffic:** its scheduler crashes on
-  mixed logprob batches (issue #34719).
-- **Temperature is tied to one setup.** A fitted temperature is valid only for one
-  model + precision + prompt layout. Refit after any change.
-- **Never train or calibrate on Jev API outputs.** TypeSafe's customer agreement forbids
-  distillation and imitation. Calibrate on labelled public or our own data.
-- `--max-num-seqs 256` is required: vLLM's default 1024 exceeds the hybrid Qwen models'
-  Mamba cache blocks (638 at 0.90) and startup fails.
-- vLLM 0.30 streams thinking tokens in the delta key `reasoning` (older versions
-  `reasoning_content`).
-- Systemone decisions are bf16-noisy under load: probabilities can move ~0.03 (one bf16
-  logit step); the live stability test allows 0.05 and requires the top answer to hold
-  when the top-two gap > 0.10.
-- Decision prefill starves chat decode on the shared GPU (DS-007); priority scheduling
-  alone fixes TTFT, not decode — see `docs/appendix/ds007-scheduling.md`.
-- Hybrid Qwen prefix caching is 784-token block granular (DS-008).
-- The gateway cancels systemone, non-streaming chat and passthrough work when the client
-  disconnects (`gateway/disconnect.py`), and vLLM then aborts. vLLM 0.30 doesn't count
-  client aborts in `request_success_total` (not even as `abort`); watch
-  `num_requests_running`/`waiting` instead.
-- typesafe-sdk 0.7.2 defaults to a 10 s timeout and 2 retries on timeouts, connection
-  errors, 408, 429 and 5xx. Large requests need `TypeSafeClient(timeout=...)`.
-- Encode many short texts in one tokenizer call (`prompts.encode_each`). Per-call overhead
-  in transformers once cost 1–2.7 s on 64×255-option requests.
-- Gemma 4 31B leaves only ~50k KV tokens (1.5x concurrency at 32k). The vision tower is
-  not the cause: `--language-model-only` measured 49.8k vs 50.5k with vision (DS-011).
-  Its per-token KV is large (50 sliding + 10 full-attention layers); an fp8 KV cache is
-  the lever, tracked in DS-005.
+`uv run pytest -q` (unit), `uv run pytest tests/parity -q`, `uv run pytest -m live tests/live -v`
+(stack up and idle), `uv run ruff check .`. Everything else is in `README.md`.
+
+## Architecture
+
+- `gateway/decide.py` is the whole `/v1/systemone` flow, one module per step:
+  1. `questions.render_question`
+  2. `orders.option_orders`
+  3. `prompts.build_rows` (token ids built piecewise, like decider)
+  4. `readout.Readout` (vLLM `/v1/completions`, `max_tokens=1`, `logprob_token_ids`)
+  5. `calibration.softmax`
+  6. `orders.average_back`
+  7. `answers.answer`
+- **Prompt wording** lives only in `prompts/<layout>.toml`. Editing it means rebuilding
+  label tables (the gateway refuses stale hashes) and refitting temperatures.
+- **Other gateway pieces:**
+  - `chat.route()` is the phase-3 hook where systemone answers will steer chat;
+  - `disconnect.py` cancels abandoned work so vLLM aborts it.
+
+## Easy to get wrong
+
+- **Never train, calibrate or tune on Jev API outputs** (TypeSafe's terms forbid it).
+  - Use JevBench gold labels or our own data.
+  - Jev's per-row answers stay in `.cache/jev-results/`.
+- **Temperatures:** a fitted temperature is valid for one model + precision + layout.
+  Accuracy doesn't depend on it, and it can't fix a yes/no bias.
+- **Label letters** must be single tokens *in context*. `scripts/build_labels.py` checks
+  this; gateway startup only checks hashes.
+- **vLLM limits and bugs:**
+  - `logprob_token_ids` takes ≤128 ids per request;
+  - no speculative decoding/MTP with label scoring (#42592);
+  - co-batched top-k logprobs can be `-inf` (#51789);
+  - LoRA can be a silent no-op on Qwen hybrids (#49354);
+  - `--max-num-seqs 256` is required for hybrid Qwen (Mamba cache blocks);
+  - vLLM 0.30 streams thinking in the delta key `reasoning`.
+- **SGLang:** don't use it for mixed chat + decision traffic (#34719).
+- **bf16 noise:** decision probabilities move ~0.03 under load. The stability test allows
+  0.05 and needs the top answer to hold when the top-two gap > 0.10.
+- **Chat contention:** decision prefill starves chat decode (DS-007).
+- **Prefix cache:** hybrid Qwen prefix caching is 784-token granular (DS-008).
+- **Tokenizer calls:** encode many short texts in one call (`prompts.encode_each`); the
+  per-call overhead in transformers dominates.
+- **Abort metrics:** client aborts don't appear in vLLM's `request_success_total`; watch
+  the `num_requests_running`/`waiting` gauges.
+- **Gemma 4 31B** is KV-bound at ~50k tokens with or without the vision tower. An fp8 KV
+  cache is the lever (DS-005).
 
 ## Environment
 
 - 1× RTX PRO 6000 Blackwell (96 GB, sm_120), WSL2, CUDA 13.x.
-- Owner's other projects run vLLM via Docker Compose on `vllm/vllm-openai` images, with
-  ports bound to `127.0.0.1` and the HF token passed as a secret.
-- vLLM's port 8000 is unauthenticated even when `GATEWAY_API_KEY` is set; loopback-only
-  binding is the protection.
+- Weights are fetched on the host (`scripts/fetch_model.py`). Containers mount the HF
+  cache read-only and offline.
+- Ports bind to `127.0.0.1`. vLLM's `/health`, `/metrics`, `/version` and `/tokenize` stay
+  open even with `VLLM_API_KEY`, so port 8000 must never be published (DS-012 waiver).

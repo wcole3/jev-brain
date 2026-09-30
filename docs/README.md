@@ -44,6 +44,7 @@ relying on the numbers.
 | 6 | [Same answers as Jev?](6-answer-compatibility.md) | Source-code audit of answer shapes, `noul`, and `confidence` across ~25 servers |
 | – | [Sources](sources.md) | Links, plus open engine bugs to track |
 | – | [Appendix](appendix/) | Detailed research notes with citations |
+| – | [Background](background/) | Deep dives on how jev-brain works, with our measurements |
 
 ## Glossary
 

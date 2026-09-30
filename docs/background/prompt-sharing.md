@@ -253,6 +253,54 @@ harmless whitespace, while one next to the question or inside the context sits w
 model is looking. A fourth idea, spreading the pads through the state, moved 8.6% and was
 dropped.
 
+## 7. The warm-up call, per model
+
+A systemone request becomes N rows that share a long prefix. For vLLM to compute that prefix
+only once, some row has to compute it first and leave it in the prefix cache before the others
+look it up. That is what the **warm-up** does: the gateway sends one call first and the rest
+after. Whether that helps depends entirely on how the model's cache decides what is reusable.
+
+```
+WARM_UP=row   request ──► call 1: row 1 alone ──► call 2: rows 2..N together
+WARM_UP=off   request ──► call 1: rows 1..N together
+```
+
+It is set per profile ([`readout.py`](../../gateway/readout.py), `WARM_UP` and
+`WARM_MIN_PREFIX_TOKENS`); the row warm-up only happens when there is more than one row and
+the shared prefix is at least `WARM_MIN_PREFIX_TOKENS` long.
+
+| Profile | Setting | Why |
+|---|---|---|
+| qwen3.6 / qwen3.8 | `WARM_UP=row`, threshold 784, front padding | Recurrent layers need a saved state at the prefix end |
+| gemma-4-31b | `WARM_UP=off` plus vLLM `--prefix-cache-retention-interval 32` | Sliding-window blocks must be hashed densely; then no warm-up is fastest |
+
+**Qwen (hybrid, recurrent layers).** vLLM saves a recurrent-state checkpoint only at the last
+784-token boundary of a prefill. Row 1 is the padded prefix plus its question (~480 tokens,
+less than one block), so its last boundary is exactly the end of the padded prefix: every later
+row resumes from there. Rows sent together without a warm-up can't reuse each other, because
+no one has saved that checkpoint yet. Warming with the *prefix alone* was tried and did worse
+(1.47× instead of 1.05×; [DS-008](../results/experiments/ds-008/README.md)).
+
+**Gemma (sliding-window layers).** 50 of its 60 layers only look back 1,024 tokens, and by
+default vLLM 0.30 hashes (makes reusable) their cache blocks only at the end of each prompt.
+A row-1 warm-up therefore leaves reusable blocks around row 1's *end*, past the shared prefix,
+where no sibling can use them. Measured directly: after the row-1 warm-up, row 2 reused **0**
+tokens. With `--prefix-cache-retention-interval 32`, vLLM hashes those blocks along the whole
+prompt, and blocks are registered as soon as they are allocated, so rows sent together in one
+call can already share the prefix. The extra serial warm-up call then only adds latency:
+
+| Gemma, `--quick`, 16 clients | Computed ÷ usage | Req/s | Cold p50 2048×16×26 |
+|---|---|---|---|
+| Row warm-up, default vLLM (before) | 1.71 | 0.5 | 1,660 ms |
+| Prefix-only warm-up | 1.55 | 0.5 | 1,305 ms |
+| Retention 32 + prefix / row warm-up | 1.36 / 1.38 | 0.6 | ~1,350 ms |
+| **Retention 32, no warm-up (adopted)** | **1.00** | **0.8** | **1,286 ms** |
+
+**Rule of thumb for a new model:** measure, don't guess. Send one multi-question request
+straight to vLLM and read `vllm:prompt_tokens_cached_total` around each call: does row 2 reuse
+the prefix after the warm-up call, and do rows sent together reuse each other? Details and the
+vLLM source references: [DS-015](../results/experiments/ds-015/README.md).
+
 ## Caveats
 
 - **Server-wide counters:** vLLM's counters count all traffic, so these numbers assume

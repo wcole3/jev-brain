@@ -113,6 +113,12 @@ Notes:
   - report the max |Δp| and any flipped answers;
   - log the raw letter logprobs to confirm the gaps move in bf16 steps.
 
+**Gemma is the least stable of our models.** On a few near-saturated rows its answer can swing
+between two identical asks on an idle server (invoice 1168: `yes` 0.50, then `no` 0.73), and
+flips of rows with a large top-two gap happen between runs without any setting change
+([DS-015](../results/experiments/ds-015/README.md)). A large-gap flip on Gemma is therefore
+weaker evidence of a bug than on Qwen.
+
 ## 4. Deterministic modes, and what they cost
 
 | Option | What it removes | Published cost | Fits us? |

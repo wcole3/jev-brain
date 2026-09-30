@@ -19,7 +19,7 @@ fitted yet. Accuracy in %; ECE is calibration error (lower is better):
 | Model | Overall | Choice | Noul | ECE | p50 latency |
 |---|---|---|---|---|---|
 | Jev (`jev-1.13.0`, hosted API) | 91.2 | 92.0 | 95.7 | 0.028 | 152 ms (network included) |
-| gemma-4-31b | 87.2 | 92.3 | 87.5 | 0.126 | 58 ms |
+| gemma-4-31b | 87.0 | 91.9 | 87.5 | 0.126 | 63 ms |
 | qwen3.8-27b | 86.4 | 90.4 | 86.2 | 0.033 | 81 ms |
 | qwen3.6-27b | 84.3 | 91.9 | 83.5 | 0.053 | 83 ms |
 

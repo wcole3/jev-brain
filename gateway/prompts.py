@@ -7,7 +7,6 @@ from gateway.labels import NARROW, Labels
 from gateway.layouts import Layout
 from gateway.padding import OFF, Padding
 from gateway.questions import Rendered
-from gateway.spread import spread
 
 SENTINEL = "@@USER_CONTENT@@"
 CLOSE_THINKING = {"<think>\n": "</think>\n\n", "<think>": "</think>\n\n", "<|channel>thought\n": "<channel|>"}
@@ -92,21 +91,21 @@ def joined(parts: dict[str, list[int]], names: list[str]) -> list[int]:
 
 def pad_site(
     tok, frame: ChatFrame, layout: Layout, parts: dict[str, list[int]], state: str, mode: str
-) -> tuple[list[int], list[int], list[int]] | None:
-    """The shared prefix cut in three, the pad spread through the middle piece (one run where it is empty): after the
-    chat head (front), after the last shared part (end), before the state (middle) or through it (spread)."""
+) -> tuple[list[int], list[int]] | None:
+    """The shared prefix cut where the pad goes: after the chat head (front), after the last shared part (end)
+    or between the context label and the state (middle). None when the layout has no such place."""
+    # Spreading pads through the state was tried and dropped: 8.6% answer flips (docs/results/experiments/ds-008).
     shared = shared_parts(layout)
     if mode == "front":
-        return frame.head, [], joined(parts, shared)
+        return frame.head, joined(parts, shared)
     if mode == "end":
-        return frame.head + joined(parts, shared), [], []
-    if mode in ("middle", "spread") and "context" in shared:
+        return frame.head + joined(parts, shared), []
+    if mode == "middle" and "context" in shared:
         # label and state are encoded apart around the pad, so tokens at their join may differ from one encode
         label, after = layout.context.format(state=SENTINEL).split(SENTINEL)
         at = shared.index("context")
         before = frame.head + joined(parts, shared[:at]) + encode(tok, label)
-        state_ids, rest = encode(tok, state + after), joined(parts, shared[at + 1 :])
-        return (before, [], state_ids + rest) if mode == "middle" else (before, state_ids, rest)
+        return before, encode(tok, state + after) + joined(parts, shared[at + 1 :])
     return None
 
 
@@ -117,10 +116,10 @@ def shared_prefix(
     plain = frame.head + joined(parts, shared_parts(layout))
     site = pad_site(tok, frame, layout, parts, state, padding.mode) if padding.enabled else None
     if site is not None:
-        before, middle, after = site
-        pad = padding.size(len(before) + len(middle) + len(after))
+        before, after = site
+        pad = padding.size(len(before) + len(after))
         if padding.pays(rows, len(plain), pad):
-            return before + spread(tok, middle, pad, padding.token) + after, len(plain)
+            return before + [padding.token] * pad + after, len(plain)
     return plain, len(plain)
 
 

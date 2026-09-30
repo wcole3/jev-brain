@@ -173,6 +173,11 @@ Notes:
   [ds007-scheduling.md §6a](../appendix/ds007-scheduling.md). This table is now the cost
   side: aim for computed ÷ usage of ~1.0–1.1 in the throughput phases.
 
+**Outcome (DS-008, 2026-09-30):** front padding is adopted on both Qwen profiles. Measured:
+computed ÷ usage 2.67 → 1.05, 0.5 → 1.1 req/s, cold p50 2,389 → 982 ms, with 1.4% of JevBench
+answers changed in a worst-case test. `--mamba-block-size` was confirmed to be ignored. Full results:
+[experiments/ds-008](../results/experiments/ds-008/README.md).
+
 ## Caveats
 
 - **Server-wide counters:** vLLM's counters count all traffic, so these numbers assume

@@ -13,15 +13,15 @@ Background research is in [docs/README.md](docs/README.md), the design in
 
 ## Where it stands
 
-JevBench, all 1682 gold rows, exact-match accuracy in %. Stock models, bf16, no
-temperatures of our own fitted yet:
+JevBench, all 1682 gold rows, 2026-09-30. Stock models, bf16, no temperatures of our own
+fitted yet. Accuracy in %; ECE is calibration error (lower is better):
 
-| Model | Overall | Choice | Noul | p50 latency |
-|---|---|---|---|---|
-| Jev (`jev-1.13.0`, hosted API) | 91.3 | 92.0 | 95.7 | 194 ms (network included) |
-| gemma-4-31b | 87.1 | 92.1 | 87.5 | 62 ms |
-| qwen3.8-27b | 86.3 | 90.3 | 86.2 | 88 ms |
-| qwen3.6-27b | 84.4 | 91.9 | 83.7 | 89 ms |
+| Model | Overall | Choice | Noul | ECE | p50 latency |
+|---|---|---|---|---|---|
+| Jev (`jev-1.13.0`, hosted API) | 91.2 | 92.0 | 95.7 | 0.028 | 152 ms (network included) |
+| gemma-4-31b | 87.2 | 92.3 | 87.5 | 0.126 | 58 ms |
+| qwen3.8-27b | 86.4 | 90.4 | 86.2 | 0.033 | 81 ms |
+| qwen3.6-27b | 84.3 | 91.9 | 83.5 | 0.053 | 83 ms |
 
 Choice is level with Jev; most of the gap is in noul and score. Details and caveats:
 [docs/results/jevbench-vs-jev.md](docs/results/jevbench-vs-jev.md).

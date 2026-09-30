@@ -88,3 +88,10 @@ def prediction(answer: dict) -> str:
         return "yes" if answer["noul"] >= 0.5 else "no"
     probs = answer.get("probabilities")  # upstream's fallback: round the weighted level
     return max(probs, key=probs.get) if probs else str(round(answer["score"]))
+
+
+def probabilities(answer: dict) -> dict[str, float]:
+    """The answer's distribution, keyed like the gold label."""
+    if answer["type"] == "noul":
+        return {"yes": answer["noul"], "no": 1 - answer["noul"]}
+    return answer["probabilities"]

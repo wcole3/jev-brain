@@ -54,6 +54,49 @@ def jevbench_section(bench: list[dict]) -> list[str]:
     ]
 
 
+def ece(rows: list[dict], bins: int = 15) -> float:
+    """Expected calibration error: confidence is the probability of the predicted answer."""
+    buckets: list[list[tuple[float, bool]]] = [[] for _ in range(bins)]
+    for r in rows:
+        confidence = max(r["probabilities"].values())
+        buckets[min(int(confidence * bins), bins - 1)].append((confidence, r["correct"]))
+    return sum(
+        len(b) / len(rows) * abs(sum(conf for conf, _ in b) / len(b) - sum(ok for _, ok in b) / len(b))
+        for b in buckets
+        if b
+    )
+
+
+def brier(rows: list[dict]) -> float:
+    """Mean squared distance from the one-hot gold; a gold key missing from the answer counts as p = 0."""
+    total = 0.0
+    for r in rows:
+        p = r["probabilities"]
+        total += sum((x - (k == r["gold"])) ** 2 for k, x in p.items()) + (r["gold"] not in p)
+    return total / len(rows)
+
+
+def calibration_section(bench: list[dict]) -> list[str]:
+    """ECE, Brier and the noul yes/no bias; empty for runs recorded without probabilities."""
+    rows = [r for r in bench if "error" not in r and "probabilities" in r]
+    if not rows:
+        return []
+    noul = of_type(rows, "noul")
+    said_yes = sum(r["pred"] == "yes" for r in noul)
+    gold_yes = sum(r["gold"] == "yes" for r in noul)
+    false_no = sum(r["gold"] == "yes" and r["pred"] == "no" for r in noul)
+    false_yes = sum(r["gold"] == "no" and r["pred"] == "yes" for r in noul)
+
+    def share(n: int) -> str:
+        return f"{100 * n / len(noul):.1f}" if noul else "n/a"
+
+    return [
+        "| ECE (15 bins) | Brier | noul said-yes % | noul gold-yes % | noul false-no | noul false-yes |",
+        "|---|---|---|---|---|---|",
+        f"| {ece(rows):.3f} | {brier(rows):.3f} | {share(said_yes)} | {share(gold_yes)} | {false_no} | {false_yes} |",
+    ]
+
+
 def vllm_section(records: list, usage: dict[str, int]) -> list[str]:
     """One row per phase: Jev-style usage beside what vLLM prefilled (prompt minus prefix-cache hits)."""
     lines = [
@@ -97,6 +140,8 @@ def summary(records: list, jev: bool = False) -> str:
     bench = [r for r in records if r["test"] == "jevbench"]
     if bench:
         lines += ["", *jevbench_section(bench)]
+        if calibration := calibration_section(bench):
+            lines += ["", *calibration]
     chat = [r for r in ok if r["test"] == "chat"]
     if chat:
         lines += ["", "| chat prompt | load | TTFT ms | chunks/s |", "|---|---|---|---|"]

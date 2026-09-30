@@ -18,7 +18,14 @@ import httpx
 from transformers import AutoTokenizer
 
 from gateway.config import ROOT, Settings
-from scripts.bench_data import JEVBENCH_SHA, jevbench_request, jevbench_rows, prediction, synthetic_request
+from scripts.bench_data import (
+    JEVBENCH_SHA,
+    jevbench_request,
+    jevbench_rows,
+    prediction,
+    probabilities,
+    synthetic_request,
+)
 from scripts.bench_report import provenance, summary
 from scripts.bench_vllm import Vllm
 
@@ -113,6 +120,11 @@ async def throughput(client, tok, rng, workers: int, seconds: int, records: list
     )
 
 
+def run_suffix(started: datetime.datetime, quick: bool, jevbench_only: bool) -> str:
+    """UTC start time, e.g. 2026-09-29T210957Z-quick."""
+    return started.strftime("%Y-%m-%dT%H%M%SZ") + ("-quick" if quick else "") + ("-jevbench" if jevbench_only else "")
+
+
 async def jevbench(client, rows: list[dict], records: list) -> None:
     for row in rows:
         body, gold = jevbench_request(row)
@@ -128,8 +140,12 @@ async def jevbench(client, rows: list[dict], records: list) -> None:
         except httpx.HTTPError as e:
             records.append(record | {"gold": gold, "pred": None, "correct": False, "error": type(e).__name__})
             continue
-        pred = prediction(out["answers"]["q"])
+        answer = out["answers"]["q"]
+        pred = prediction(answer)
         result = {"gold": gold, "pred": pred, "correct": pred == gold, "ms": ms, "model": out.get("model")}
+        result |= {"probabilities": probabilities(answer)}
+        if "confidence" in answer:
+            result["confidence"] = answer["confidence"]
         records.append(record | result | {"input_tokens": out["usage"]["input_tokens"]})
 
 
@@ -206,8 +222,8 @@ async def main(args) -> None:
     jev, revision = args.target == "jev", git_revision()
     jevbench_only = jev or args.jevbench_only
     base_url, headers = connection(args)
-    started = datetime.datetime.now().astimezone()
-    suffix = started.date().isoformat() + ("-quick" if args.quick else "") + ("-jevbench" if jevbench_only else "")
+    started = datetime.datetime.now(datetime.UTC)
+    suffix = run_suffix(started, args.quick, jevbench_only)
     grid, rng = (QUICK if args.quick else FULL), random.Random(0)
     records: list = []
     vllm = None if jev else Vllm(args.vllm, records)

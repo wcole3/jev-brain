@@ -1,6 +1,6 @@
 import pytest
 
-from scripts.bench_report import provenance, qwk, summary
+from scripts.bench_report import brier, calibration_section, ece, provenance, qwk, summary
 
 
 def bench_row(kind: str, correct: bool, metric: str = "exact", gold: str = "0", pred: str | None = "0") -> dict:
@@ -129,3 +129,59 @@ def test_jev_summary_reports_input_tokens_and_cost():
     records = [{**bench_row("choice", True), "phase": "jevbench", "input_tokens": 500_000}]
     assert "Jev usage: 500000 input tokens, about $0.02 at $0.042 per million." in summary(records, jev=True)
     assert "Jev usage" not in summary(records)
+
+
+def prob_row(kind: str, gold: str, pred: str, p: dict, correct: bool | None = None) -> dict:
+    row = bench_row(kind, pred == gold if correct is None else correct, gold=gold, pred=pred)
+    return row | {"probabilities": p}
+
+
+def test_ece_hand_checked():
+    # 0.9 lands in bin 13 (1 of 2 right: |0.5 - 0.9| * 2/3); 0.6 in bin 9 (right: |1 - 0.6| * 1/3).
+    rows = [
+        prob_row("choice", "a", "a", {"a": 0.9, "b": 0.1}),
+        prob_row("choice", "b", "a", {"a": 0.9, "b": 0.1}),
+        prob_row("choice", "a", "a", {"a": 0.6, "b": 0.4}),
+    ]
+    assert ece(rows) == pytest.approx(0.4)
+
+
+def test_ece_puts_certainty_in_the_last_bin():
+    assert ece([prob_row("choice", "a", "a", {"a": 1.0, "b": 0.0})]) == pytest.approx(0.0)
+
+
+def test_brier_hand_checked():
+    # Row one: 0.1^2 + 0.1^2 = 0.02; row two: 0.9^2 + 0.9^2 = 1.62.
+    rows = [
+        prob_row("choice", "a", "a", {"a": 0.9, "b": 0.1}),
+        prob_row("choice", "b", "a", {"a": 0.9, "b": 0.1}),
+    ]
+    assert brier(rows) == pytest.approx(0.82)
+
+
+def test_brier_counts_a_missing_gold_key_as_zero_probability():
+    # 0.6^2 + 0.4^2 for the listed keys, plus (0 - 1)^2 for the missing gold.
+    assert brier([prob_row("choice", "c", "a", {"a": 0.6, "b": 0.4})]) == pytest.approx(1.52)
+
+
+def test_calibration_table_reports_noul_bias():
+    yes, no = {"yes": 0.8, "no": 0.2}, {"yes": 0.3, "no": 0.7}
+    rows = [
+        prob_row("noul", "yes", "yes", yes),
+        prob_row("noul", "yes", "no", no),
+        prob_row("noul", "no", "yes", yes),
+        prob_row("noul", "no", "yes", yes),
+    ]
+    lines = calibration_section(rows)
+    assert lines[0].startswith("| ECE (15 bins) | Brier |")
+    assert lines[2].endswith("| 75.0 | 50.0 | 1 | 2 |")
+
+
+def test_calibration_table_is_omitted_without_probabilities():
+    assert calibration_section([bench_row("choice", True)]) == []
+    assert "ECE" not in summary([bench_row("choice", True)])
+
+
+def test_summary_puts_the_calibration_table_after_the_jevbench_table():
+    out = summary([prob_row("choice", "a", "a", {"a": 0.9, "b": 0.1})])
+    assert out.index("| rows |") < out.index("| ECE (15 bins)")

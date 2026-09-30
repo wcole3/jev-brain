@@ -6,6 +6,7 @@ from scripts.bench_data import (
     JEVBENCH_TREE,
     jevbench_request,
     prediction,
+    probabilities,
     synthetic_request,
 )
 
@@ -49,3 +50,12 @@ def test_jevbench_urls_are_pinned_to_the_sha():
 
 def test_score_prediction_falls_back_to_rounded_level():
     assert prediction({"type": "score", "score": 1.6}) == "2"
+
+
+def test_probabilities_are_keyed_like_the_gold_label():
+    assert probabilities({"type": "choice", "choice": "a", "probabilities": {"a": 0.7, "b": 0.3}}) == {
+        "a": 0.7,
+        "b": 0.3,
+    }
+    assert probabilities({"type": "score", "score": 1.2, "probabilities": {"0": 0.8, "1": 0.2}}) == {"0": 0.8, "1": 0.2}
+    assert probabilities({"type": "noul", "noul": 0.25}) == {"yes": 0.25, "no": 0.75}

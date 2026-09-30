@@ -1,6 +1,8 @@
+import datetime
+
 import pytest
 
-from scripts.bench import parse_args
+from scripts.bench import parse_args, run_suffix
 
 
 def test_parse_args_chat_defaults_off():
@@ -23,3 +25,10 @@ def test_parse_args_jev_needs_no_profile():
 def test_parse_args_jev_rejects_chat():
     with pytest.raises(SystemExit):
         parse_args(["--target", "jev", "--chat"])
+
+
+def test_run_suffix_is_utc_time_plus_flags():
+    started = datetime.datetime(2026, 9, 29, 21, 9, 57, tzinfo=datetime.UTC)
+    assert run_suffix(started, quick=False, jevbench_only=False) == "2026-09-29T210957Z"
+    assert run_suffix(started, quick=True, jevbench_only=False) == "2026-09-29T210957Z-quick"
+    assert run_suffix(started, quick=True, jevbench_only=True) == "2026-09-29T210957Z-quick-jevbench"

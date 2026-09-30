@@ -53,6 +53,17 @@ CHAT_PROMPTS = {
 }
 
 
+PREFIX_KEYS = ("prefix_pad", "prefix_block", "prefix_pad_always", "warm_min_prefix_tokens")
+CACHE_LABEL_KEYS = (
+    "cache_dtype",
+    "mamba_cache_dtype",
+    "mamba_ssm_cache_dtype",
+    "mamba_block_size",
+    "mamba_cache_mode",
+    "enable_prefix_caching",
+)
+
+
 async def timed_post(client: httpx.AsyncClient, body: dict) -> tuple[float, dict]:
     start = time.perf_counter()
     r = await client.post("/v1/systemone", json=body)
@@ -244,8 +255,10 @@ async def main(args) -> None:
         else:
             keys = ("profile", "hf_model", "hf_revision", "prompt_layout", "option_orders", "vllm_version")
             meta |= {key: health.get(key) for key in keys}
-            if capacity := await vllm.kv_capacity():
-                meta["KV cache"] = f"{capacity[0]} blocks × {capacity[1]} tokens"
+            meta |= {key: health[key] for key in PREFIX_KEYS if key in health}
+            if labels := await vllm.cache_labels():
+                meta["KV cache"] = f"{labels['num_gpu_blocks']} blocks × {labels['block_size']} tokens"
+                meta |= {key: labels[key] for key in CACHE_LABEL_KEYS if key in labels}
         try:
             if not jevbench_only or args.chat:
                 s = Settings.from_profile(args.profile)

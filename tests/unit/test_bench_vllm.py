@@ -3,7 +3,7 @@ import asyncio
 import httpx
 import pytest
 
-from scripts.bench_vllm import Vllm, parse_kv_capacity, parse_metrics
+from scripts.bench_vllm import Vllm, parse_cache_labels, parse_metrics
 
 
 def metrics_text(kv: float, running: int, waiting: int, prompt: int, cached: int, generated: int, preempted: int):
@@ -31,9 +31,10 @@ def test_parse_metrics_matches_names_exactly_and_sums_label_sets():
     assert parsed["vllm:kv_cache_usage_perc"] == 0.5
 
 
-def test_parse_kv_capacity_reads_blocks_and_block_size():
-    assert parse_kv_capacity(metrics_text(0, 0, 0, 0, 0, 0, 0)) == (5000, 16)
-    assert parse_kv_capacity("vllm:kv_cache_usage_perc 0.1\n") is None
+def test_parse_cache_labels_returns_every_label():
+    labels = parse_cache_labels(metrics_text(0, 0, 0, 0, 0, 0, 0))
+    assert (labels["num_gpu_blocks"], labels["block_size"]) == ("5000", "16")
+    assert parse_cache_labels("vllm:kv_cache_usage_perc 0.1\n") is None
 
 
 def scripted_vllm(texts: list[str], records: list) -> Vllm:

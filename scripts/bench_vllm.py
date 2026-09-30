@@ -32,12 +32,11 @@ def parse_metrics(text: str) -> dict[str, float]:
     return totals
 
 
-def parse_kv_capacity(text: str) -> tuple[int, int] | None:
-    """(num_gpu_blocks, block_size) from the cache_config_info labels."""
+def parse_cache_labels(text: str) -> dict[str, str] | None:
+    """The cache_config_info labels (block counts, dtypes, prefix caching), or None if absent."""
     for line in text.splitlines():
         if line.startswith("vllm:cache_config_info{"):
-            labels = dict(re.findall(r'(\w+)="([^"]*)"', line))
-            return int(labels["num_gpu_blocks"]), int(labels["block_size"])
+            return dict(re.findall(r'(\w+)="([^"]*)"', line))
     return None
 
 
@@ -63,9 +62,9 @@ class Vllm:
                 self.warned = True
             return None
 
-    async def kv_capacity(self) -> tuple[int, int] | None:
+    async def cache_labels(self) -> dict[str, str] | None:
         text = await self.scrape()
-        return parse_kv_capacity(text) if text else None
+        return parse_cache_labels(text) if text else None
 
     async def snapshot(self) -> dict[str, float] | None:
         text = await self.scrape()

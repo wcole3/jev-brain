@@ -12,4 +12,6 @@ args=(
 if [[ "${LANGUAGE_MODEL_ONLY:-0}" == "1" ]]; then args+=(--language-model-only); fi
 if [[ -n "${CHAT_TEMPLATE:-}" ]]; then args+=(--chat-template "$CHAT_TEMPLATE"); fi
 if [[ -n "${CHAT_TEMPLATE_KWARGS:-}" ]]; then args+=(--default-chat-template-kwargs "$CHAT_TEMPLATE_KWARGS"); fi
+# EXTRA_ARGS comes from our own profile env, so plain word splitting is intended.
+if [[ -n "${EXTRA_ARGS:-}" ]]; then read -r -a extra <<< "$EXTRA_ARGS"; args+=("${extra[@]}"); fi
 exec vllm serve "${args[@]}"

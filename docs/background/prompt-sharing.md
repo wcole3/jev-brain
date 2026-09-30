@@ -1,7 +1,7 @@
 # Prompt sharing on qwen3.6-27b
 
 Based on the `--quick` bench run of 2026-09-29
-([summary](../results/qwen3.6-27b/2026-09-29-quick/summary.md)), plus a replay of the same requests
+([summary](../results/qwen3.6-27b/2026-09-29T210957Z-quick/summary.md)), plus a replay of the same requests
 to check the explanation.
 
 ## Short answer

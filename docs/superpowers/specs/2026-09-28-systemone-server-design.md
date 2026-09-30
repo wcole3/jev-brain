@@ -276,7 +276,7 @@ The benchmark measures through the gateway over HTTP, so it sees what clients se
 - **Metrics:** sequential p50/p95, throughput at concurrency 1/4/16, and chat
   time-to-first-token deltas.
 - **Output:** raw per-request timings as JSONL plus a summary table in
-  `docs/results/<profile>/<date>/`.
+  `docs/results/<profile>/<UTC timestamp>[-quick][-jevbench]/`.
 - **Reference points** (from Decision Index 0.2.1 on the same GPU, not requirements):
   - about 85–110 ms median per request for stock 27–31B models;
   - leaderboard-comparable latency comes in phase 2, via the index's latency-v1 protocol.

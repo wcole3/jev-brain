@@ -207,7 +207,8 @@ uv run python scripts/bench.py --target jev                           # JevBench
   stack. Gauge samples go to `raw.jsonl` for plots.
 - **`--profile` must match the running gateway**; the bench refuses otherwise. It sends
   `GATEWAY_API_KEY` when set.
-- **Results** go to `docs/results/<profile>/<date>[-quick][-jevbench]/`:
+- **Results** go to `docs/results/<profile>/<UTC timestamp>[-quick][-jevbench]/`
+  (e.g. `2026-09-29T210957Z-quick`, so several runs a day never collide):
   - `raw.jsonl` with every request;
   - `summary.md` with provenance (commit, model revision, layout, vLLM version, JevBench
     SHA) and the tables.

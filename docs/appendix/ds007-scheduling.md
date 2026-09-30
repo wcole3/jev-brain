@@ -23,7 +23,7 @@ Engine stats during `chat_under_load` (`vllm-chat-under-load-stats.log`, 01:03 t
 - Prefix cache hit rate was ~60%. KV usage was 9 to 12%, so there is no KV pressure and no preemption.
 - 5.77k computed tok/s ÷ 0.4 req/s ≈ **14.4k computed tokens per systemone request**, out of ~36k prompt tokens. That fits block-granular hits of 2×784 = 1,568 of the ~2,048 shared state tokens per sibling prompt. Each of the 15 siblings recomputes about 480 state tokens plus its question. See §6.
 
-Measured bench (`docs/results/qwen3.6-27b/2026-09-28/summary.md`):
+Measured bench (`docs/results/qwen3.6-27b/2026-09-28T000000Z/summary.md`):
 - Chat idle: 26.6 chunks/s, TTFT ~140 ms.
 - Chat under 4 systemone workers: 1.2 chunks/s, TTFT 105 / 3287 ms.
 - Systemone: 0.4 req/s at 1, 4 and 16 workers. **One systemone client already saturates the GPU.**

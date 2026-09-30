@@ -64,11 +64,10 @@ async def test_wide_label_chunks_go_only_to_the_rows_that_read_them(qwen_tok):
     assert out == unrouted
 
 
-async def test_long_shared_prefix_is_warmed_alone_then_all_rows_go_together():
-    seen, prompts = [], [[7] * 600 + [1], [7] * 600 + [2], [7] * 600 + [3]]
-    await readout(fake_vllm(seen)).letter_logprobs(prompts, [[5], [5], [5]], shared_len=600)
-    assert seen[0]["prompt"] == [[7] * 600] and "logprob_token_ids" not in seen[0]
-    assert seen[1]["prompt"] == prompts
+async def test_long_shared_prefix_warms_the_first_row_alone():
+    seen = []
+    await readout(fake_vllm(seen)).letter_logprobs([[1], [2], [3]], [[5], [5], [5]], shared_len=600)
+    assert [len(b["prompt"]) for b in seen] == [1, 2]
 
 
 async def test_context_too_long_becomes_a_refusal():

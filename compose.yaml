@@ -4,7 +4,7 @@ services:
   vllm:
     image: vllm/vllm-openai:v0.30.0@sha256:8a69ffad015f138d7170c4ddc429e230a3bc1c1719f67e14324749df200a4b90
     entrypoint: ["/bin/bash", "/opt/jev/vllm-entrypoint.sh"]
-    # Not unless-stopped: on this GPU workstation the stack must not grab ~86 GB of VRAM at boot.
+    # Not unless-stopped: a clean reboot must not grab ~86 GB of VRAM (a crash still restarts it).
     restart: on-failure:3
     ipc: host
     deploy:

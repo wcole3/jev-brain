@@ -135,8 +135,9 @@ needed.
   - The passthrough never forwards the client's `Authorization` to vLLM.
   - Keys never appear in logs.
   - Images are pinned by digest.
-  - Both services restart on failure (up to 3 times) but not at boot, so the stack never
-    grabs the GPU on its own.
+  - Both services restart on failure (up to 3 times). A clean Docker restart leaves them
+    stopped, but after a crash (e.g. WSL going down mid-run) Docker brings a running stack
+    back on its own. Run `docker compose ... down` if you need the GPU free.
 - **Before exposing the gateway beyond localhost:**
   - set both keys;
   - publish only the gateway port (edit its `127.0.0.1:9000:9000` binding);

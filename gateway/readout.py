@@ -18,17 +18,10 @@ class Readout:
     ) -> list[list[float]]:
         """One list per prompt, in the order of that prompt's label_ids."""
         if len(prompts) > 1 and shared_len >= self.warm_min_prefix_tokens:
-            await self._warm(prompts[0][:shared_len])
+            # compute the long shared prefix once (with row 1) so the other rows hit vLLM's prefix cache
+            first = await self._read(prompts[:1], label_ids[:1])
+            return first + await self._read(prompts[1:], label_ids[1:])
         return await self._read(prompts, label_ids)
-
-    async def _warm(self, prefix: list[int]) -> None:
-        """Prefill the shared prefix alone: hybrid models save recurrent state only at a prefill's last
-        block boundary, so ending there keeps the whole (padded) prefix reusable by every row."""
-        payload = {"model": self.model, "prompt": [prefix], "max_tokens": 1, "temperature": 0}
-        r = await self.client.post("/v1/completions", json=payload | {"add_special_tokens": False})
-        if r.status_code == 400 and "maximum context length" in r.text:
-            raise RequestError("prompt is longer than the maximum context length")
-        r.raise_for_status()
 
     async def _read(self, prompts: list[list[int]], label_ids: list[list[int]]) -> list[list[float]]:
         """Label ids go in chunks of 128; each chunk is sent only with the rows that read one of its ids."""

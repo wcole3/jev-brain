@@ -1,9 +1,11 @@
 """Token ids for one question per row, built part by part like decider so shared prefixes match exactly."""
 
 from dataclasses import dataclass
+from itertools import takewhile
 
 from gateway.labels import NARROW, Labels
 from gateway.layouts import Layout
+from gateway.padding import OFF, Padding
 from gateway.questions import Rendered
 
 SENTINEL = "@@USER_CONTENT@@"
@@ -53,12 +55,17 @@ class Row:
 @dataclass(frozen=True)
 class Batch:
     rows: list[Row]
-    shared_len: int  # leading tokens that every row has in common
+    shared_len: int  # leading tokens that every row has in common, pad included
+    unpadded_len: int  # the same prefix as it is without padding
 
     @property
     def input_tokens(self) -> int:
-        """Shared prefix counted once, like Jev counts the state once."""
-        return self.shared_len + sum(len(r.ids) - self.shared_len for r in self.rows)
+        """Shared prefix counted once, like Jev counts the state once. Padding is our overhead, so it is left out."""
+        return self.unpadded_len + sum(len(r.ids) - self.shared_len for r in self.rows)
+
+    @property
+    def longest(self) -> int:
+        return max(len(r.ids) for r in self.rows)
 
 
 def option_ids(tok, layout: Layout, labels: Labels, texts: list[str]) -> list[int]:
@@ -73,14 +80,46 @@ def option_ids(tok, layout: Layout, labels: Labels, texts: list[str]) -> list[in
     return ids
 
 
-def shared_len(frame: ChatFrame, layout: Layout, parts: dict[str, list[int]]) -> int:
-    """Head plus every part placed before the first per-question part."""
-    n = len(frame.head)
-    for part in layout.order:
-        if part in ("question", "options"):
-            return n
-        n += len(parts[part])
-    return n
+def shared_parts(layout: Layout) -> list[str]:
+    """The parts placed before the first per-question part: every row starts with the head and these."""
+    return list(takewhile(lambda part: part not in ("question", "options"), layout.order))
+
+
+def joined(parts: dict[str, list[int]], names: list[str]) -> list[int]:
+    return [i for name in names for i in parts[name]]
+
+
+def pad_site(
+    tok, frame: ChatFrame, layout: Layout, parts: dict[str, list[int]], state: str, mode: str
+) -> tuple[list[int], list[int]] | None:
+    """The shared prefix cut where the pad goes: after the chat head (front), after the last shared part (end)
+    or between the context label and the state (middle). None when the layout has no such place."""
+    shared = shared_parts(layout)
+    if mode == "front":
+        return frame.head, joined(parts, shared)
+    if mode == "end":
+        return frame.head + joined(parts, shared), []
+    if mode == "middle" and "context" in shared:
+        # label and state are encoded apart around the pad, so tokens at their join may differ from one encode
+        label, after = layout.context.format(state=SENTINEL).split(SENTINEL)
+        at = shared.index("context")
+        before = frame.head + joined(parts, shared[:at]) + encode(tok, label)
+        return before, encode(tok, state + after) + joined(parts, shared[at + 1 :])
+    return None
+
+
+def shared_prefix(
+    tok, frame: ChatFrame, layout: Layout, parts: dict[str, list[int]], state: str, padding: Padding, rows: int
+) -> tuple[list[int], int]:
+    """The ids every row starts with, padded to a block boundary when that pays, and their unpadded length."""
+    plain = frame.head + joined(parts, shared_parts(layout))
+    site = pad_site(tok, frame, layout, parts, state, padding.mode) if padding.enabled else None
+    if site is not None:
+        before, after = site
+        pad = padding.size(len(before) + len(after))
+        if padding.pays(rows, len(plain), pad):
+            return before + [padding.token] * pad + after, len(plain)
+    return plain, len(plain)
 
 
 def build_rows(
@@ -91,12 +130,16 @@ def build_rows(
     state: str,
     questions: dict[str, Rendered],
     perms: dict[str, list[list[int]]],
+    padding: Padding = OFF,
 ) -> Batch:
     """One row per (question, option order). Parts shared by all rows are encoded once."""
     parts = {"context": encode(tok, layout.context.format(state=state))}
     if "questions" in layout.order:
         listed = "\n".join(layout.question_item.format(question=q.text) for q in questions.values())
         parts["questions"] = encode(tok, layout.questions.format(questions=listed))
+    n_rows = sum(len(perms[qid]) for qid in questions)
+    prefix, unpadded_len = shared_prefix(tok, frame, layout, parts, state, padding, n_rows)
+    rest = layout.order[len(shared_parts(layout)) :]  # the parts after the shared prefix
     answer = encode(tok, layout.answer)
     rows = []
     for qid, q in questions.items():
@@ -104,8 +147,8 @@ def build_rows(
         for perm in perms[qid]:
             shown = [q.options[i] for i in perm]
             parts["options"] = option_ids(tok, layout, labels, shown)
-            ids = list(frame.head)
-            for part in layout.order:
+            ids = list(prefix)
+            for part in rest:
                 ids += parts[part]
             rows.append(Row(qid, perm, ids + frame.tail + answer, labels.ids[: len(shown)]))
-    return Batch(rows, shared_len(frame, layout, parts))
+    return Batch(rows, len(prefix), unpadded_len)

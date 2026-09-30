@@ -3,23 +3,26 @@ import json
 import httpx
 import pytest
 
-from gateway.readout import Readout
+from gateway.labels import label_table
+from gateway.readout import MAX_LABEL_IDS, Readout
 from gateway.schema import RequestError
 
 
-def fake_vllm(seen: list):
+def same_for_every_prompt(prompt: list[int], token: int) -> float:
+    return -float(token)
+
+
+def fake_vllm(seen: list, logprob=same_for_every_prompt):
+    """Choices come back in reverse index order, like a server that may reorder them."""
+
     def handler(request: httpx.Request) -> httpx.Response:
         body = json.loads(request.content)
         seen.append(body)
-        logprobs = {f"token_id:{t}": -float(t) for t in body["logprob_token_ids"]}
-        return httpx.Response(
-            200,
-            json={
-                "choices": [
-                    {"index": i, "logprobs": {"top_logprobs": [logprobs]}} for i in reversed(range(len(body["prompt"])))
-                ]
-            },
-        )
+        ids = body["logprob_token_ids"]
+        assert len(ids) <= MAX_LABEL_IDS
+        tops = [{f"token_id:{t}": logprob(p, t) for t in ids} for p in body["prompt"]]
+        choices = [{"index": i, "logprobs": {"top_logprobs": [top]}} for i, top in enumerate(tops)]
+        return httpx.Response(200, json={"choices": choices[::-1]})
 
     return handler
 
@@ -44,6 +47,21 @@ async def test_more_than_128_labels_are_split_across_calls():
     out = await readout(fake_vllm(seen)).letter_logprobs([[1]], [ids], shared_len=0)
     assert [len(b["logprob_token_ids"]) for b in seen] == [128, 72]
     assert out == [[-float(i) for i in ids]]
+
+
+async def test_wide_label_chunks_go_only_to_the_rows_that_read_them(qwen_tok):
+    """A 200-option choice between two small questions: its second chunk of 72 ids is sent with its row alone."""
+    ids = label_table(qwen_tok).ids
+
+    def by_prompt(prompt, token):
+        return -float(token) - 1000.0 * prompt[0]
+
+    seen = []
+    prompts, label_ids = [[1], [2], [3]], [ids[:3], ids[:200], ids[:2]]
+    out = await readout(fake_vllm(seen, by_prompt)).letter_logprobs(prompts, label_ids, shared_len=0)
+    assert [(b["prompt"], len(b["logprob_token_ids"])) for b in seen] == [(prompts, 128), ([[2]], 72)]
+    unrouted = [[by_prompt(p, t) for t in row] for p, row in zip(prompts, label_ids)]  # every chunk with every row
+    assert out == unrouted
 
 
 async def test_long_shared_prefix_warms_the_first_row_alone():

@@ -1,6 +1,7 @@
 """The /v1/systemone flow as one async function, so the phase-3 router can call it in-process."""
 
 import asyncio
+import functools
 from dataclasses import dataclass
 from typing import Any
 
@@ -10,6 +11,7 @@ from gateway.config import Settings
 from gateway.labels import Labels
 from gateway.layouts import Layout
 from gateway.orders import average_back, option_orders
+from gateway.padding import OFF, Padding
 from gateway.prompts import ChatFrame, build_rows
 from gateway.questions import render_question, render_state
 from gateway.schema import RequestError, SystemOneRequest
@@ -26,6 +28,7 @@ class Engine:
     labels: dict[str, Labels]
     temperatures: dict[str, dict[str, float]]
     readout: Any
+    padding: Padding = OFF
 
 
 async def decide(engine: Engine, request: SystemOneRequest) -> dict:
@@ -43,17 +46,14 @@ async def decide(engine: Engine, request: SystemOneRequest) -> dict:
     except ValueError as e:
         raise RequestError(str(e)) from e
 
-    batch = await asyncio.to_thread(
-        build_rows,
-        engine.tokenizer,
-        engine.frames[name],
-        layout,
-        engine.labels[name],
-        render_state(request.state),
-        questions,
-        perms,
+    state = render_state(request.state)
+    build = functools.partial(
+        build_rows, engine.tokenizer, engine.frames[name], layout, engine.labels[name], state, questions, perms
     )
-    longest = max(len(row.ids) for row in batch.rows)
+    batch = await asyncio.to_thread(build, engine.padding)
+    if batch.longest >= s.max_model_len and engine.padding.enabled:
+        batch = await asyncio.to_thread(build, OFF)  # the pad must never refuse a request that fits without it
+    longest = batch.longest
     if longest >= s.max_model_len:
         raise RequestError(f"prompt is longer than the maximum context length ({longest} >= {s.max_model_len} tokens)")
 

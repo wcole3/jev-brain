@@ -7,6 +7,12 @@ import httpx
 from transformers import AutoTokenizer
 
 from gateway.config import Settings
+from gateway.labels import label_table
+from gateway.layouts import load_layouts
+from gateway.padding import OFF
+from gateway.prompts import build_rows, chat_frame
+from gateway.questions import render_question
+from gateway.schema import Question
 
 PROFILES = ["qwen3.8-27b", "qwen3.6-27b", "gemma-4-31b"]
 
@@ -36,6 +42,16 @@ QUICKSTART = {
     "is_urgent": {"type": "noul", "instructions": "The message conveys urgency or time-sensitivity"},
 }
 STATE = "Hi, my Stripe integration keeps failing and I'm losing sales. Please help ASAP."
+LAYOUTS = load_layouts()
+
+
+def batch_for(tok, layout_name, questions=QUICKSTART, orders=None, padding=OFF):
+    """build_rows for STATE, one row per question (or per order in `orders`)."""
+    layout = LAYOUTS[layout_name]
+    rendered = {k: render_question(Question(**v), layout) for k, v in questions.items()}
+    perms = {k: orders or [list(range(len(r.options)))] for k, r in rendered.items()}
+    return build_rows(tok, chat_frame(tok, layout), layout, label_table(tok), STATE, rendered, perms, padding)
+
 
 SSE = b'data: {"choices": []}\n\ndata: [DONE]\n\n'
 

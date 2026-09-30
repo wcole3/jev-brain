@@ -7,6 +7,7 @@ from gateway.config import Settings
 from gateway.decide import Engine, decide
 from gateway.labels import label_table
 from gateway.layouts import load_layouts
+from gateway.padding import Padding, newline_token
 from gateway.prompts import chat_frame
 from gateway.schema import RequestError, SystemOneRequest
 from tests.helpers import QUICKSTART, STATE
@@ -75,3 +76,18 @@ async def test_too_long_prompt_is_refused_before_vllm(engine):
     with pytest.raises(RequestError, match="maximum context length"):
         await decide(small, request())
     assert engine.readout.calls == []
+
+
+async def test_padded_rows_reach_the_readout_and_usage_leaves_the_pad_out(engine, qwen_tok):
+    padded = dataclasses.replace(engine, padding=Padding("end", 784, True, newline_token(qwen_tok)))
+    usage = (await decide(padded, request()))["usage"]
+    assert engine.readout.calls[0][2] == 784  # the shared length the warm-up rule sees
+    assert usage == (await decide(engine, request()))["usage"]
+
+
+async def test_padding_never_refuses_a_request_that_fits_without_it(engine, qwen_tok):
+    small = dataclasses.replace(engine.settings, max_model_len=200)  # rows fit unpadded, not padded to 784
+    padded = dataclasses.replace(engine, settings=small, padding=Padding("end", 784, True, newline_token(qwen_tok)))
+    await decide(padded, request())
+    prompts, _, shared_len = engine.readout.calls[0]
+    assert shared_len < 784 and max(len(p) for p in prompts) < 200

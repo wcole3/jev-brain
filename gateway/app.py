@@ -20,6 +20,7 @@ from gateway.decide import Engine, decide
 from gateway.disconnect import unless_disconnected
 from gateway.labels import load_labels
 from gateway.layouts import load_layouts
+from gateway.padding import load_padding
 from gateway.prompts import chat_frame
 from gateway.readout import Readout
 from gateway.schema import RequestError, SystemOneRequest
@@ -47,6 +48,7 @@ def load_engine(s: Settings, client: httpx.AsyncClient) -> Engine:
         labels={name: load_labels(s.data_dir(name) / "labels.json", tok, layout) for name, layout in layouts.items()},
         temperatures={name: load_temperatures(s.data_dir(name) / "calibration.json") for name in layouts},
         readout=Readout(client, s.served_model, s.warm_min_prefix_tokens),
+        padding=load_padding(s, tok),
     )
 
 
@@ -149,6 +151,10 @@ def create_app(settings: Settings | None = None, transport: httpx.AsyncBaseTrans
             "hf_revision": s.hf_revision,
             "prompt_layout": s.prompt_layout,
             "option_orders": s.option_orders,
+            "prefix_pad": s.prefix_pad,
+            "prefix_block": s.prefix_block,
+            "prefix_pad_always": s.prefix_pad_always,
+            "warm_min_prefix_tokens": s.warm_min_prefix_tokens,
             "vllm_version": await vllm_version(request.app.state.client) if ok else None,
             "layouts": sorted(engine.layouts),
         }

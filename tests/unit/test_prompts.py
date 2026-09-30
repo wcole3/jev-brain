@@ -3,21 +3,10 @@ from pathlib import Path
 import pytest
 
 from gateway.labels import label_table
-from gateway.layouts import load_layouts
-from gateway.prompts import build_rows, chat_frame, encode, encode_each
-from gateway.questions import render_question
-from gateway.schema import Question
-from tests.helpers import PROFILES, QUICKSTART, STATE, tokenizer_for
+from gateway.prompts import chat_frame, encode, encode_each
+from tests.helpers import LAYOUTS, PROFILES, batch_for, tokenizer_for
 
 GOLDEN = Path(__file__).parent / "golden"
-LAYOUTS = load_layouts()
-
-
-def batch_for(tok, layout_name, questions=QUICKSTART, orders=None):
-    layout = LAYOUTS[layout_name]
-    rendered = {k: render_question(Question(**v), layout) for k, v in questions.items()}
-    perms = {k: orders or [list(range(len(r.options)))] for k, r in rendered.items()}
-    return build_rows(tok, chat_frame(tok, layout), layout, label_table(tok), STATE, rendered, perms)
 
 
 def assert_golden(name: str, text: str) -> None:

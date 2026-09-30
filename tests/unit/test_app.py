@@ -1,4 +1,5 @@
 import dataclasses
+import json
 
 import httpx
 import pytest
@@ -96,6 +97,22 @@ def test_health(client):
     assert body["vllm_version"] == "0.30.0"
     assert body["hf_model"] and body["hf_revision"]
     assert body["prompt_layout"] and body["option_orders"]
+    s = client.app.state.engine.settings
+    padding = (body["prefix_pad"], body["prefix_block"], body["prefix_pad_always"], body["warm_min_prefix_tokens"])
+    assert padding == (s.prefix_pad, s.prefix_block, s.prefix_pad_always, s.warm_min_prefix_tokens)
+
+
+def test_padded_gateway_reports_padding_and_bills_without_it(qwen_settings, vllm, sent):
+    request = {"state": STATE, "questions": QUICKSTART}
+    padded = dataclasses.replace(qwen_settings, prefix_pad="end", prefix_block=32, prefix_pad_always=True)
+    with TestClient(create_app(padded, vllm)) as c:
+        health = c.get("/health").json()
+        usage = c.post("/v1/systemone", json=request).json()["usage"]
+    with TestClient(create_app(dataclasses.replace(qwen_settings, prefix_pad="off"), vllm)) as c:
+        assert c.post("/v1/systemone", json=request).json()["usage"] == usage
+    assert (health["prefix_pad"], health["prefix_block"], health["prefix_pad_always"]) == ("end", 32, True)
+    first, last = [json.loads(r.content)["prompt"] for r in sent if r.url.path == "/v1/completions"]
+    assert {len(a) - len(b) for a, b in zip(first, last)} == {32 - 23}  # 23 shared tokens padded to 32
 
 
 @pytest.mark.parametrize(

@@ -24,11 +24,16 @@ class Readout:
         return await self._read(prompts, label_ids)
 
     async def _read(self, prompts: list[list[int]], label_ids: list[list[int]]) -> list[list[float]]:
+        """Label ids go in chunks of 128; each chunk is sent only with the rows that read one of its ids."""
         wanted = sorted({i for ids in label_ids for i in ids})
         found: list[dict[int, float]] = [{} for _ in prompts]
         for start in range(0, len(wanted), MAX_LABEL_IDS):
-            for row, got in zip(found, await self._call(prompts, wanted[start : start + MAX_LABEL_IDS])):
-                row.update(got)
+            chunk = wanted[start : start + MAX_LABEL_IDS]
+            in_chunk = set(chunk)
+            rows = [k for k, ids in enumerate(label_ids) if not in_chunk.isdisjoint(ids)]
+            got = await self._call([prompts[k] for k in rows], chunk)
+            for k, logprobs in zip(rows, got, strict=True):
+                found[k].update(logprobs)
         return [[row[i] for i in ids] for row, ids in zip(found, label_ids)]
 
     async def _call(self, prompts: list[list[int]], ids: list[int]) -> list[dict[int, float]]:

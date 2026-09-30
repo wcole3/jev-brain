@@ -13,5 +13,6 @@ the order below goes from "how a request works" to "how good the answers are".
 | [Model architectures](model-architectures.md) | Qwen's Gated DeltaNet hybrid vs Gemma's sliding window: memory per token, why blocks are 784 tokens, why Gemma is KV-bound |
 | [Prefill and decode](prefill-and-decode.md) | Why decision traffic starves chat on one GPU, what priority scheduling can and can't fix |
 | [Determinism](determinism.md) | Why identical requests can give different answers (bf16, batching), our noise floor, deterministic modes |
+| [Yes/no bias](noul-bias.md) | Why Qwen leans "no" and Gemma "yes" on noul questions, where it happens, and what a bias term can and can't fix |
 | [Calibration](calibration.md) | Temperature scaling, ECE and Brier, Jev's confidence formulas, why a yes/no bias needs more than a temperature |
 | [Benchmarks](benchmarks.md) | Decision Index vs JevBench vs our bench: what each measures and why their numbers differ |

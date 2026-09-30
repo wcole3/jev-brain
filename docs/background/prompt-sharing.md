@@ -178,6 +178,81 @@ computed ÷ usage 2.67 → 1.05, 0.5 → 1.1 req/s, cold p50 2,389 → 982 ms, w
 answers changed in a worst-case test. `--mamba-block-size` was confirmed to be ignored. Full results:
 [experiments/ds-008](../results/experiments/ds-008/README.md).
 
+### What front, middle and end padding look like
+
+The pad is a run of the model's single newline token, inserted as token ids so it can't
+merge with its neighbours. It always goes somewhere in the **shared part**, so every row
+still starts with the same (now longer) prefix. The placement decides *where* in that part.
+
+Below is row 1 of a real two-question request, decoded from the ids `build_rows` makes
+for qwen3.6 ([`prompts.py`](../../gateway/prompts.py), `pad_site`). To keep it readable, the
+block here is 32 tokens instead of 784. The shared part is 23 tokens, so every placement
+adds **9 pad tokens** to reach 32, shown as `«9 newlines»`. Everything after the shared part
+(question, options, answer slot) is unchanged and is where row 2 starts to differ.
+
+**No padding (23 shared tokens):**
+
+```
+<|im_start|>user
+Context:
+Hi, my Stripe integration keeps failing and I'm losing sales. Please help ASAP.
+
+Question: Which team should handle this
+Options:
+(A) billing: Payment or subscription issues
+(B) technical: Bugs or integration problems<|im_end|>
+<|im_start|>assistant
+<think>
+
+</think>
+
+Answer: (
+```
+
+**Front (adopted):** right after the chat header, before `Context:`, as far from the
+question as possible.
+
+```
+<|im_start|>user
+«9 newlines»Context:
+Hi, my Stripe integration keeps failing and I'm losing sales. Please help ASAP.
+
+Question: Which team should handle this
+...
+```
+
+**Middle:** between the `Context:` label and the state text. The label and the state are
+encoded separately here, so the tokens at that join can differ from an unpadded prompt.
+
+```
+<|im_start|>user
+Context:
+«9 newlines»Hi, my Stripe integration keeps failing and I'm losing sales. Please help ASAP.
+
+Question: Which team should handle this
+...
+```
+
+**End:** after the state, right before the first question: the placement closest to what
+the model is asked.
+
+```
+<|im_start|>user
+Context:
+Hi, my Stripe integration keeps failing and I'm losing sales. Please help ASAP.«9 newlines»
+
+Question: Which team should handle this
+...
+```
+
+At the real block size, a 2,064-token shared part gets 288 pad tokens (up to 2,352 = 3 × 784).
+All three placements cost the same; they differ only in how much they move answers.
+Front moved the fewest (1.4% of JevBench answers in a worst-case test, vs 2.3% for end and
+3.0% for middle), plausibly because a run of blank lines right after the header reads as
+harmless whitespace, while one next to the question or inside the context sits where the
+model is looking. A fourth idea, spreading the pads through the state, moved 8.6% and was
+dropped.
+
 ## Caveats
 
 - **Server-wide counters:** vLLM's counters count all traffic, so these numbers assume

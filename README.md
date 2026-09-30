@@ -14,7 +14,7 @@ Background research is in [docs/README.md](docs/README.md), the design in
 ## Where it stands
 
 JevBench, all 1682 gold rows, exact-match accuracy in %. Stock models, bf16, no
-calibration yet:
+temperatures of our own fitted yet:
 
 | Model | Overall | Choice | Noul | p50 latency |
 |---|---|---|---|---|

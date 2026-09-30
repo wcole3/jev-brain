@@ -88,7 +88,7 @@ Below about 280 tokens a step is memory-bound (ridge ≈ 500 TFLOPS ÷ 1.79 TB/s
 - **Metrics.** Per-priority metrics are only proposed (#58077 issue, #58078 PR, open).
 
 **Verdict on Q1:** turning on priority and marking systemone low
-- **Should** cut long-prompt chat TTFT from ~3.3 s to about 1–3 steps. Chat stops waiting behind ~15 queued sibling prompts (~13k computed tokens ≈ 2.3 s).
+- **Should** cut the queued chat request's TTFT (the second one under load, prompt `long`) from ~3.3 s to about 1–3 steps. Chat stops waiting behind ~15 queued sibling prompts (~13k computed tokens ≈ 2.3 s).
 - **Will not** fix the 1.2 tok/s decode, because each step is still ~8k prefill tokens.
 - Only a smaller per-step prefill budget, or less systemone work admitted, fixes decode.
 - ConServe measured the same thing on vLLM. A priority scheduler for co-served online and offline work still raised online P99 TTFT 59.7× and P99 TPOT 3.16×, "because offline requests are batched with online requests and cannot be preempted selectively" (arXiv 2410.01228 §2.3, `web/conserve-arxiv.md` L138-L141).
@@ -298,7 +298,7 @@ Matrix. Restart vLLM per row, ~6 min startup. Keep everything else fixed.
 | X1 | best A/G row + best P or M row | combined | final candidate |
 
 Collect per row:
-- From bench: chat TTFT and chunks/s, alone and under 4 systemone workers (short and long prompt).
+- From bench: chat TTFT and chunks/s, alone and under 4 systemone workers (prompts `short` and `long`, named for the expected reply length; both are one sentence).
 - Systemone req/s at 4 workers.
 - Systemone cold p50 for `2048×16×26` alone, the idle penalty of a small B.
 - JevBench `--quick` accuracy, to check that chunk-boundary numerics do not move labels.

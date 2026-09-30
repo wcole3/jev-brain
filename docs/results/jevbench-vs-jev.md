@@ -91,8 +91,9 @@ Accuracy % by source and type:
 
 ## Notes
 
-- Accuracy doesn't depend on the fitted temperature, so these uncalibrated runs are a fair
-  comparison. Calibration error (ECE) is not measured here.
+- None of these models has our own fitted temperature yet (qwen3.6 uses decider's published
+  T = 1.943; the others T = 1.0). Accuracy doesn't depend on the temperature, so the
+  comparison is fair. Calibration error (ECE) is not measured here.
 - TypeSafe's terms forbid using Jev outputs to train or calibrate a similar model.
   - Jev's per-row answers stay in `.cache/jev-results/`; only the summary is committed.
   - Phase-2 calibration uses JevBench's gold labels, never Jev's answers.

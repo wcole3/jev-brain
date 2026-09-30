@@ -150,12 +150,19 @@ Replaying the same 2,048×16×26 request under each option:
 | Option | Changes the prompt? | Computed ÷ usage | Cold mix ÷ usage | Open questions |
 |---|---|---|---|---|
 | Today: 784-token blocks | – | 2.38 | 2.22 | |
-| `--mamba-block-size 256` | No | 1.05 | 1.45 | Does vLLM accept it separately from the 784 attention block? What do the extra saved states cost in memory? |
-| `--mamba-block-size 128` | No | 1.05 | 1.45 | Same, more so |
+| `--mamba-block-size 256` (hypothetical) | No | 1.05 | 1.45 | **Not available in vLLM 0.30** (see below) |
+| `--mamba-block-size 128` (hypothetical) | No | 1.05 | 1.45 | Same |
 | Pad the shared part to a multiple of 784 | Yes (+288 tokens here) | 1.05 | 1.17 | Answers may shift, so it needs a fidelity check and its own fitted temperature |
 
 Notes:
 
+- **Why finer blocks aren't an option today.** In vLLM 0.30's source
+  (`platforms/interface.py`, `_align_hybrid_block_size`), the attention block grows until one
+  attention page holds one recurrent-state page: 784 tokens here. In align mode (the
+  default with prefix caching) it then overwrites `mamba_block_size` with that block size,
+  so `--mamba-block-size` has no effect. DS-008 confirms this on the GPU; the rows above
+  show what a future vLLM with finer blocks could gain. More in
+  [model-architectures.md](model-architectures.md).
 - **Finer blocks leave small states unshared.** The cold mix stays at 1.45 because
   256-token states still go without a warm-up row (below the 512-token threshold). With
   finer blocks it would be worth lowering `WARM_MIN_PREFIX_TOKENS`. The cost is one extra
@@ -182,6 +189,6 @@ Notes:
 ## Next steps
 
 1. Run gemma-4-31b `--quick` for a non-hybrid comparison.
-2. DS-008: try `--mamba-block-size 256`, then padding. Judge each by computed ÷ usage and
-   throughput here, and by the fidelity checks.
-3. If finer blocks work, lower `WARM_MIN_PREFIX_TOKENS` and re-measure the cold mix.
+2. DS-008: confirm `--mamba-block-size` is ignored, then test padding. Judge it by
+   computed ÷ usage and throughput here, and by the fidelity checks.
+3. With padding, also check whether lowering `WARM_MIN_PREFIX_TOKENS` helps the cold mix.

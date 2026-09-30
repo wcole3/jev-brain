@@ -4,6 +4,7 @@
 decision endpoint from the same model, behind a small FastAPI gateway.
 
 - **Running, testing, benchmarking, security:** `README.md`.
+- **Deep dives** (how things work, with our measurements): `docs/background/`.
 - **Research:** `docs/README.md`. Jev wire format in `docs/1-what-is-jev.md`, answer
   semantics and `confidence` formulas in `docs/6-answer-compatibility.md`.
 - **Tickets:** DoStuff (`dostuff-tickets` skill).

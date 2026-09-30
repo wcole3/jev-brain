@@ -8,16 +8,19 @@ MAX_LABEL_IDS = 128  # vLLM's cap on logprob_token_ids per request (MAX_LOGPROB_
 
 
 class Readout:
-    def __init__(self, client: httpx.AsyncClient, model: str, warm_min_prefix_tokens: int = 512):
+    def __init__(self, client: httpx.AsyncClient, model: str, warm_min_prefix_tokens: int = 512, warm_up: str = "row"):
         self.client = client
         self.model = model
         self.warm_min_prefix_tokens = warm_min_prefix_tokens
+        if warm_up not in ("row", "off"):
+            raise ValueError(f"WARM_UP must be 'row' or 'off', not {warm_up!r}")
+        self.warm_up = warm_up
 
     async def letter_logprobs(
         self, prompts: list[list[int]], label_ids: list[list[int]], shared_len: int
     ) -> list[list[float]]:
         """One list per prompt, in the order of that prompt's label_ids."""
-        if len(prompts) > 1 and shared_len >= self.warm_min_prefix_tokens:
+        if self.warm_up == "row" and len(prompts) > 1 and shared_len >= self.warm_min_prefix_tokens:
             # compute the long shared prefix once (with row 1) so the other rows hit vLLM's prefix cache
             first = await self._read(prompts[:1], label_ids[:1])
             return first + await self._read(prompts[1:], label_ids[1:])

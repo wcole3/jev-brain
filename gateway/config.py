@@ -31,6 +31,7 @@ class Settings:
     api_key: str | None = field(default=None, repr=False)  # keys never show in logs or tracebacks
     vllm_api_key: str | None = field(default=None, repr=False)
     warm_min_prefix_tokens: int = 512
+    warm_up: str = "row"  # row: send row 1 first so siblings reuse its prefix (hybrid Qwen); off: send all at once
     prefix_pad: str = "off"  # where to pad the shared prefix: off | end | front | middle
     prefix_block: int = 0  # pad it to a multiple of this many tokens; 0 never pads
     prefix_pad_always: bool = False  # pad even when it does not pay (fidelity experiments)
@@ -51,6 +52,7 @@ class Settings:
             api_key=e.get("GATEWAY_API_KEY") or None,
             vllm_api_key=e.get("VLLM_API_KEY") or None,
             warm_min_prefix_tokens=int(e.get("WARM_MIN_PREFIX_TOKENS") or 512),
+            warm_up=e.get("WARM_UP") or "row",
             prefix_pad=e.get("PREFIX_PAD") or "off",
             prefix_block=int(e.get("PREFIX_BLOCK") or 0),
             prefix_pad_always=e.get("PREFIX_PAD_ALWAYS") == "1",

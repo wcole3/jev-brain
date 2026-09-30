@@ -100,6 +100,7 @@ def test_health(client):
     s = client.app.state.engine.settings
     padding = (body["prefix_pad"], body["prefix_block"], body["prefix_pad_always"], body["warm_min_prefix_tokens"])
     assert padding == (s.prefix_pad, s.prefix_block, s.prefix_pad_always, s.warm_min_prefix_tokens)
+    assert body["warm_up"] == s.warm_up
 
 
 def test_padded_gateway_reports_padding_and_bills_without_it(qwen_settings, vllm, sent):

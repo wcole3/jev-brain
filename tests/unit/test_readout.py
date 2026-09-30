@@ -27,9 +27,9 @@ def fake_vllm(seen: list, logprob=same_for_every_prompt):
     return handler
 
 
-def readout(handler) -> Readout:
+def readout(handler, warm_up: str = "row") -> Readout:
     client = httpx.AsyncClient(base_url="http://vllm", transport=httpx.MockTransport(handler))
-    return Readout(client, "m", warm_min_prefix_tokens=512)
+    return Readout(client, "m", warm_min_prefix_tokens=512, warm_up=warm_up)
 
 
 async def test_reads_label_logprobs_in_label_order():
@@ -68,6 +68,17 @@ async def test_long_shared_prefix_warms_the_first_row_alone():
     seen = []
     await readout(fake_vllm(seen)).letter_logprobs([[1], [2], [3]], [[5], [5], [5]], shared_len=600)
     assert [len(b["prompt"]) for b in seen] == [1, 2]
+
+
+async def test_warm_up_off_sends_every_row_at_once():
+    seen, prompts = [], [[7] * 600 + [1], [7] * 600 + [2], [7] * 600 + [3]]
+    out = await readout(fake_vllm(seen), warm_up="off").letter_logprobs(prompts, [[5], [5], [5]], shared_len=600)
+    assert [b["prompt"] for b in seen] == [prompts] and len(out) == 3
+
+
+def test_unknown_warm_up_is_refused():
+    with pytest.raises(ValueError):
+        Readout(httpx.AsyncClient(), "m", warm_up="both")
 
 
 async def test_context_too_long_becomes_a_refusal():

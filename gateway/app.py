@@ -47,7 +47,7 @@ def load_engine(s: Settings, client: httpx.AsyncClient) -> Engine:
         frames={name: chat_frame(tok, layout) for name, layout in layouts.items()},
         labels={name: load_labels(s.data_dir(name) / "labels.json", tok, layout) for name, layout in layouts.items()},
         temperatures={name: load_temperatures(s.data_dir(name) / "calibration.json") for name in layouts},
-        readout=Readout(client, s.served_model, s.warm_min_prefix_tokens),
+        readout=Readout(client, s.served_model, s.warm_min_prefix_tokens, s.warm_up),
         padding=load_padding(s, tok),
     )
 
@@ -155,6 +155,7 @@ def create_app(settings: Settings | None = None, transport: httpx.AsyncBaseTrans
             "prefix_block": s.prefix_block,
             "prefix_pad_always": s.prefix_pad_always,
             "warm_min_prefix_tokens": s.warm_min_prefix_tokens,
+            "warm_up": s.warm_up,
             "vllm_version": await vllm_version(request.app.state.client) if ok else None,
             "layouts": sorted(engine.layouts),
         }

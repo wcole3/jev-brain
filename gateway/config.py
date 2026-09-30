@@ -31,7 +31,7 @@ class Settings:
     api_key: str | None = field(default=None, repr=False)  # keys never show in logs or tracebacks
     vllm_api_key: str | None = field(default=None, repr=False)
     warm_min_prefix_tokens: int = 512
-    prefix_pad: str = "off"  # where to pad the shared prefix: off | end | front | middle
+    prefix_pad: str = "off"  # where to pad the shared prefix: off | end | front | middle | spread
     prefix_block: int = 0  # pad it to a multiple of this many tokens; 0 never pads
     prefix_pad_always: bool = False  # pad even when it does not pay (fidelity experiments)
     data_root: Path = ROOT / "data"

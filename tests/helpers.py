@@ -45,12 +45,12 @@ STATE = "Hi, my Stripe integration keeps failing and I'm losing sales. Please he
 LAYOUTS = load_layouts()
 
 
-def batch_for(tok, layout_name, questions=QUICKSTART, orders=None, padding=OFF):
-    """build_rows for STATE, one row per question (or per order in `orders`)."""
+def batch_for(tok, layout_name, questions=QUICKSTART, orders=None, padding=OFF, state=STATE):
+    """build_rows for a state (STATE by default), one row per question (or per order in `orders`)."""
     layout = LAYOUTS[layout_name]
     rendered = {k: render_question(Question(**v), layout) for k, v in questions.items()}
     perms = {k: orders or [list(range(len(r.options)))] for k, r in rendered.items()}
-    return build_rows(tok, chat_frame(tok, layout), layout, label_table(tok), STATE, rendered, perms, padding)
+    return build_rows(tok, chat_frame(tok, layout), layout, label_table(tok), state, rendered, perms, padding)
 
 
 SSE = b'data: {"choices": []}\n\ndata: [DONE]\n\n'

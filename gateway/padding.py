@@ -4,12 +4,12 @@ from dataclasses import dataclass, replace
 
 from gateway.config import Settings
 
-MODES = ("off", "end", "front", "middle")
+MODES = ("off", "end", "front", "middle", "spread")
 
 
 @dataclass(frozen=True)
 class Padding:
-    mode: str = "off"  # where the pad goes: end | front | middle (see prompts.pad_site)
+    mode: str = "off"  # where the pad goes: end | front | middle | spread (see prompts.pad_site)
     block: int = 0  # the prefix-cache block in tokens; 0 never pads
     always: bool = False  # pad even when it does not pay (fidelity experiments)
     token: int = -1  # the tokenizer's one token for "\n", inserted as an id so nothing merges

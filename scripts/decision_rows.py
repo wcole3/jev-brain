@@ -1,5 +1,6 @@
 """Every labelled source as one decision-row shape, so collect and evaluate never branch on the source."""
 
+import gzip
 import hashlib
 import json
 from pathlib import Path
@@ -9,6 +10,7 @@ from huggingface_hub import hf_hub_download
 from gateway.questions import render_state
 from gateway.schema import MAX_LEVELS
 from scripts.bench_data import jevbench_request, jevbench_rows
+from scripts.index_suite import EXPORT
 
 DECISIONBENCH_REPO = "Hanno-Labs/decision-bench"
 DECISIONBENCH_SHA = "071b7b2d2e1504c89e1e5a811a3f82e1bfe3aedb"
@@ -115,3 +117,52 @@ def decisionbench() -> list[dict]:
         raise SystemExit(f"DecisionBench parquet sha256 {digest} != pinned {DECISIONBENCH_SHA256}")
     records = pq.read_table(path).to_pylist()
     return [row for rec in records if keep_decisionbench(rec) and (row := decisionbench_row(rec))]
+
+
+def index_gold(question: dict, expected):
+    """Single gold answers only: a choice key in the criteria, or yes/no. Rankings and multi-answers are None."""
+    if question["type"] == "noul":
+        return {"yes": True, "no": False, "true": True, "false": False}.get(str(expected).casefold())
+    if question["type"] == "choice" and isinstance(expected, str) and expected in (question.get("criteria") or {}):
+        return expected
+    return None
+
+
+def index_row(raw: dict) -> dict:
+    e, questions = raw["_evaluation"], raw["questions"]
+    expected = raw.get("expected") or {}
+    return {
+        "id": e["run_id"],
+        "source": "index",
+        "family": e["dataset"],
+        "state": raw["state"],
+        "questions": questions,
+        "gold": {k: index_gold(q, expected.get(k)) for k, q in questions.items()},
+        "meta": {
+            "catalog_id": e["catalog_id"],
+            "group_id": e["group_id"],
+            "proxy_tokens": e.get("proxy_tokens"),
+            "payload_chars": len(json.dumps({"state": raw["state"], "questions": questions}, ensure_ascii=False)),
+        },
+    }
+
+
+def read_export(path=EXPORT):
+    with gzip.open(path, "rt", encoding="utf-8") as f:
+        for line in f:
+            yield json.loads(line)
+
+
+def index_rows(ids: set[str] | None = None, path=EXPORT) -> list[dict]:
+    return [index_row(raw) for raw in read_export(path) if ids is None or raw["_evaluation"]["run_id"] in ids]
+
+
+def index_meta(path=EXPORT) -> list[dict]:
+    """Every Index row without its text (the full export is GBs), plus the state key for dedupe."""
+    rows = []
+    for raw in read_export(path):
+        row = index_row(raw)
+        key = state_key(row.pop("state"))
+        del row["questions"]
+        rows.append(row | {"state_key": key})
+    return rows

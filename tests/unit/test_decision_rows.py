@@ -1,3 +1,4 @@
+import gzip
 import json
 
 from scripts import decision_rows
@@ -79,3 +80,30 @@ def test_reasoning_rows_are_flagged():
     row = decision_rows.decisionbench_row(
         rec("candidate_selection", [cand("c0", "A"), cand("c1", "B")], "c0", reasoning=True))
     assert row["meta"]["reasoning"] is True
+
+RAW = {
+    "state": "s", "expected": {"a": "yes", "b": "opt2", "c": None},
+    "questions": {
+        "a": {"type": "noul", "instructions": "x"},
+        "b": {"type": "choice", "instructions": "y", "criteria": {"opt1": "1", "opt2": "2"}},
+        "c": {"type": "choice", "instructions": "z", "criteria": {"k": "1", "l": "2"}},
+    },
+    "_evaluation": {"run_id": "run-1", "dataset": "HoVer", "catalog_id": 61, "group_id": "g1", "proxy_tokens": 42},
+}
+
+
+def test_index_row_keeps_scoreable_gold_only():
+    row = decision_rows.index_row(RAW)
+    assert row["id"] == "run-1" and row["source"] == "index" and row["family"] == "HoVer"
+    assert row["gold"] == {"a": True, "b": "opt2", "c": None}
+    assert row["meta"]["catalog_id"] == 61 and row["meta"]["proxy_tokens"] == 42 and row["meta"]["payload_chars"] > 0
+
+
+def test_index_rows_stream_and_filter(tmp_path):
+    path = tmp_path / "rows.jsonl.gz"
+    other = RAW | {"_evaluation": RAW["_evaluation"] | {"run_id": "run-2"}}
+    with gzip.open(path, "wt") as f:
+        f.write(json.dumps(RAW) + "\n" + json.dumps(other) + "\n")
+    assert [r["id"] for r in decision_rows.index_rows({"run-2"}, path)] == ["run-2"]
+    meta = decision_rows.index_meta(path)
+    assert "state" not in meta[0] and meta[0]["state_key"] == decision_rows.state_key("s")

@@ -3,7 +3,7 @@ import dataclasses
 import pytest
 
 from gateway.calibration import softmax
-from gateway.decide import decide
+from gateway.decide import answers_for, blend, decide, read_rows
 from gateway.padding import Padding, newline_token
 from gateway.schema import RequestError, SystemOneRequest
 from tests.helpers import QUICKSTART, STATE
@@ -68,3 +68,29 @@ async def test_padding_never_refuses_a_request_that_fits_without_it(engine, qwen
     await decide(padded, request())
     prompts, _, shared_len = engine.readout.calls[0]
     assert shared_len < 784 and max(len(p) for p in prompts) < 200
+
+
+async def test_read_rows_keeps_raw_logprobs_per_order(engine):
+    r = await read_rows(engine, request(option_orders="identity+reversed"))
+    assert r.layout == "decider_chat"
+    assert [perm for _, perm in r.reads["department"]] == [[0, 1, 2], [2, 1, 0]]
+    assert r.reads["department"][0][0] == [0.0, -1.0, -2.0]  # raw: no temperature applied
+
+
+async def test_orders_function_overrides_the_setting(engine):
+    r = await read_rows(engine, request(), orders=lambda n: [list(range(n))[::-1]])
+    assert r.reads["department"][0][1] == [2, 1, 0]
+    assert r.reads["is_urgent"][0][1] == [1, 0]
+
+
+async def test_decide_is_read_rows_then_answers_for(engine):
+    r = await read_rows(engine, request())
+    out = await decide(engine, request())
+    assert out["answers"] == answers_for(r.questions, r.reads, engine.temperatures["decider_chat"])
+    assert out["usage"] == {"input_tokens": r.input_tokens, "output_tokens": 0}
+
+
+def test_blend_maps_a_reversed_order_back():
+    q = softmax([0.0, -1.0], 2.0)
+    assert blend([([0.0, -1.0], [0, 1])], 2.0) == pytest.approx(q)
+    assert blend([([0.0, -1.0], [1, 0])], 2.0) == pytest.approx([q[1], q[0]])

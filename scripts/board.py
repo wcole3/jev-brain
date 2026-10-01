@@ -20,8 +20,9 @@ def fmt(x, digits: int) -> str:
     return "n/a" if x is None else f"{x:.{digits}f}"
 
 
-def comparison(profile: str, ours: dict, complete: bool = True) -> list[str]:
-    """Ours next to the matching entries and Jev. ECE and latency are measured differently; see the notes."""
+def comparison(profile: str, ours: dict, unjudged: str | None = None) -> list[str]:
+    """Ours next to the matching entries and Jev. ECE and latency are measured differently; see the notes.
+    With `unjudged` (why the run isn't comparable), the parity gate gives no verdict."""
     lines = ["| entry | Index | ECE | median ms | coverage |", "|---|---|---|---|---|"]
     lines.append(f"| **ours: {profile}** | {fmt(ours['index'], 2)} | {fmt(ours['ece'], 3)} "
                  f"| {fmt(ours['median_ms'], 1)} | {fmt(ours['coverage'], 3)} |")
@@ -32,7 +33,7 @@ def comparison(profile: str, ours: dict, complete: bool = True) -> list[str]:
         key, tolerance = PARITY[profile]
         gap = ours["index"] - BOARD[key]["index"]
         verdict = "pass" if abs(gap) <= tolerance else "MISS: file a ticket before M2"
-        if not complete:
-            verdict = f"not judged (run incomplete: {ours['completed']} rows)"
+        if unjudged:
+            verdict = f"not judged ({unjudged})"
         lines += ["", f"Parity gate vs {BOARD[key]['name']}: {gap:+.2f} (±{tolerance}) → {verdict}"]
     return lines

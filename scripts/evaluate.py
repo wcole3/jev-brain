@@ -118,7 +118,7 @@ def load(merged: Path) -> list[dict]:
 
 
 def index_summary(profile: str, scores: dict, merged: Path, extra: list[str], subset: bool = False) -> str:
-    """With subset False, an incomplete run is flagged and the parity gate is not judged."""
+    """Subset and incomplete runs get no parity verdict: their Index is not comparable to the board."""
     results = load(merged)
     counts = dict(Counter(r["status"] for r in results))
     rows = {r["id"]: r for r in index_rows({r["run_id"] for r in results})}
@@ -126,8 +126,7 @@ def index_summary(profile: str, scores: dict, merged: Path, extra: list[str], su
     ms = [r["total_wall_ms"] for r in results if r["status"] == "ok"]
     total = len(results)
     ours = {"index": scores["decision_index"], "ece": metrics.ece(items) if items else None,
-            "median_ms": percentile(ms, 0.5) if ms else None, "coverage": counts.get("ok", 0) / total if total else None,
-            "completed": scores["completed"]}
+            "median_ms": percentile(ms, 0.5) if ms else None, "coverage": counts.get("ok", 0) / total if total else None}
     areas = ["| area | skill | raw | coverage | n |", "|---|---|---|---|---|"]
     areas += [f"| {a['id']} | {100 * a['skill']:.1f} | {100 * a['raw']:.1f} | {a['coverage']:.3f} | {a['n']} |"
               for a in scores["areas"]]
@@ -137,9 +136,13 @@ def index_summary(profile: str, scores: dict, merged: Path, extra: list[str], su
         ("- median ms: the harness's per-request wall time with all shards running at once, not latency-v1;"
          " see the latency report for the comparable figure."),
     ]
-    complete = subset or scores["complete"]
+    unjudged = None
+    if subset:
+        unjudged = "subset run"
+    elif not scores["complete"]:
+        unjudged = f"run incomplete: {scores['completed']} rows"
     status = f"Status: {counts}; harness complete: {scores['complete']}, completed: {scores['completed']}"
-    lines = [*board.comparison(profile, ours, complete), "", *areas, "", status, "", *notes, *extra]
+    lines = [*board.comparison(profile, ours, unjudged), "", *areas, "", status, "", *notes, *extra]
     return "\n".join(lines) + "\n"
 
 

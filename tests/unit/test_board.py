@@ -14,8 +14,8 @@ def test_comparison_flags_a_parity_miss():
     assert any("pass" in line for line in ok)
 
 
-def test_an_incomplete_run_is_not_judged_for_parity():
-    ours = {"index": 51.0, "ece": 0.03, "median_ms": 80.0, "coverage": 0.99, "completed": 9000}
-    lines = board.comparison("qwen3.6-27b", ours, complete=False)
-    parity = next(line for line in lines if line.startswith("Parity gate"))
-    assert "run incomplete: 9000 rows" in parity and "pass" not in parity
+def test_subset_and_incomplete_runs_get_no_parity_verdict():
+    ours = {"index": 51.0, "ece": 0.03, "median_ms": 80.0, "coverage": 0.99}
+    for reason in ("subset run", "run incomplete: 9000 rows"):
+        parity = next(x for x in board.comparison("qwen3.6-27b", ours, reason) if x.startswith("Parity gate"))
+        assert f"not judged ({reason})" in parity and "pass" not in parity and "MISS" not in parity

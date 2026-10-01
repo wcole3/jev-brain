@@ -26,10 +26,11 @@ def write_shards(rows_path: Path, n: int, out_dir: Path, ids: set[str] | None = 
 
 
 def shard_command(shard: Path, out: Path, gateway: str) -> list[str]:
+    """Absolute paths: the harness runs with cwd=SRC."""
     return [
         str(PYTHON), "-m", "decision_index", "run", "--engine", "http",
         "--option", f"base_url={gateway}", "--option", "model=jev-latest",
-        "--rows", str(shard), "--out", str(out), "--compact",
+        "--rows", str(shard.resolve()), "--out", str(out.resolve()), "--compact",
     ]
 
 
@@ -70,7 +71,7 @@ def replace(base: Path, override: Path, out: Path) -> int:
 
 def score_command(results: Path, out: Path) -> list[str]:
     return [str(PYTHON), "-m", "decision_index", "score", "--edition", EDITION,
-            "--results", str(results), "--suite-dir", str(SUITE), "--out", str(out)]
+            "--results", str(results.resolve()), "--suite-dir", str(SUITE), "--out", str(out.resolve())]
 
 
 def index_scored(results: Path, rows_by_id: dict[str, dict]) -> list[Scored]:

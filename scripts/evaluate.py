@@ -117,7 +117,8 @@ def load(merged: Path) -> list[dict]:
     return [json.loads(x) for x in (merged / "results.jsonl").read_text().splitlines() if x.strip()]
 
 
-def index_summary(profile: str, scores: dict, merged: Path, extra: list[str]) -> str:
+def index_summary(profile: str, scores: dict, merged: Path, extra: list[str], subset: bool = False) -> str:
+    """With subset False, an incomplete run is flagged and the parity gate is not judged."""
     results = load(merged)
     counts = dict(Counter(r["status"] for r in results))
     rows = {r["id"]: r for r in index_rows({r["run_id"] for r in results})}
@@ -125,7 +126,8 @@ def index_summary(profile: str, scores: dict, merged: Path, extra: list[str]) ->
     ms = [r["total_wall_ms"] for r in results if r["status"] == "ok"]
     total = len(results)
     ours = {"index": scores["decision_index"], "ece": metrics.ece(items) if items else None,
-            "median_ms": percentile(ms, 0.5) if ms else None, "coverage": counts.get("ok", 0) / total if total else None}
+            "median_ms": percentile(ms, 0.5) if ms else None, "coverage": counts.get("ok", 0) / total if total else None,
+            "completed": scores["completed"]}
     areas = ["| area | skill | raw | coverage | n |", "|---|---|---|---|---|"]
     areas += [f"| {a['id']} | {100 * a['skill']:.1f} | {100 * a['raw']:.1f} | {a['coverage']:.3f} | {a['n']} |"
               for a in scores["areas"]]
@@ -135,7 +137,10 @@ def index_summary(profile: str, scores: dict, merged: Path, extra: list[str]) ->
         ("- median ms: the harness's per-request wall time with all shards running at once, not latency-v1;"
          " see the latency report for the comparable figure."),
     ]
-    return "\n".join([*board.comparison(profile, ours), "", *areas, "", f"Status: {counts}", "", *notes, *extra]) + "\n"
+    complete = subset or scores["complete"]
+    status = f"Status: {counts}; harness complete: {scores['complete']}, completed: {scores['completed']}"
+    lines = [*board.comparison(profile, ours, complete), "", *areas, "", status, "", *notes, *extra]
+    return "\n".join(lines) + "\n"
 
 
 def run_notes(outcome: dict) -> list[str]:
@@ -158,7 +163,7 @@ async def cmd_index(args) -> None:
         health = (await client.get("/health")).json()
     if health["profile"] != args.profile:
         raise SystemExit(f"gateway serves {health['profile']!r}, not {args.profile!r}")
-    run = Path(args.run_dir) if args.run_dir else RUNS / args.profile / now()
+    run = Path(args.run_dir).resolve() if args.run_dir else RUNS / args.profile / now()
     run.mkdir(parents=True, exist_ok=True)
     outcome = await run_index(args, run, health)
     index_run.merge(sorted(p for p in run.glob("shard-*") if p.is_dir()), run / "merged")
@@ -168,13 +173,13 @@ async def cmd_index(args) -> None:
             "run dir": str(run.relative_to(ROOT)), "shards": len(outcome["codes"]), "ids": args.ids or "full suite"}
     meta |= {k: health.get(k) for k in keys}
     out = results_dir(args.profile, f"{run.name}-index{'-subset' if args.ids else ''}")
-    body = index_summary(args.profile, scores, run / "merged", run_notes(outcome))
+    body = index_summary(args.profile, scores, run / "merged", run_notes(outcome), subset=bool(args.ids))
     (out / "summary.md").write_text(f"# {args.profile} Decision Index {EDITION}\n\n{provenance(meta)}\n{body}")
     print(out / "summary.md")
 
 
 def cmd_replace(args) -> None:
-    base, override = Path(args.base), Path(args.override)
+    base, override = Path(args.base).resolve(), Path(args.override).resolve()
     out = base.parent / f"{base.name}+{override.name}"
     swapped = index_run.replace(base / "merged" / "results.jsonl", override / "merged" / "results.jsonl", out / "merged")
     scores = score(out / "merged")

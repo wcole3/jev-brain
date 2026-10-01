@@ -1,5 +1,6 @@
 import gzip
 import json
+from pathlib import Path
 
 from scripts import index_run
 from scripts.evaluate import parse_args
@@ -54,6 +55,14 @@ def test_shard_command_drives_the_http_engine(tmp_path):
     cmd = index_run.shard_command(tmp_path / "s.jsonl.gz", tmp_path / "out", "http://127.0.0.1:9000")
     assert cmd[1:5] == ["-m", "decision_index", "run", "--engine"] and "base_url=http://127.0.0.1:9000" in cmd
     assert "--compact" in cmd
+
+
+def test_harness_commands_get_absolute_paths(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)  # the harness runs with cwd=SRC, so relative paths would resolve there
+    shard = index_run.shard_command(Path("s.jsonl.gz"), Path("out"), "http://127.0.0.1:9000")
+    score = index_run.score_command(Path("merged/results.jsonl"), Path("merged"))
+    assert str(tmp_path / "s.jsonl.gz") in shard and str(tmp_path / "out") in shard
+    assert str(tmp_path / "merged" / "results.jsonl") in score and str(tmp_path / "merged") in score
 
 
 def test_index_scored_reads_choice_and_noul_answers(tmp_path):

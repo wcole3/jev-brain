@@ -12,3 +12,10 @@ def test_comparison_flags_a_parity_miss():
     assert any("MISS" in line for line in lines)
     ok = board.comparison("qwen3.6-27b", {"index": 51.0, "ece": 0.03, "median_ms": 80.0, "coverage": 0.99})
     assert any("pass" in line for line in ok)
+
+
+def test_an_incomplete_run_is_not_judged_for_parity():
+    ours = {"index": 51.0, "ece": 0.03, "median_ms": 80.0, "coverage": 0.99, "completed": 9000}
+    lines = board.comparison("qwen3.6-27b", ours, complete=False)
+    parity = next(line for line in lines if line.startswith("Parity gate"))
+    assert "run incomplete: 9000 rows" in parity and "pass" not in parity

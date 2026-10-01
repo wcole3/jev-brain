@@ -20,7 +20,7 @@ def fmt(x, digits: int) -> str:
     return "n/a" if x is None else f"{x:.{digits}f}"
 
 
-def comparison(profile: str, ours: dict) -> list[str]:
+def comparison(profile: str, ours: dict, complete: bool = True) -> list[str]:
     """Ours next to the matching entries and Jev. ECE and latency are measured differently; see the notes."""
     lines = ["| entry | Index | ECE | median ms | coverage |", "|---|---|---|---|---|"]
     lines.append(f"| **ours: {profile}** | {fmt(ours['index'], 2)} | {fmt(ours['ece'], 3)} "
@@ -32,5 +32,7 @@ def comparison(profile: str, ours: dict) -> list[str]:
         key, tolerance = PARITY[profile]
         gap = ours["index"] - BOARD[key]["index"]
         verdict = "pass" if abs(gap) <= tolerance else "MISS: file a ticket before M2"
+        if not complete:
+            verdict = f"not judged (run incomplete: {ours['completed']} rows)"
         lines += ["", f"Parity gate vs {BOARD[key]['name']}: {gap:+.2f} (±{tolerance}) → {verdict}"]
     return lines

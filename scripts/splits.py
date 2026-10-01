@@ -25,6 +25,7 @@ SEED = "phase2-v1"
 CAP_PER_TASK = 300
 LATENCY_SEED = 20260926  # latency-v1's published seed
 SIMPLEBENCH = 34  # outside latency-v1's scope
+INDEX_DEV_SEED = 0
 
 
 def unit(key: str) -> float:
@@ -38,20 +39,31 @@ def cap_per_family(rows: list[dict], cap: int) -> list[dict]:
     return [r for members in by_family.values() for r in sorted(members, key=lambda r: unit(r["id"]))[:cap]]
 
 
+def stratum(group: list[dict]) -> tuple:
+    first = group[0]
+    return first["source"], first["family"], tuple(sorted({q["type"] for r in group for q in r["questions"].values()}))
+
+
 def split_extras(rows: list[dict], index_keys: set[str]) -> dict[str, list[str]]:
-    """Dedupe by state, then alternate calib/eval in hash order inside each (source, family, type) stratum."""
-    unique: dict[str, dict] = {}
+    """Dedupe by (state, question); each state goes whole to one split, alternating calib/eval in hash order
+    inside its stratum. States seen in the Index or with a reasoning row go to eval without taking a turn."""
+    unique: dict[tuple[str, str], dict] = {}
     for r in sorted(rows, key=lambda r: r["id"]):
-        unique.setdefault(state_key(r["state"]), r)
-    strata: dict[tuple, list[dict]] = defaultdict(list)
-    for r in unique.values():
-        strata[(r["source"], r["family"], next(iter(r["questions"].values()))["type"])].append(r)
+        unique.setdefault((state_key(r["state"]), json.dumps(r["questions"], sort_keys=True)), r)
+    groups: dict[str, list[dict]] = defaultdict(list)
+    for (key, _), r in unique.items():
+        groups[key].append(r)
     out: dict[str, list[str]] = {"calib": [], "eval": []}
-    for key in sorted(strata):
-        for i, r in enumerate(sorted(strata[key], key=lambda r: unit(r["id"]))):
-            forced = r["meta"].get("reasoning") or state_key(r["state"]) in index_keys
-            out["eval" if forced or i % 2 else "calib"].append(r["id"])
-    return out
+    strata: dict[tuple, list[str]] = defaultdict(list)
+    for key, group in groups.items():
+        if key in index_keys or any(r["meta"].get("reasoning") for r in group):
+            out["eval"] += [r["id"] for r in group]
+        else:
+            strata[stratum(group)].append(key)
+    for s in sorted(strata):
+        for i, key in enumerate(sorted(strata[s], key=unit)):
+            out["eval" if i % 2 else "calib"] += [r["id"] for r in groups[key]]
+    return {name: sorted(ids) for name, ids in out.items()}
 
 
 def systematic(n_items: int, n: int, rng: random.Random) -> list[int]:
@@ -61,7 +73,7 @@ def systematic(n_items: int, n: int, rng: random.Random) -> list[int]:
     return [int(start + i * step) for i in range(n)]
 
 
-def index_dev(meta: list[dict], n_rows: int = 8000, seed: int = 0) -> list[str]:
+def index_dev(meta: list[dict], n_rows: int = 8000, seed: int = INDEX_DEV_SEED) -> list[str]:
     """Whole linked groups, systematic over (benchmark, payload length)."""
     groups: dict[tuple, list[dict]] = defaultdict(list)
     for m in meta:
@@ -96,23 +108,35 @@ def extras() -> list[dict]:
     return jevbench() + cap_per_family(decisionbench(), CAP_PER_TASK)
 
 
-def rows_for(name: str) -> list[dict]:
-    split = load_split(name)
-    if name in ("calib", "eval"):
-        wanted = set(split["ids"])
-        return [r for r in extras() if r["id"] in wanted]
-    ids = split["warmup"] + split["timed"] if name == "latency-v1" else split["ids"]
-    by_id = {r["id"]: r for r in index_rows(set(ids))}
+def pins() -> dict[str, str]:
+    return {"jevbench": JEVBENCH_SHA, "decisionbench": DECISIONBENCH_SHA, "harness": HARNESS_SHA, "edition": EDITION}
+
+
+def pick(name: str, rows: list[dict], ids: list[str]) -> list[dict]:
+    by_id = {r["id"]: r for r in rows}
+    if missing := [i for i in ids if i not in by_id]:
+        raise SystemExit(f"{name}: {len(missing)} listed ids are missing from the loaded rows, e.g. {missing[0]}")
     return [by_id[i] for i in ids]
+
+
+def rows_for(name: str) -> list[dict]:
+    """The split's rows in file order; refuses a split cut from other source revisions."""
+    split = load_split(name)
+    if stale := sorted(k for k, v in pins().items() if split["meta"].get(k) != v):
+        raise SystemExit(f"data/splits/{name}.json was cut from other {stale}: recut it with scripts/splits.py")
+    if name in ("calib", "eval"):
+        return pick(name, extras(), split["ids"])
+    ids = split["warmup"] + split["timed"] if name == "latency-v1" else split["ids"]
+    return pick(name, index_rows(set(ids)), ids)
 
 
 def main() -> None:
     meta = index_meta()
-    sources = {"jevbench": JEVBENCH_SHA, "decisionbench": DECISIONBENCH_SHA, "harness": HARNESS_SHA, "edition": EDITION}
+    sources = pins()
     parts = split_extras(extras(), {m["state_key"] for m in meta})
     for name in ("calib", "eval"):
         write(name, {"meta": sources | {"seed": SEED, "cap_per_task": CAP_PER_TASK}, "ids": parts[name]})
-    write("index-dev", {"meta": sources | {"rows_target": 8000}, "ids": index_dev(meta)})
+    write("index-dev", {"meta": sources | {"rows_target": 8000, "seed": INDEX_DEV_SEED}, "ids": index_dev(meta)})
     write("latency-v1", {"meta": sources | {"seed": LATENCY_SEED, "design": "latency-v1, our rows"}, **latency_sample(meta)})
     print({name: len(v) for name, v in parts.items()})
 

@@ -67,6 +67,10 @@ curl -s localhost:9000/health                                     # {"status":"o
   docker compose --env-file profiles/gemma-4-31b.env up -d --build
   ```
 
+- **Decision length cap:** `SYSTEMONE_MAX_LEN` (default 32,768, or `MAX_MODEL_LEN` if smaller)
+  caps `/v1/systemone` prompts separately from chat. Long decisions compete with chat and
+  coding agents for KV cache and prefill, so keep it below `MAX_MODEL_LEN` unless you need
+  them. Over the cap is a 422 "maximum context length".
 - `HF_TOKEN` in your shell raises Hugging Face rate limits for `fetch_model.py`.
 - If host tools report `Permission denied` in the HF cache (older setups let the vLLM
   container write there as root), fix it once with `sudo chown -R $USER: ~/.cache/huggingface`.

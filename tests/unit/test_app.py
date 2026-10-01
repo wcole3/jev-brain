@@ -5,7 +5,7 @@ import httpx
 import pytest
 from fastapi.testclient import TestClient
 
-from gateway.app import create_app
+from gateway.app import create_app, load_engine
 from tests.helpers import QUICKSTART, SSE, STATE, fake_vllm
 
 NOUL = {"state": "s", "questions": {"q": {"type": "noul", "instructions": "ok?"}}}
@@ -101,6 +101,7 @@ def test_health(client):
     padding = (body["prefix_pad"], body["prefix_block"], body["prefix_pad_always"], body["warm_min_prefix_tokens"])
     assert padding == (s.prefix_pad, s.prefix_block, s.prefix_pad_always, s.warm_min_prefix_tokens)
     assert body["warm_up"] == s.warm_up
+    assert body["systemone_max_len"] == s.systemone_max_len
 
 
 def test_padded_gateway_reports_padding_and_bills_without_it(qwen_settings, vllm, sent):
@@ -224,3 +225,9 @@ def test_unexpected_error_is_500_with_request_id(qwen_settings, caplog):
         r = c.post("/v1/systemone", json=NOUL)
     assert r.status_code == 500
     assert r.json()["error"]["request_id"] in caplog.text
+
+
+def test_startup_refuses_a_decision_cap_above_the_model_limit(qwen_settings):
+    bad = dataclasses.replace(qwen_settings, systemone_max_len=qwen_settings.max_model_len + 1)
+    with pytest.raises(ValueError, match="SYSTEMONE_MAX_LEN"):
+        load_engine(bad, None)

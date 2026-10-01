@@ -38,6 +38,8 @@ def vllm_client(s: Settings, transport: httpx.AsyncBaseTransport | None) -> http
 
 
 def load_engine(s: Settings, client: httpx.AsyncClient) -> Engine:
+    if s.systemone_max_len > s.max_model_len:
+        raise ValueError(f"SYSTEMONE_MAX_LEN {s.systemone_max_len} exceeds MAX_MODEL_LEN {s.max_model_len}")
     tok = AutoTokenizer.from_pretrained(s.hf_model, revision=s.hf_revision)
     layouts = load_layouts()
     return Engine(
@@ -154,6 +156,7 @@ def create_app(settings: Settings | None = None, transport: httpx.AsyncBaseTrans
             "prefix_pad": s.prefix_pad,
             "prefix_block": s.prefix_block,
             "prefix_pad_always": s.prefix_pad_always,
+            "systemone_max_len": s.systemone_max_len,
             "warm_min_prefix_tokens": s.warm_min_prefix_tokens,
             "warm_up": s.warm_up,
             "vllm_version": await vllm_version(request.app.state.client) if ok else None,

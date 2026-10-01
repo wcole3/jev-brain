@@ -51,11 +51,13 @@ async def decide(engine: Engine, request: SystemOneRequest) -> dict:
         build_rows, engine.tokenizer, engine.frames[name], layout, engine.labels[name], state, questions, perms
     )
     batch = await asyncio.to_thread(build, engine.padding)
-    if batch.longest >= s.max_model_len and engine.padding.enabled:
+    if batch.longest >= s.systemone_max_len and engine.padding.enabled:
         batch = await asyncio.to_thread(build, OFF)  # the pad must never refuse a request that fits without it
     longest = batch.longest
-    if longest >= s.max_model_len:
-        raise RequestError(f"prompt is longer than the maximum context length ({longest} >= {s.max_model_len} tokens)")
+    if longest >= s.systemone_max_len:
+        raise RequestError(
+            f"prompt is longer than the maximum context length ({longest} >= {s.systemone_max_len} tokens)"
+        )
 
     logprobs = await engine.readout.letter_logprobs(
         [r.ids for r in batch.rows], [r.label_ids for r in batch.rows], batch.shared_len

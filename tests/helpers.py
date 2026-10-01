@@ -53,6 +53,17 @@ def batch_for(tok, layout_name, questions=QUICKSTART, orders=None, padding=OFF):
     return build_rows(tok, chat_frame(tok, layout), layout, label_table(tok), STATE, rendered, perms, padding)
 
 
+class FavourFirstLabel:
+    """Fake readout: label A always most likely (logprobs 0, -1, -2, ...)."""
+
+    def __init__(self):
+        self.calls = []
+
+    async def letter_logprobs(self, prompts, label_ids, shared_len):
+        self.calls.append((prompts, label_ids, shared_len))
+        return [[-float(j) for j in range(len(ids))] for ids in label_ids]
+
+
 SSE = b'data: {"choices": []}\n\ndata: [DONE]\n\n'
 
 

@@ -3,39 +3,10 @@ import dataclasses
 import pytest
 
 from gateway.calibration import softmax
-from gateway.config import Settings
-from gateway.decide import Engine, decide
-from gateway.labels import label_table
-from gateway.layouts import load_layouts
+from gateway.decide import decide
 from gateway.padding import Padding, newline_token
-from gateway.prompts import chat_frame
 from gateway.schema import RequestError, SystemOneRequest
 from tests.helpers import QUICKSTART, STATE
-
-
-class FavourFirstLabel:
-    """Fake readout: label A always most likely (logprobs 0, -1, -2, ...)."""
-
-    def __init__(self):
-        self.calls = []
-
-    async def letter_logprobs(self, prompts, label_ids, shared_len):
-        self.calls.append((prompts, label_ids, shared_len))
-        return [[-float(j) for j in range(len(ids))] for ids in label_ids]
-
-
-@pytest.fixture
-def engine(qwen_tok):
-    layouts = load_layouts()
-    return Engine(
-        settings=Settings.from_profile("qwen3.6-27b"),
-        tokenizer=qwen_tok,
-        layouts=layouts,
-        frames={n: chat_frame(qwen_tok, l) for n, l in layouts.items()},
-        labels={n: label_table(qwen_tok) for n in layouts},
-        temperatures={n: {"choice": 1.0, "score": 1.0, "noul": 1.0} for n in layouts},
-        readout=FavourFirstLabel(),
-    )
 
 
 def request(**kw):
@@ -72,10 +43,16 @@ async def test_bad_overrides_are_refusals(engine):
 
 
 async def test_too_long_prompt_is_refused_before_vllm(engine):
-    small = dataclasses.replace(engine, settings=dataclasses.replace(engine.settings, max_model_len=50))
+    small = dataclasses.replace(engine, settings=dataclasses.replace(engine.settings, systemone_max_len=50))
     with pytest.raises(RequestError, match="maximum context length"):
         await decide(small, request())
     assert engine.readout.calls == []
+
+
+async def test_decision_cap_applies_below_the_model_limit(engine):
+    s = dataclasses.replace(engine.settings, max_model_len=262144, systemone_max_len=50)
+    with pytest.raises(RequestError, match=r"\(\d+ >= 50 tokens\)"):
+        await decide(dataclasses.replace(engine, settings=s), request())
 
 
 async def test_padded_rows_reach_the_readout_and_usage_leaves_the_pad_out(engine, qwen_tok):
@@ -86,7 +63,7 @@ async def test_padded_rows_reach_the_readout_and_usage_leaves_the_pad_out(engine
 
 
 async def test_padding_never_refuses_a_request_that_fits_without_it(engine, qwen_tok):
-    small = dataclasses.replace(engine.settings, max_model_len=200)  # rows fit unpadded, not padded to 784
+    small = dataclasses.replace(engine.settings, systemone_max_len=200)  # rows fit unpadded, not padded to 784
     padded = dataclasses.replace(engine, settings=small, padding=Padding("end", 784, True, newline_token(qwen_tok)))
     await decide(padded, request())
     prompts, _, shared_len = engine.readout.calls[0]

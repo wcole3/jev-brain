@@ -25,6 +25,7 @@ class Settings:
     hf_revision: str
     served_model: str
     max_model_len: int
+    systemone_max_len: int = 32768  # decisions refuse prompts this long; <= max_model_len (DS-018)
     prompt_layout: str = "decider_chat"
     option_orders: str = "identity"
     vllm_url: str = "http://127.0.0.1:8000"
@@ -40,12 +41,14 @@ class Settings:
     @classmethod
     def from_env(cls, env: dict[str, str] | None = None) -> "Settings":
         e = dict(os.environ) if env is None else env
+        max_model_len = int(e["MAX_MODEL_LEN"])
         return cls(
             profile=e["PROFILE"],
             hf_model=e["HF_MODEL"],
             hf_revision=e["HF_REVISION"],
             served_model=e["SERVED_MODEL"],
-            max_model_len=int(e["MAX_MODEL_LEN"]),
+            max_model_len=max_model_len,
+            systemone_max_len=int(e.get("SYSTEMONE_MAX_LEN") or min(32768, max_model_len)),
             prompt_layout=e.get("PROMPT_LAYOUT") or "decider_chat",
             option_orders=e.get("OPTION_ORDERS") or "identity",
             vllm_url=e.get("VLLM_URL") or "http://127.0.0.1:8000",

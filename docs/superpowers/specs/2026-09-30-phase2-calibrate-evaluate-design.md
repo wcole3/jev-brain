@@ -230,6 +230,15 @@ tables and refitting.
 - **Parity gate (M1):** qwen3.6-27b on `decider_chat` with decider's T should land within
   ±1.5 Index points of 51.35. Our prompt matches decider's token for token, so a bigger gap
   is a bug to ticket before M2.
+- **Decision length cap (M1):**
+  - Count Index rows by prompt length from the suite's `proxy_tokens`, then by real token
+    count for the rows near the cap.
+  - Score the long rows twice: at the 32k decision cap, and at the profile's full
+    `MAX_MODEL_LEN`.
+  - Report the Index gain against the cost: latency of the long rows, KV peak, and chat
+    ITL while they run.
+  - Recommend a `SYSTEMONE_MAX_LEN` per profile. Changing it needs the owner's decision,
+    because long decisions compete with coding agents for KV and prefill.
 - **`latency.py`:** one sequential client, 10 warm-up rows, then 750 timed rows. Reports the
   median and p95 overall and per benchmark (≥5 rows), plus the board's figures beside them.
 
@@ -237,7 +246,7 @@ tables and refitting.
 
 | Milestone | Deliverables | Gate |
 |---|---|---|
-| **M1 evaluate** | `index_suite`, `datasets`, `splits`, `metrics`, the `read_rows`/`finish` seam, `collect`, `evaluate`, `latency`; a baseline full Index and latency run per profile | parity gate passes; offline matches live on the spot check |
+| **M1 evaluate** | `index_suite`, `datasets`, `splits`, `metrics`, the `read_rows`/`finish` seam, `collect`, `evaluate`, `latency`; a baseline full Index and latency run per profile; the decision length-cap comparison | parity gate passes; offline matches live on the spot check |
 | **M2 calibrate** | `calibrate.py`, the v2 `calibration.json` with the gateway stamp check and noul offset, fits for 3 profiles × 3 layouts | eval-split ECE no worse than T = 1 for every type; Index ECE reported as a transfer result |
 | **M3 experiments** | order and layout reports with recommendations, a final full Index per profile, `phase2_report.py`, the README table | DS-002's verify criteria |
 
@@ -270,8 +279,10 @@ TDD for every new module. CPU-only unit tests unless marked live.
 
 ## Risks and follow-ups
 
-- **Context limit:** `MAX_MODEL_LEN` is 32,768. Index rows above it count as unanswered. The
-  M1 baseline reports the lost coverage, and raising the limit is its own ticket if it matters.
+- **Context limit:** decisions are capped by `SYSTEMONE_MAX_LEN` (DS-018, default 32,768),
+  separate from vLLM's `MAX_MODEL_LEN`. The model limit rises for coding agents: 262,144 on
+  Qwen (DS-016), 131,072 on Gemma (DS-017). Index rows above the decision cap count as
+  unanswered. Answer quality on long decisions is unmeasured.
 - **T may not transfer:** Jev's refit T ranged from 0.96 to 2.7 across datasets. The Index
   ECE shows how far ours moves; we report it and do not tune T on the Index.
 - **DecisionBench licence ambiguity:** recorded in the report; local use only.

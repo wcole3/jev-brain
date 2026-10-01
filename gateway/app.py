@@ -159,6 +159,7 @@ def create_app(settings: Settings | None = None, transport: httpx.AsyncBaseTrans
             "systemone_max_len": s.systemone_max_len,
             "warm_min_prefix_tokens": s.warm_min_prefix_tokens,
             "warm_up": s.warm_up,
+            "temperatures": engine.temperatures,
             "vllm_version": await vllm_version(request.app.state.client) if ok else None,
             "layouts": sorted(engine.layouts),
         }

@@ -68,20 +68,26 @@ def cmd_offline(args) -> None:
     print(out / "summary.md")
 
 
+async def probe_chat(client: httpx.AsyncClient, served: str) -> dict:
+    """One short streaming chat. Failures are recorded, never raised, so the Index results still get scored."""
+    try:
+        ttft, rate = await chat_once(client, served, CHAT_PROMPTS["short"])
+    except httpx.HTTPError as e:
+        return {"error": type(e).__name__}
+    except TypeError:  # chat_once found no chunk to time
+        return {"error": "no chunks streamed"}
+    return {"ttft_ms": ttft, "chunks_per_s": rate}
+
+
 async def chat_probe(client: httpx.AsyncClient, served: str, stop: asyncio.Event, samples: list) -> None:
     """One short streaming chat at a time while the Index runs: what a chat user sees meanwhile."""
     while not stop.is_set():
-        ttft, rate = await chat_once(client, served, CHAT_PROMPTS["short"])
-        samples.append({"ttft_ms": ttft, "chunks_per_s": rate})
+        samples.append(await probe_chat(client, served))
         await asyncio.sleep(2)
 
 
 async def idle_chats(client: httpx.AsyncClient, served: str, n: int = 3) -> list[dict]:
-    samples = []
-    for _ in range(n):
-        ttft, rate = await chat_once(client, served, CHAT_PROMPTS["short"])
-        samples.append({"ttft_ms": ttft, "chunks_per_s": rate})
-    return samples
+    return [await probe_chat(client, served) for _ in range(n)]
 
 
 async def run_index(args, run: Path, health: dict) -> dict:
@@ -120,8 +126,18 @@ def load(merged: Path) -> list[dict]:
     return [json.loads(x) for x in (merged / "results.jsonl").read_text().splitlines() if x.strip()]
 
 
-def index_summary(profile: str, scores: dict, merged: Path, extra: list[str], subset: bool = False) -> str:
-    """Subset and incomplete runs get no parity verdict: their Index is not comparable to the board."""
+def unjudged_reason(counts: dict, scores: dict, reason: str | None = None) -> str | None:
+    """Why the parity gate can't judge this run, or None. The harness counts error rows as unanswered."""
+    reasons = [reason] if reason else []
+    if counts.get("error"):
+        reasons.append(f"{counts['error']} error rows: resume with --run-dir")
+    if not scores["complete"]:
+        reasons.append(f"run incomplete: {scores['completed']} rows")
+    return "; ".join(reasons) or None
+
+
+def index_summary(profile: str, scores: dict, merged: Path, extra: list[str], unjudged: str | None = None) -> str:
+    """Subset, partial and error-holed runs get no parity verdict: their Index is not comparable to the board."""
     results = load(merged)
     counts = dict(Counter(r["status"] for r in results))
     rows = {r["id"]: r for r in index_rows({r["run_id"] for r in results})}
@@ -139,13 +155,9 @@ def index_summary(profile: str, scores: dict, merged: Path, extra: list[str], su
         ("- median ms: the harness's per-request wall time with all shards running at once, not latency-v1;"
          " see the latency report for the comparable figure."),
     ]
-    unjudged = None
-    if subset:
-        unjudged = "subset run"
-    elif not scores["complete"]:
-        unjudged = f"run incomplete: {scores['completed']} rows"
     status = f"Status: {counts}; harness complete: {scores['complete']}, completed: {scores['completed']}"
-    lines = [*board.comparison(profile, ours, unjudged), "", *areas, "", status, "", *notes, *extra]
+    verdict = unjudged_reason(counts, scores, unjudged)
+    lines = [*board.comparison(profile, ours, verdict), "", *areas, "", status, "", *notes, *extra]
     return "\n".join(lines) + "\n"
 
 
@@ -157,10 +169,15 @@ def run_notes(outcome: dict) -> list[str]:
         notes.append(f"- vLLM during the run: KV peak {100 * v['kv_peak']:.1f}%, mean {100 * v['kv_mean']:.1f}%,"
                      f" waiting peak {v['waiting_peak']:.0f}, preemptions {v['preemptions']}")
     for label, samples in (("idle", outcome["idle"]), ("during run", outcome["busy"])):
-        if samples:
-            ttft = percentile([s["ttft_ms"] for s in samples], 0.5)
-            rate = percentile([s["chunks_per_s"] for s in samples], 0.5)
-            notes.append(f"- chat {label}: median TTFT {ttft:.0f} ms, {rate:.1f} chunks/s ({len(samples)} samples)")
+        ok = [s for s in samples if "error" not in s]
+        failed = len(samples) - len(ok)
+        if ok:
+            ttft = percentile([s["ttft_ms"] for s in ok], 0.5)
+            rate = percentile([s["chunks_per_s"] for s in ok], 0.5)
+            notes.append(f"- chat {label}: median TTFT {ttft:.0f} ms, {rate:.1f} chunks/s"
+                         f" ({len(ok)} samples, {failed} failed)")
+        elif samples:
+            notes.append(f"- chat {label}: {failed} of {len(samples)} probes failed")
     return notes
 
 
@@ -174,12 +191,13 @@ async def cmd_index(args) -> None:
     outcome = await run_index(args, run, health)
     index_run.merge(sorted(p for p in run.glob("shard-*") if p.is_dir()), run / "merged")
     scores = score(run / "merged")
-    keys = ("profile", "hf_model", "hf_revision", "prompt_layout", "option_orders", "systemone_max_len", "vllm_version")
+    keys = ("profile", "hf_model", "hf_revision", "prompt_layout", "option_orders", "systemone_max_len", "temperatures",
+            "vllm_version")
     meta = {"timestamp": now(), "repo commit": git_revision(), "harness": HARNESS_SHA, "edition": EDITION,
             "run dir": str(run.relative_to(ROOT)), "shards": len(outcome["codes"]), "ids": args.ids or "full suite"}
     meta |= {k: health.get(k) for k in keys}
     out = results_dir(args.profile, f"{run.name}-index{'-subset' if args.ids else ''}")
-    body = index_summary(args.profile, scores, run / "merged", run_notes(outcome), subset=bool(args.ids))
+    body = index_summary(args.profile, scores, run / "merged", run_notes(outcome), "subset run" if args.ids else None)
     (out / "summary.md").write_text(f"# {args.profile} Decision Index {EDITION}\n\n{provenance(meta)}\n{body}")
     print(out / "summary.md")
 
@@ -216,7 +234,7 @@ def cmd_replace(args) -> None:
     scores = score(out / "merged")
     meta = {"timestamp": now(), "repo commit": git_revision(), "base": str(base.relative_to(ROOT)),
             "override": str(override.relative_to(ROOT)), "rows swapped": swapped}
-    body = index_summary(args.profile, scores, out / "merged", [])
+    body = index_summary(args.profile, scores, out / "merged", [], "long rows rerun at a higher cap")
     target = results_dir(args.profile, f"{out.name}-index-replaced")
     (target / "summary.md").write_text(f"# {args.profile} Decision Index, long rows rerun\n\n{provenance(meta)}\n{body}")
     print(target / "summary.md")

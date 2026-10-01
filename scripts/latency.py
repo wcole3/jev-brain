@@ -66,7 +66,8 @@ def main(args) -> None:
         for k in [*MATCHES.get(args.profile, []), "jev"]
     ]
     meta = {"timestamp": stamp, "repo commit": git_revision(), "design": split["meta"]["design"], **extra}
-    meta |= {k: health.get(k) for k in ("profile", "hf_revision", "prompt_layout", "option_orders", "vllm_version")}
+    keys = ("profile", "hf_revision", "prompt_layout", "option_orders", "temperatures", "vllm_version")
+    meta |= {k: health.get(k) for k in keys}
     table = [
         "| entry | median ms | p95 ms |",
         "|---|---|---|",

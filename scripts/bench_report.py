@@ -1,5 +1,7 @@
 """Render bench records as markdown: latency tables, the JevBench board columns, provenance."""
 
+from scripts.metrics import ece_of
+
 JEV_USD_PER_M_INPUT = 0.042
 
 
@@ -56,15 +58,7 @@ def jevbench_section(bench: list[dict]) -> list[str]:
 
 def ece(rows: list[dict], bins: int = 15) -> float:
     """Expected calibration error: confidence is the probability of the predicted answer."""
-    buckets: list[list[tuple[float, bool]]] = [[] for _ in range(bins)]
-    for r in rows:
-        confidence = max(r["probabilities"].values())
-        buckets[min(int(confidence * bins), bins - 1)].append((confidence, r["correct"]))
-    return sum(
-        len(b) / len(rows) * abs(sum(conf for conf, _ in b) / len(b) - sum(ok for _, ok in b) / len(b))
-        for b in buckets
-        if b
-    )
+    return ece_of([max(r["probabilities"].values()) for r in rows], [r["correct"] for r in rows], bins)
 
 
 def brier(rows: list[dict]) -> float:

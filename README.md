@@ -231,6 +231,35 @@ gateway runs.
 - **Terms:** TypeSafe's terms forbid using Jev outputs to train or calibrate a similar
   model. Never feed them into calibration or prompt tuning.
 
+## Phase 2: evaluation (DS-002)
+
+Design: [docs/superpowers/specs/2026-09-30-phase2-calibrate-evaluate-design.md](docs/superpowers/specs/2026-09-30-phase2-calibrate-evaluate-design.md).
+Long runs (suite rebuild, collect, full Index) take hours; plan them.
+
+```bash
+uv run python scripts/index_suite.py setup     # pinned harness clone + venv in .cache/
+uv run python scripts/index_suite.py rebuild   # ~7 GB download, 17 GB scratch; HF token in secrets/.hf-token (HLE is gated)
+uv run python scripts/index_suite.py export    # scoreable 0.2.1 rows -> .cache/decision-index/rows-0.2.1.jsonl.gz
+uv run python scripts/splits.py                # data/splits/*.json (committed)
+
+uv run python scripts/collect.py --profile qwen3.6-27b --split eval       # raw letter logprobs, stack up
+uv run python scripts/evaluate.py offline --profile qwen3.6-27b --split eval --orders identity+reversed
+uv run python scripts/evaluate.py index --profile qwen3.6-27b             # full Index via the upstream harness, 8 shards
+uv run python scripts/evaluate.py replace --profile qwen3.6-27b --base RUN_DIR --override RUN_DIR  # swap re-run rows into an Index run
+uv run python scripts/latency.py --profile qwen3.6-27b                    # latency-v1 design, one sequential client
+uv run python scripts/evaluate.py lengths --profile qwen3.6-27b           # how many rows the decision cap refuses
+```
+
+- **Data:**
+  - **Index rows are never used for fitting.**
+  - Calibration and evaluation splits come from JevBench gold and filtered DecisionBench
+    (public gold only), 50/50 by hash.
+  - Jev's outputs are never read.
+- **Offline vs live:** `collect.py` uses the gateway's own code, so offline answers equal
+  live ones within bf16 noise (`tests/live/test_offline_matches_live.py`).
+- **Results:** `docs/results/<profile>/<timestamp>-{index,offline-...,latency,lengths}/summary.md`.
+  Large run data stays in `.cache/` (`collect/`, `index-runs/`).
+
 ## When you change prompts or tokenizers
 
 Prompt wording lives only in `prompts/<layout>.toml`. Label tables in
@@ -253,7 +282,8 @@ A layout change also invalidates its fitted temperatures
 | `prompts/` | Prompt layouts (`decider_chat` default, `header`, `question_first`) |
 | `profiles/` | One env file per model |
 | `data/` | Label tables and temperatures per profile/layout; benchmark corpus |
-| `scripts/` | `fetch_model.py`, `build_labels.py`, `bench.py` (+ `bench_data.py`, `bench_report.py`), `decider_fixtures.py` |
+| `scripts/` | `fetch_model.py`, `build_labels.py`, `bench.py` (+ `bench_data.py`, `bench_report.py`), `decider_fixtures.py`; phase 2: `index_suite.py`, `splits.py`, `collect.py`, `evaluate.py`, `latency.py` (+ helpers) |
+| `data/splits/` | Committed calibration, evaluation, index-dev and latency-v1 row ids |
 | `tests/` | `unit/`, `parity/`, `live/` |
 | `docker/`, `compose.yaml` | vLLM entrypoint, gateway image, stack definition |
 | `docs/` | Research, spec, plan, benchmark results |

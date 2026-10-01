@@ -11,6 +11,7 @@ import dataclasses
 import gzip
 import json
 import os
+import zlib
 from collections.abc import Iterator
 
 from pydantic import ValidationError
@@ -72,7 +73,7 @@ def records(path) -> Iterator[dict]:
             for line in f:
                 if line.endswith("\n"):
                     yield json.loads(line)
-    except (EOFError, gzip.BadGzipFile):
+    except (EOFError, gzip.BadGzipFile, zlib.error):
         return
 
 
@@ -80,10 +81,22 @@ def done_keys(path) -> set[tuple[str, str]]:
     return {(r["id"], r["layout"]) for r in records(path)}
 
 
+def repair(path) -> set[tuple[str, str]]:
+    """Rewrite the readable records to a fresh file, so new appends never sit behind a truncated tail."""
+    done: set[tuple[str, str]] = set()
+    tmp = path.with_name(path.name + ".tmp")
+    with gzip.open(tmp, "wt", encoding="utf-8") as out:
+        for r in records(path):
+            out.write(json.dumps(r) + "\n")
+            done.add((r["id"], r["layout"]))
+    os.replace(tmp, path)
+    return done
+
+
 async def collect(engine, rows: list[dict], layouts: list[str], path, concurrency: int = 8) -> int:
-    done = done_keys(path)
-    todo = [(row, layout) for row in rows for layout in layouts if (row["id"], layout) not in done]
     path.parent.mkdir(parents=True, exist_ok=True)
+    done = repair(path)
+    todo = [(row, layout) for row in rows for layout in layouts if (row["id"], layout) not in done]
     gate = asyncio.Semaphore(concurrency)
 
     async def one(row, layout):

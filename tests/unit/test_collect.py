@@ -39,3 +39,11 @@ async def test_collect_resumes(engine, tmp_path):
     assert await collect.collect(engine, [ROW], ["decider_chat", "header"], path) == 2
     assert await collect.collect(engine, [ROW], ["decider_chat", "header"], path) == 0
     assert collect.done_keys(path) == {("r1", "decider_chat"), ("r1", "header")}
+
+
+async def test_resume_repairs_a_truncated_file(engine, tmp_path):
+    path = tmp_path / "out.jsonl.gz"
+    await collect.collect(engine, [ROW | {"id": "a"}, ROW | {"id": "b"}], ["decider_chat"], path)
+    path.write_bytes(path.read_bytes()[:-8])  # killed before the gzip trailer was written
+    assert await collect.collect(engine, [ROW | {"id": "c"}], ["decider_chat"], path) == 1
+    assert [r["id"] for r in collect.records(path)] == ["a", "b", "c"]

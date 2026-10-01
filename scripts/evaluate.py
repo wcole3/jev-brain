@@ -3,6 +3,7 @@
 usage:
   uv run python scripts/evaluate.py offline --profile P --split S [--layout L] [--orders O] [--uncalibrated]
   uv run python scripts/evaluate.py index --profile P [--gateway URL] [--shards 8] [--ids FILE] [--chat-probe]
+  uv run python scripts/evaluate.py lengths --profile P [--near 0.5]
   uv run python scripts/evaluate.py replace --profile P --base RUN_DIR --override RUN_DIR
 Index runs and collect are long runs: get the owner's ok first.
 """
@@ -19,6 +20,7 @@ from pathlib import Path
 
 import httpx
 
+from gateway.app import load_engine
 from gateway.calibration import load_temperatures
 from gateway.config import ROOT, Settings
 from scripts import board, index_run, metrics
@@ -26,10 +28,11 @@ from scripts.bench import CHAT_PROMPTS, chat_once, git_revision
 from scripts.bench_report import percentile, provenance
 from scripts.bench_vllm import Vllm
 from scripts.collect import COLLECT, records
-from scripts.decision_rows import index_rows
+from scripts.decision_rows import index_meta, index_rows
 from scripts.index_suite import EDITION, EXPORT, HARNESS_SHA, harness_env
+from scripts.lengths import NAMES, bucket_counts, real_lengths
 from scripts.offline import UNCALIBRATED, Arm, evaluate, markdown
-from scripts.splits import rows_for
+from scripts.splits import SPLITS, rows_for
 
 RUNS = ROOT / ".cache" / "index-runs"
 
@@ -181,6 +184,31 @@ async def cmd_index(args) -> None:
     print(out / "summary.md")
 
 
+async def cmd_lengths(args) -> None:
+    s = Settings.from_profile(args.profile)
+    meta = index_meta()
+    counts = bucket_counts(meta)
+    near = {m["id"] for m in meta if (m["meta"]["proxy_tokens"] or 0) >= args.near * s.systemone_max_len}
+    engine = load_engine(s, None)
+    longest = await real_lengths(engine, index_rows(near))
+    over = sorted(i for i, n in longest.items() if n >= s.systemone_max_len)
+    split = {"meta": {"profile": args.profile, "cap": s.systemone_max_len, "max_model_len": s.max_model_len,
+                      "near": args.near}, "ids": over, "longest": {i: longest[i] for i in over}}
+    SPLITS.mkdir(parents=True, exist_ok=True)
+    (SPLITS / f"long-rows-{args.profile}.json").write_text(json.dumps(split, indent=0) + "\n")
+    lines = ["| proxy tokens | rows | benchmarks |", "|---|---|---|"]
+    order = [*NAMES, "unknown"]
+    lines += [f"| {b} | {sum(counts[b].values())} | {len(counts[b])} |" for b in order if b in counts]
+    fits = sum(longest[i] < s.max_model_len for i in over)
+    lines += ["", (f"At or over the decision cap ({s.systemone_max_len}): {len(over)} rows; "
+                   f"{fits} of them fit under MAX_MODEL_LEN ({s.max_model_len}).")]
+    out = results_dir(args.profile, f"{now()}-lengths")
+    meta_lines = {"timestamp": now(), "repo commit": git_revision(), "profile": args.profile}
+    (out / "summary.md").write_text(
+        f"# {args.profile} decision lengths\n\n{provenance(meta_lines)}\n" + "\n".join(lines) + "\n")
+    print(out / "summary.md")
+
+
 def cmd_replace(args) -> None:
     base, override = Path(args.base).resolve(), Path(args.override).resolve()
     out = base.parent / f"{base.name}+{override.name}"
@@ -211,6 +239,9 @@ def parse_args(argv=None) -> argparse.Namespace:
     i.add_argument("--ids", help="JSON file with an 'ids' list: run only those rows")
     i.add_argument("--run-dir", help="resume this run directory")
     i.add_argument("--chat-probe", action="store_true")
+    n = sub.add_parser("lengths")
+    n.add_argument("--profile", required=True)
+    n.add_argument("--near", type=float, default=0.5, help="measure real tokens for rows with proxy >= near * cap")
     r = sub.add_parser("replace")
     r.add_argument("--profile", required=True)
     r.add_argument("--base", required=True)
@@ -224,6 +255,8 @@ def main(argv=None) -> None:
         cmd_offline(args)
     elif args.command == "index":
         asyncio.run(cmd_index(args))
+    elif args.command == "lengths":
+        asyncio.run(cmd_lengths(args))
     else:
         cmd_replace(args)
 

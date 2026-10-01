@@ -107,3 +107,13 @@ def test_index_rows_stream_and_filter(tmp_path):
     assert [r["id"] for r in decision_rows.index_rows({"run-2"}, path)] == ["run-2"]
     meta = decision_rows.index_meta(path)
     assert "state" not in meta[0] and meta[0]["state_key"] == decision_rows.state_key("s")
+
+
+def test_index_gold_only_on_questions_the_harness_scores():
+    raw = {
+        "state": "s", "expected": {"sig_a": "yes", "is_phishing": "yes", "verdict": "yes"},
+        "questions": {k: {"type": "noul", "instructions": k} for k in ("sig_a", "is_phishing", "verdict")},
+        "scoring": {"unscored_fields": ["sig_a"]},
+        "_evaluation": {"run_id": "p-1", "dataset": "PhishNChips", "catalog_id": 56, "group_id": "g"},
+    }
+    assert decision_rows.index_row(raw)["gold"] == {"sig_a": None, "is_phishing": None, "verdict": True}

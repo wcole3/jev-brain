@@ -1,0 +1,54 @@
+import pytest
+
+from gateway.layouts import load_layouts
+from scripts.offline import Arm, evaluate, markdown, scored
+
+LAYOUTS = load_layouts()
+ROW = {
+    "id": "r1", "source": "jevbench", "family": "f", "state": "s",
+    "questions": {
+        "c": {"type": "choice", "instructions": "pick", "criteria": {"a": None, "b": None, "c": None}},
+        "n": {"type": "noul", "instructions": "is it?"},
+    },
+    "gold": {"c": "b", "n": True},
+}
+# identity favours shown position 0 (=a); reversed shows c,b,a and favours position 1 (=b) more strongly
+REC = {
+    "id": "r1", "layout": "decider_chat", "status": "ok",
+    "questions": {
+        "c": [{"perm": [0, 1, 2], "logprobs": [0.0, -1.0, -5.0]}, {"perm": [2, 1, 0], "logprobs": [-5.0, 0.0, -2.0]}],
+        "n": [{"perm": [0, 1], "logprobs": [-2.0, 0.0]}, {"perm": [1, 0], "logprobs": [0.0, -2.0]}],
+    },
+}
+
+
+def test_identity_arm_uses_one_order():
+    items = scored(REC, ROW, Arm(), LAYOUTS)
+    choice = next(i for i in items if i.type == "choice")
+    assert choice.gold == 1 and choice.pred == 0 and not choice.correct
+
+
+def test_reversed_arm_averages_both_orders():
+    items = scored(REC, ROW, Arm(orders="identity+reversed"), LAYOUTS)
+    choice = next(i for i in items if i.type == "choice")
+    assert choice.pred == 1 and choice.probs[1] > choice.probs[0] > choice.probs[2]
+    assert sum(choice.probs) == pytest.approx(1.0)
+
+
+def test_noul_gold_and_temperature():
+    cold = next(i for i in scored(REC, ROW, Arm(), LAYOUTS) if i.type == "noul")
+    warm = next(i for i in scored(REC, ROW, Arm(temperatures={"choice": 1, "score": 1, "noul": 4.0}), LAYOUTS)
+                if i.type == "noul")
+    assert cold.gold == 1 and cold.correct and warm.probs[1] < cold.probs[1]
+
+
+def test_unsupported_and_other_layouts_are_not_scored():
+    assert scored(REC | {"status": "unsupported"}, ROW, Arm(), LAYOUTS) == []
+    assert scored(REC, ROW, Arm(layout="header"), LAYOUTS) == []
+
+
+def test_evaluate_reports_status_counts_and_renders():
+    report = evaluate([REC, {"id": "r2", "layout": "decider_chat", "status": "unsupported"}], {"r1": ROW}, Arm())
+    assert report["status"] == {"ok": 1, "unsupported": 1}
+    assert report["overall"]["n"] == 2 and set(report["by_type"]) == {"choice", "noul"}
+    assert "| choice |" in markdown(report)

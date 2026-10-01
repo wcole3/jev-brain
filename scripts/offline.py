@@ -44,6 +44,8 @@ def scored(record: dict, row: dict, arm: Arm, layouts: dict) -> list[Scored]:
             continue
         wanted = option_orders(len(q.options), arm.orders)
         chosen = [(r["logprobs"], r["perm"]) for r in reads if r["perm"] in wanted]
+        if len(chosen) != len(wanted):
+            raise ValueError(f"arm {arm.orders} needs {len(wanted)} orders for {record['id']}/{qid}, collected {len(chosen)}")
         out.append(Scored(row["source"], row["family"], q.type, gold, blend(chosen, arm.temperatures[q.type])))
     return out
 

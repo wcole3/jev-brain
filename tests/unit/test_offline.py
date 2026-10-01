@@ -52,3 +52,8 @@ def test_evaluate_reports_status_counts_and_renders():
     assert report["status"] == {"ok": 1, "unsupported": 1}
     assert report["overall"]["n"] == 2 and set(report["by_type"]) == {"choice", "noul"}
     assert "| choice |" in markdown(report)
+
+
+def test_arm_refuses_uncollected_orders():
+    with pytest.raises(ValueError, match="arm cyclic:3 needs 3 orders for r1/c, collected 1"):
+        scored(REC, ROW, Arm(orders="cyclic:3"), LAYOUTS)

@@ -45,6 +45,8 @@ def stamp(engine, layout: str) -> dict:
         "tokenizer_sha256": tokenizer_sha256(engine.tokenizer),
         "prefix_pad": s.prefix_pad,
         "prefix_block": s.prefix_block,
+        "prefix_pad_always": s.prefix_pad_always,
+        "warm_up": s.warm_up,
         "systemone_max_len": s.systemone_max_len,
     }
 
@@ -55,7 +57,8 @@ async def collect_one(engine, row: dict, layout: str) -> dict:
         request = SystemOneRequest.model_validate(
             {"state": row["state"], "questions": row["questions"], "layout": layout}
         )
-        r = await read_rows(engine, request, all_orders)
+        # pad as the live default request would (one identity row per question), so offline matches live
+        r = await read_rows(engine, request, all_orders, pad_rows=len(request.questions))
     except ValidationError as e:
         return rec | {"status": "invalid", "error": str(e).splitlines()[0]}
     except RequestError as e:
@@ -81,21 +84,29 @@ def done_keys(path) -> set[tuple[str, str]]:
     return {(r["id"], r["layout"]) for r in records(path)}
 
 
-def repair(path) -> set[tuple[str, str]]:
-    """Rewrite the readable records to a fresh file, so new appends never sit behind a truncated tail."""
+def repair(path, stamps: dict[str, dict]) -> set[tuple[str, str]]:
+    """Rewrite the readable records to a fresh file, so new appends never sit behind a truncated tail.
+    Refuses a file whose records for these layouts were collected under other settings."""
     done: set[tuple[str, str]] = set()
     tmp = path.with_name(path.name + ".tmp")
-    with gzip.open(tmp, "wt", encoding="utf-8") as out:
-        for r in records(path):
-            out.write(json.dumps(r) + "\n")
-            done.add((r["id"], r["layout"]))
-    os.replace(tmp, path)
+    try:
+        with gzip.open(tmp, "wt", encoding="utf-8") as out:
+            for r in records(path):
+                want = stamps.get(r["layout"], r["stamp"])
+                if r["stamp"] != want:
+                    diff = sorted(k for k in want.keys() | r["stamp"].keys() if r["stamp"].get(k) != want.get(k))
+                    raise SystemExit(f"{path}: {r['layout']} records were collected with other {diff}")
+                out.write(json.dumps(r) + "\n")
+                done.add((r["id"], r["layout"]))
+        os.replace(tmp, path)
+    finally:
+        tmp.unlink(missing_ok=True)
     return done
 
 
 async def collect(engine, rows: list[dict], layouts: list[str], path, concurrency: int = 8) -> int:
     path.parent.mkdir(parents=True, exist_ok=True)
-    done = repair(path)
+    done = repair(path, {layout: stamp(engine, layout) for layout in layouts})
     todo = [(row, layout) for row in rows for layout in layouts if (row["id"], layout) not in done]
     gate = asyncio.Semaphore(concurrency)
 

@@ -3,7 +3,8 @@ import dataclasses
 import pytest
 
 from gateway.calibration import softmax
-from gateway.decide import answers_for, blend, decide, read_rows
+from gateway.decide import answers_for, blend, build_batch, decide, read_rows
+from gateway.orders import option_orders
 from gateway.padding import Padding, newline_token
 from gateway.schema import RequestError, SystemOneRequest
 from tests.helpers import QUICKSTART, STATE
@@ -68,6 +69,17 @@ async def test_padding_never_refuses_a_request_that_fits_without_it(engine, qwen
     await decide(padded, request())
     prompts, _, shared_len = engine.readout.calls[0]
     assert shared_len < 784 and max(len(p) for p in prompts) < 200
+
+
+async def test_pad_rows_makes_extra_orders_pad_like_the_identity_request(engine, qwen_tok):
+    padded = dataclasses.replace(engine, padding=Padding("end", 784, False, newline_token(qwen_tok)))
+    req = request(state=STATE * 4, layout="header")  # 3 rows do not pay for the pad, 8 rows do
+    _, _, live = await build_batch(padded, req, lambda n: [list(range(n))])
+    _, _, many = await build_batch(padded, req, lambda n: option_orders(n, "cyclic:4"))
+    _, _, pinned = await build_batch(padded, req, lambda n: option_orders(n, "cyclic:4"), pad_rows=3)
+    assert many.shared_len == 784 and live.shared_len < 784
+    identity = [r.ids for r in pinned.rows if r.perm == sorted(r.perm)]
+    assert identity == [r.ids for r in live.rows]
 
 
 async def test_read_rows_keeps_raw_logprobs_per_order(engine):

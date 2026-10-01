@@ -132,13 +132,15 @@ def build_rows(
     questions: dict[str, Rendered],
     perms: dict[str, list[list[int]]],
     padding: Padding = OFF,
+    pad_rows: int | None = None,
 ) -> Batch:
-    """One row per (question, option order). Parts shared by all rows are encoded once."""
+    """One row per (question, option order). Parts shared by all rows are encoded once.
+    pad_rows, when given, is the row count the padding decision assumes instead of the real one."""
     parts = {"context": encode(tok, layout.context.format(state=state))}
     if "questions" in layout.order:
         listed = "\n".join(layout.question_item.format(question=q.text) for q in questions.values())
         parts["questions"] = encode(tok, layout.questions.format(questions=listed))
-    n_rows = sum(len(perms[qid]) for qid in questions)
+    n_rows = sum(len(perms[qid]) for qid in questions) if pad_rows is None else pad_rows
     prefix, unpadded_len = shared_prefix(tok, frame, layout, parts, state, padding, n_rows)
     rest = layout.order[len(shared_parts(layout)) :]  # the parts after the shared prefix
     answer = encode(tok, layout.answer)

@@ -1,5 +1,7 @@
 import dataclasses
 
+import pytest
+
 from gateway.orders import option_orders
 from scripts import collect
 from tests.helpers import QUICKSTART, STATE
@@ -22,6 +24,7 @@ async def test_collect_one_reads_every_order(engine):
     assert [r["perm"] for r in rec["questions"]["department"]] == collect.all_orders(3)
     assert rec["questions"]["is_urgent"][0]["logprobs"] == [0.0, -1.0]
     assert rec["stamp"]["profile"] == "qwen3.6-27b" and rec["input_tokens"] > 0
+    assert rec["stamp"]["warm_up"] == "row" and rec["stamp"]["prefix_pad_always"] is False
 
 
 async def test_refusals_are_recorded_not_raised(engine):
@@ -47,3 +50,12 @@ async def test_resume_repairs_a_truncated_file(engine, tmp_path):
     path.write_bytes(path.read_bytes()[:-8])  # killed before the gzip trailer was written
     assert await collect.collect(engine, [ROW | {"id": "c"}], ["decider_chat"], path) == 1
     assert [r["id"] for r in collect.records(path)] == ["a", "b", "c"]
+
+
+async def test_resume_refuses_a_file_from_other_settings(engine, tmp_path):
+    path = tmp_path / "out.jsonl.gz"
+    await collect.collect(engine, [ROW], ["decider_chat"], path)
+    other = dataclasses.replace(engine, settings=dataclasses.replace(engine.settings, warm_up="off"))
+    with pytest.raises(SystemExit, match="warm_up"):
+        await collect.collect(other, [ROW | {"id": "r2"}], ["decider_chat"], path)
+    assert collect.done_keys(path) == {("r1", "decider_chat")}

@@ -43,7 +43,9 @@ class Reads:
     input_tokens: int
 
 
-async def build_batch(engine: Engine, request: SystemOneRequest, orders: OrderFn | None = None):
+async def build_batch(
+    engine: Engine, request: SystemOneRequest, orders: OrderFn | None = None, pad_rows: int | None = None
+):
     """Render and tokenize every row. Refuses bad requests, but not long ones: read_rows does that."""
     s = engine.settings
     if not request.questions:
@@ -63,14 +65,17 @@ async def build_batch(engine: Engine, request: SystemOneRequest, orders: OrderFn
     rows = functools.partial(
         build_rows, engine.tokenizer, engine.frames[name], layout, engine.labels[name], state, questions, perms
     )
-    batch = await asyncio.to_thread(rows, engine.padding)
+    batch = await asyncio.to_thread(rows, engine.padding, pad_rows)
     if batch.longest >= s.systemone_max_len and engine.padding.enabled:
-        batch = await asyncio.to_thread(rows, OFF)  # the pad must never refuse a request that fits without it
+        # the pad must never refuse a request that fits without it
+        batch = await asyncio.to_thread(rows, OFF, pad_rows)
     return name, questions, batch
 
 
-async def read_rows(engine: Engine, request: SystemOneRequest, orders: OrderFn | None = None) -> Reads:
-    name, questions, batch = await build_batch(engine, request, orders)
+async def read_rows(
+    engine: Engine, request: SystemOneRequest, orders: OrderFn | None = None, pad_rows: int | None = None
+) -> Reads:
+    name, questions, batch = await build_batch(engine, request, orders, pad_rows)
     limit = engine.settings.systemone_max_len
     if batch.longest >= limit:
         raise RequestError(f"prompt is longer than the maximum context length ({batch.longest} >= {limit} tokens)")

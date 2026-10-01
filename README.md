@@ -247,13 +247,13 @@ uv run python scripts/evaluate.py offline --profile qwen3.6-27b --split eval --o
 uv run python scripts/evaluate.py index --profile qwen3.6-27b             # full Index via the upstream harness, 8 shards
 uv run python scripts/evaluate.py replace --profile qwen3.6-27b --base RUN_DIR --override RUN_DIR  # swap re-run rows into an Index run
 uv run python scripts/latency.py --profile qwen3.6-27b                    # latency-v1 design, one sequential client
-uv run python scripts/evaluate.py lengths --profile qwen3.6-27b           # how many rows the decision cap refuses
+uv run python scripts/evaluate.py lengths --profile qwen3.6-27b --baseline RUN_DIR  # rows the decision cap refuses
 ```
 
 - **Data:**
   - **Index rows are never used for fitting.**
   - Calibration and evaluation splits come from JevBench gold and filtered DecisionBench
-    (public gold only), 50/50 by hash.
+    (public gold only), 50/50 by hash; all questions about one state go to the same split.
   - Jev's outputs are never read.
 - **Offline vs live:** `collect.py` uses the gateway's own code, so offline answers equal
   live ones within bf16 noise (`tests/live/test_offline_matches_live.py`).

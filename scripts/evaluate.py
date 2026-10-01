@@ -4,7 +4,7 @@ usage:
   uv run python scripts/evaluate.py offline --profile P --split S [--layout L] [--orders O] [--uncalibrated]
       [--allow-partial]
   uv run python scripts/evaluate.py index --profile P [--gateway URL] [--shards 8] [--ids FILE] [--chat-probe]
-  uv run python scripts/evaluate.py lengths --profile P [--near 0.5]
+  uv run python scripts/evaluate.py lengths --profile P [--near 0.5] [--baseline RUN_DIR]
   uv run python scripts/evaluate.py replace --profile P --base RUN_DIR --override RUN_DIR
 Index runs and collect are long runs: get the owner's ok first.
 """
@@ -217,24 +217,42 @@ async def cmd_index(args) -> None:
     print(out / "summary.md")
 
 
+def context_refusals(run: Path) -> set[str]:
+    """Rows a run refused as too long: unsupported, with the gateway's "maximum context length" message."""
+    return {r["run_id"] for r in load(run / "merged")
+            if r["status"] == "unsupported" and "maximum context length" in str(r.get("error") or "")}
+
+
+def over_cap(longest: dict[str, int], cap: int, refused: set[str]) -> list[str]:
+    return sorted({i for i, n in longest.items() if n >= cap} | refused)
+
+
 async def cmd_lengths(args) -> None:
     s = Settings.from_profile(args.profile)
     meta = index_meta()
     counts = bucket_counts(meta)
+    baseline = Path(args.baseline).resolve() if args.baseline else None
+    refused = context_refusals(baseline) if baseline else set()
     near = {m["id"] for m in meta if (m["meta"]["proxy_tokens"] or 0) >= args.near * s.systemone_max_len}
     engine = load_engine(s, None)
-    longest = await real_lengths(engine, index_rows(near))
-    over = sorted(i for i, n in longest.items() if n >= s.systemone_max_len)
+    longest = await real_lengths(engine, index_rows(near | refused))
+    over = over_cap(longest, s.systemone_max_len, refused)
     split = {"meta": {"profile": args.profile, "cap": s.systemone_max_len, "max_model_len": s.max_model_len,
-                      "near": args.near}, "ids": over, "longest": {i: longest[i] for i in over}}
+                      "near": args.near, "baseline": str(baseline.relative_to(ROOT)) if baseline else None},
+             "ids": over, "longest": {i: longest.get(i) for i in over}}
+    path = SPLITS / f"long-rows-{args.profile}.json"
     SPLITS.mkdir(parents=True, exist_ok=True)
-    (SPLITS / f"long-rows-{args.profile}.json").write_text(json.dumps(split, indent=0) + "\n")
+    path.write_text(json.dumps(split, indent=0) + "\n")
     lines = ["| proxy tokens | rows | benchmarks |", "|---|---|---|"]
     order = [*NAMES, "unknown"]
     lines += [f"| {b} | {sum(counts[b].values())} | {len(counts[b])} |" for b in order if b in counts]
-    fits = sum(longest[i] < s.max_model_len for i in over)
-    lines += ["", (f"At or over the decision cap ({s.systemone_max_len}): {len(over)} rows; "
-                   f"{fits} of them fit under MAX_MODEL_LEN ({s.max_model_len}).")]
+    fits = sum(i in longest and longest[i] < s.max_model_len for i in over)
+    lines += ["", f"Real tokens measured for {len(near)} rows with proxy tokens >= {args.near} x the cap."]
+    if baseline:
+        lines.append(f"Added {len(refused)} rows the baseline run refused for length ({split['meta']['baseline']}).")
+    lines += [(f"At or over the decision cap ({s.systemone_max_len}): {len(over)} rows; "
+               f"{fits} of them fit under MAX_MODEL_LEN ({s.max_model_len})."),
+              f"Row ids written to {path.relative_to(ROOT)}."]
     out = results_dir(args.profile, f"{now()}-lengths")
     meta_lines = {"timestamp": now(), "repo commit": git_revision(), "profile": args.profile}
     (out / "summary.md").write_text(
@@ -276,6 +294,7 @@ def parse_args(argv=None) -> argparse.Namespace:
     n = sub.add_parser("lengths")
     n.add_argument("--profile", required=True)
     n.add_argument("--near", type=float, default=0.5, help="measure real tokens for rows with proxy >= near * cap")
+    n.add_argument("--baseline", help="index run dir: add the rows it refused for length")
     r = sub.add_parser("replace")
     r.add_argument("--profile", required=True)
     r.add_argument("--base", required=True)

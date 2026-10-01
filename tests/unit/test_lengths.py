@@ -1,4 +1,6 @@
-from scripts import lengths
+import json
+
+from scripts import evaluate, lengths
 from scripts.evaluate import parse_args
 from tests.helpers import QUICKSTART, STATE
 
@@ -24,3 +26,21 @@ async def test_real_lengths_measure_the_longest_row(engine):
 
 def test_lengths_cli_parses():
     assert parse_args(["lengths", "--profile", "p"]).near == 0.5
+    assert parse_args(["lengths", "--profile", "p", "--baseline", "runs/x"]).baseline == "runs/x"
+
+
+def test_baseline_length_refusals_are_read_exactly(tmp_path):
+    rows = [
+        {"run_id": "a", "status": "unsupported", "error": "prompt is longer than the maximum context length"},
+        {"run_id": "b", "status": "unsupported", "error": "too many options per choice"},
+        {"run_id": "c", "status": "error", "error": "maximum context length"},
+        {"run_id": "d", "status": "ok"},
+    ]
+    (tmp_path / "merged").mkdir()
+    (tmp_path / "merged" / "results.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows))
+    assert evaluate.context_refusals(tmp_path) == {"a"}
+
+
+def test_long_rows_are_measured_over_cap_plus_baseline_refusals():
+    longest = {"x": 40000, "y": 1000, "z": 32768}
+    assert evaluate.over_cap(longest, 32768, {"y", "w"}) == ["w", "x", "y", "z"]

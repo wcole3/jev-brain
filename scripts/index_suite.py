@@ -54,6 +54,12 @@ def harness_env() -> dict[str, str]:
     return env
 
 
+def require_hf_token() -> None:
+    """The rebuild downloads HLE, which is gated: stop now rather than hours in. The token is never printed."""
+    if not HF_TOKEN_FILE.exists() or not HF_TOKEN_FILE.read_text().strip():
+        raise SystemExit("secrets/.hf-token is missing or empty: the rebuild needs a Hugging Face token (HLE is gated)")
+
+
 def run(commands: list[list[str]]) -> None:
     WORK.mkdir(parents=True, exist_ok=True)
     for command in commands:
@@ -65,4 +71,6 @@ if __name__ == "__main__":
     steps = {"setup": setup_commands, "rebuild": rebuild_commands, "export": lambda: [export_command()]}
     if step not in steps:
         raise SystemExit(__doc__)
+    if step == "rebuild":
+        require_hf_token()
     run(steps[step]())

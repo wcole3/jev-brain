@@ -21,6 +21,7 @@ pytestmark = pytest.mark.live
 N = int(os.environ.get("SPOTCHECK_N", "20"))
 MAX_DRIFT = 0.05  # same bf16 rule as test_stability
 DECISIVE_GAP = 2 * MAX_DRIFT
+SETTINGS = ("prefix_pad", "prefix_block", "prefix_pad_always", "warm_up", "systemone_max_len")
 
 
 def top(probabilities: dict) -> str:
@@ -35,6 +36,17 @@ def close(live: dict, offline: dict) -> bool:
         return False
     first, second = sorted(b.values(), reverse=True)[:2]
     return first - second <= DECISIVE_GAP or top(a) == top(b)
+
+
+def spread(rows: list[dict], n: int) -> list[dict]:
+    """Every k-th row, so n rows span the whole split rather than its first source and family."""
+    return rows[:: max(1, len(rows) // n)][:n]
+
+
+def drift(engine, health: dict) -> list[str]:
+    """Settings where the test's engine differs from the running gateway's."""
+    ours = {k: getattr(engine.settings, k) for k in SETTINGS} | {"temperatures": engine.temperatures}
+    return [f"{k}: test {v!r}, gateway {health.get(k)!r}" for k, v in ours.items() if v != health.get(k)]
 
 
 def offline_answers(engine, row: dict, rec: dict, layout: str, orders: str) -> dict:
@@ -59,8 +71,10 @@ async def test_offline_answers_match_live(gateway_url, vllm_url):
         )
         async with vllm_client(s, None) as client:
             engine = load_engine(s, client)
+            changed = drift(engine, health)
+            assert not changed, f"test engine differs from the gateway; restart it or fix the profile: {changed}"
             misses = []
-            for row in rows_for("eval")[:N]:
+            for row in spread(rows_for("eval"), N):
                 rec = await collect_one(engine, row, layout)
                 if rec["status"] != "ok":
                     continue

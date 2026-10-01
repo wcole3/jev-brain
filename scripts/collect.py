@@ -14,6 +14,7 @@ import os
 import zlib
 from collections.abc import Iterator
 
+import httpx
 from pydantic import ValidationError
 
 from gateway.app import load_engine, vllm_client
@@ -26,6 +27,8 @@ from scripts.splits import rows_for
 
 COLLECT = ROOT / ".cache" / "collect"
 ARMS = ("identity", "identity+reversed", "cyclic:2", "cyclic:3", "cyclic:4")
+ATTEMPTS = 3
+BACKOFF = 2.0  # seconds before the first retry, doubling after
 
 
 def all_orders(n: int) -> list[list[int]]:
@@ -67,6 +70,16 @@ async def collect_one(engine, row: dict, layout: str) -> dict:
     return rec | {"status": "ok", "input_tokens": r.input_tokens, "questions": questions}
 
 
+async def collect_retrying(engine, row: dict, layout: str) -> dict:
+    """vLLM hiccups (5xx, dropped connections) get retried with backoff; a lasting one stops the run."""
+    for attempt in range(ATTEMPTS - 1):
+        try:
+            return await collect_one(engine, row, layout)
+        except httpx.HTTPError:
+            await asyncio.sleep(BACKOFF * 2**attempt)
+    return await collect_one(engine, row, layout)
+
+
 def records(path) -> Iterator[dict]:
     """Every complete record; a run killed mid-write leaves a truncated tail, which is skipped."""
     if not path.exists():
@@ -105,6 +118,8 @@ def repair(path, stamps: dict[str, dict]) -> set[tuple[str, str]]:
 
 
 async def collect(engine, rows: list[dict], layouts: list[str], path, concurrency: int = 8) -> int:
+    if engine.settings.option_orders != "identity":  # pad_rows mirrors the identity live arm
+        raise SystemExit(f"option_orders is {engine.settings.option_orders!r}: collect needs an identity profile")
     path.parent.mkdir(parents=True, exist_ok=True)
     done = repair(path, {layout: stamp(engine, layout) for layout in layouts})
     todo = [(row, layout) for row in rows for layout in layouts if (row["id"], layout) not in done]
@@ -112,7 +127,7 @@ async def collect(engine, rows: list[dict], layouts: list[str], path, concurrenc
 
     async def one(row, layout):
         async with gate:
-            return await collect_one(engine, row, layout)
+            return await collect_retrying(engine, row, layout)
 
     with gzip.open(path, "at", encoding="utf-8") as out:
         for start in range(0, len(todo), 500):  # write in chunks so a crash loses at most one chunk

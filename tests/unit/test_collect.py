@@ -1,10 +1,11 @@
 import dataclasses
 
+import httpx
 import pytest
 
 from gateway.orders import option_orders
 from scripts import collect
-from tests.helpers import QUICKSTART, STATE
+from tests.helpers import QUICKSTART, STATE, FavourFirstLabel
 
 ROW = {"id": "r1", "source": "jevbench", "family": "f", "state": STATE, "questions": QUICKSTART, "gold": {}, "meta": {}}
 
@@ -59,3 +60,38 @@ async def test_resume_refuses_a_file_from_other_settings(engine, tmp_path):
     with pytest.raises(SystemExit, match="warm_up"):
         await collect.collect(other, [ROW | {"id": "r2"}], ["decider_chat"], path)
     assert collect.done_keys(path) == {("r1", "decider_chat")}
+
+
+class FlakyReadout(FavourFirstLabel):
+    """Fails the first `failures` calls with a vLLM 503, then answers."""
+
+    def __init__(self, failures):
+        super().__init__()
+        self.failures = failures
+
+    async def letter_logprobs(self, prompts, label_ids, shared_len):
+        if self.failures:
+            self.failures -= 1
+            request = httpx.Request("POST", "http://vllm/v1/completions")
+            raise httpx.HTTPStatusError("503", request=request, response=httpx.Response(503, request=request))
+        return await super().letter_logprobs(prompts, label_ids, shared_len)
+
+
+async def test_vllm_hiccups_are_retried(engine, monkeypatch):
+    monkeypatch.setattr(collect, "BACKOFF", 0)
+    flaky = dataclasses.replace(engine, readout=FlakyReadout(failures=2))
+    assert (await collect.collect_retrying(flaky, ROW, "decider_chat"))["status"] == "ok"
+
+
+async def test_a_lasting_failure_is_raised_not_recorded(engine, monkeypatch, tmp_path):
+    monkeypatch.setattr(collect, "BACKOFF", 0)
+    down = dataclasses.replace(engine, readout=FlakyReadout(failures=collect.ATTEMPTS))
+    with pytest.raises(httpx.HTTPStatusError):
+        await collect.collect(down, [ROW], ["decider_chat"], tmp_path / "out.jsonl.gz")
+    assert collect.done_keys(tmp_path / "out.jsonl.gz") == set()
+
+
+async def test_collect_refuses_a_non_identity_profile(engine, tmp_path):
+    other = dataclasses.replace(engine, settings=dataclasses.replace(engine.settings, option_orders="identity+reversed"))
+    with pytest.raises(SystemExit, match="option_orders"):
+        await collect.collect(other, [ROW], ["decider_chat"], tmp_path / "out.jsonl.gz")

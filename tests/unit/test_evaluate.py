@@ -1,4 +1,5 @@
 import httpx
+import pytest
 
 from scripts import evaluate
 
@@ -46,3 +47,16 @@ def test_run_notes_count_failed_probes():
     notes = evaluate.run_notes(outcome)
     assert "- chat idle: 1 of 1 probes failed" in notes
     assert "- chat during run: median TTFT 10 ms, 50.0 chunks/s (1 samples, 1 failed)" in notes
+
+
+def test_offline_coverage_counts_collected_records_for_the_layout():
+    recs = [{"id": "a", "layout": "header"}, {"id": "a", "layout": "decider_chat"}, {"id": "z", "layout": "header"}]
+    assert evaluate.coverage(recs, {"a", "b"}, "header") == (1, 2)
+
+
+def test_offline_refuses_short_coverage_unless_allowed():
+    with pytest.raises(SystemExit, match="1 of 2 .* --allow-partial"):
+        evaluate.check_coverage(1, 2, "header", allow_partial=False)
+    evaluate.check_coverage(1, 2, "header", allow_partial=True)
+    evaluate.check_coverage(2, 2, "header", allow_partial=False)
+    assert evaluate.parse_args(["offline", "--profile", "p", "--split", "eval", "--allow-partial"]).allow_partial

@@ -2,6 +2,7 @@
 
 usage:
   uv run python scripts/evaluate.py offline --profile P --split S [--layout L] [--orders O] [--uncalibrated]
+      [--allow-partial]
   uv run python scripts/evaluate.py index --profile P [--gateway URL] [--shards 8] [--ids FILE] [--chat-probe]
   uv run python scripts/evaluate.py lengths --profile P [--near 0.5]
   uv run python scripts/evaluate.py replace --profile P --base RUN_DIR --override RUN_DIR
@@ -53,16 +54,30 @@ def gateway_headers() -> dict[str, str]:
     return {"Authorization": f"Bearer {key}"} if key else {}
 
 
+def coverage(recs: list[dict], ids: set[str], layout: str) -> tuple[int, int]:
+    """(collected, expected) (id, layout) records for this split and layout."""
+    return len({r["id"] for r in recs if r["layout"] == layout} & ids), len(ids)
+
+
+def check_coverage(got: int, want: int, layout: str, allow_partial: bool) -> None:
+    print(f"collected {got} of {want} (id, layout) records for {layout}")
+    if got < want and not allow_partial:
+        raise SystemExit(f"only {got} of {want} rows collected: collect the rest, or pass --allow-partial")
+
+
 def cmd_offline(args) -> None:
     s = Settings.from_profile(args.profile)
     temps = dict(UNCALIBRATED) if args.uncalibrated else load_temperatures(s.data_dir(args.layout) / "calibration.json")
     arm = Arm(args.layout, args.orders, temps)
     rows = {r["id"]: r for r in rows_for(args.split)}
     collected = COLLECT / args.profile / f"{args.split}.jsonl.gz"
-    report = evaluate(records(collected), rows, arm)
+    recs = list(records(collected))
+    got, want = coverage(recs, set(rows), args.layout)
+    check_coverage(got, want, args.layout, args.allow_partial)
+    report = evaluate(recs, rows, arm)
     stamp = now()
     meta = {"timestamp": stamp, "repo commit": git_revision(), "profile": args.profile, "split": args.split,
-            "collected": str(collected.relative_to(ROOT))}
+            "collected": str(collected.relative_to(ROOT)), "coverage": f"{got} of {want} rows"}
     out = results_dir(args.profile, f"{stamp}-offline-{args.split}-{args.layout}-{args.orders.replace(':', '')}")
     (out / "summary.md").write_text(f"# {args.profile} offline: {args.split}\n\n{provenance(meta)}\n{markdown(report)}")
     print(out / "summary.md")
@@ -249,6 +264,7 @@ def parse_args(argv=None) -> argparse.Namespace:
     o.add_argument("--layout", default="decider_chat")
     o.add_argument("--orders", default="identity")
     o.add_argument("--uncalibrated", action="store_true", help="T = 1 for every type instead of calibration.json")
+    o.add_argument("--allow-partial", action="store_true", help="score even when some rows were not collected")
     i = sub.add_parser("index")
     i.add_argument("--profile", required=True)
     i.add_argument("--gateway", default="http://127.0.0.1:9000")

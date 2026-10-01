@@ -57,16 +57,27 @@ def grouped(items: list[Scored], key) -> dict[str, dict]:
     return {k: metrics.summary(v) for k, v in sorted(groups.items())}
 
 
+def all_rows(items: list[Scored], refused: int) -> dict:
+    """Accuracy with every gold-labelled question of a refused record counted as wrong (the spec's rule)."""
+    n = len(items) + refused
+    return {"n": n, "refused": refused, "accuracy": sum(i.correct for i in items) / n if n else None}
+
+
 def evaluate(recs: Iterable[dict], rows_by_id: dict[str, dict], arm: Arm) -> dict:
-    layouts, items, status = load_layouts(), [], Counter()
+    layouts, items, status, refused = load_layouts(), [], Counter(), 0
     for rec in recs:
         if rec["layout"] != arm.layout:
             continue
         status[rec["status"]] += 1
-        items += scored(rec, rows_by_id[rec["id"]], arm, layouts) if rec["status"] == "ok" else []
+        row = rows_by_id[rec["id"]]
+        if rec["status"] == "ok":
+            items += scored(rec, row, arm, layouts)
+        else:
+            refused += sum(gold is not None for gold in row["gold"].values())
     return {
         "arm": {"layout": arm.layout, "orders": arm.orders, "temperatures": arm.temperatures},
         "overall": metrics.summary(items),
+        "all_rows": all_rows(items, refused),
         "by_type": grouped(items, lambda i: i.type),
         "by_source": grouped(items, lambda i: i.source),
         "by_family": grouped(items, lambda i: f"{i.source}/{i.family}"),
@@ -87,12 +98,15 @@ def table(title: str, groups: dict[str, dict]) -> list[str]:
 
 
 def markdown(report: dict) -> str:
-    """Accuracy here is over answered, gold-labelled questions; refusals are counted separately under Status."""
-    b = report["noul_bias"]
+    """Tables are over answered, gold-labelled questions; the all-rows line also counts refused ones as wrong."""
+    b, every = report["noul_bias"], report["all_rows"]
     lines = [
         f"Arm: {report['arm']}",
         "",
         "Status: " + ", ".join(f"{k} {v}" for k, v in sorted(report["status"].items())),
+        "",
+        (f"All rows (refused questions count as wrong): n {every['n']}, refused {every['refused']},"
+         f" accuracy {fmt(every['accuracy'])}"),
         "",
         *table("all", {"all": report["overall"]}),
         "",

@@ -131,7 +131,7 @@ def index_gold(question: dict, expected):
 SCORED_ONLY = {56: ("verdict",)}  # harness scoring/added.py FIELDS: PhishNChips scores one question
 
 
-def index_scored(raw: dict) -> list[str]:
+def scored_keys(raw: dict) -> list[str]:
     """The question keys the harness scores for this row."""
     unscored = set((raw.get("scoring") or {}).get("unscored_fields", []))
     only = SCORED_ONLY.get(raw["_evaluation"]["catalog_id"])
@@ -141,7 +141,7 @@ def index_scored(raw: dict) -> list[str]:
 def index_row(raw: dict) -> dict:
     e, questions = raw["_evaluation"], raw["questions"]
     expected = raw.get("expected") or {}
-    scored = index_scored(raw)
+    scored = scored_keys(raw)
     return {
         "id": e["run_id"],
         "source": "index",

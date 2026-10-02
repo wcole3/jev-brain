@@ -2,8 +2,8 @@
 
 ## Provenance
 
-- timestamp: 2026-10-02T175252Z
-- repo commit: b7331e4
+- timestamp: 2026-10-02T202724Z
+- repo commit: 2c08cb2-dirty
 - profile: gemma-4-31b
 - orders: identity
 - calib split sha256: a4e492db25b2be6fb34f65689bbb715031e938a3d449e12c2677f8aa4d0e6ca8

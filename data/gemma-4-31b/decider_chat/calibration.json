@@ -1,12 +1,17 @@
 {
  "format": 2,
- "version": 1,
- "date": "2026-10-02T17:53:42Z",
+ "version": 2,
+ "date": "2026-10-02T20:28:11Z",
  "comments": [
   {
    "version": 1,
    "date": "2026-10-02T17:53:42Z",
    "text": "first own fit (calib split, per-type gate); choice: fitted T 4.123, score: pooled T 5.378, noul: fitted T 7.528, b -0.636 shipped"
+  },
+  {
+   "version": 2,
+   "date": "2026-10-02T20:28:11Z",
+   "text": "T = 1 is a gate candidate (owner); choice: fitted T 4.123, score: pooled T 5.378, noul: fitted T 7.528, b -0.636 shipped"
   }
  ],
  "stamp": {

@@ -1,0 +1,77 @@
+{
+  "profile": "qwen3.8-27b",
+  "repo commit": "7a5d9b6",
+  "fingerprint": {
+    "hostname": "b8dad0dc4987",
+    "gpu_name": "NVIDIA RTX PRO 6000 Blackwell Workstation Edition",
+    "driver": "580.173.02",
+    "power_limit_w": 450.0,
+    "power_default_w": 600.0,
+    "power_max_w": 600.0,
+    "sm_clock_max_mhz": 3090,
+    "pcie_gen_max": 4,
+    "pcie_width_max": 16,
+    "cpu_model": "AMD EPYC 7742 64-Core Processor",
+    "cpu_cores": 256,
+    "ram_gb": 504,
+    "kernel": "5.15.0-191-generic",
+    "wsl": false,
+    "vast_instance": "53796429"
+  },
+  "phases": {
+    "latency": {
+      "start": "2026-10-02T03:56:21",
+      "end": "2026-10-02T03:59:39",
+      "wall_s": 198.04388063773513,
+      "dir": "docs/results/qwen3.8-27b/2026-10-02T035939Z-latency",
+      "telemetry": {
+        "samples": 40,
+        "median_sm_clock": 1867.0,
+        "median_power": 449.36,
+        "median_temp": 66.0,
+        "median_util": 99.0,
+        "throttled_share": 0.825
+      }
+    },
+    "bench": {
+      "start": "2026-10-02T03:59:39",
+      "end": "2026-10-02T04:00:52",
+      "wall_s": 73.42745578521863,
+      "dir": "docs/results/qwen3.8-27b/2026-10-02T035940Z-quick",
+      "telemetry": {
+        "samples": 15,
+        "median_sm_clock": 1582.0,
+        "median_power": 450.03,
+        "median_temp": 69.0,
+        "median_util": 100.0,
+        "throttled_share": 0.8
+      }
+    },
+    "index": {
+      "start": "2026-10-02T04:00:52",
+      "end": "2026-10-02T04:08:53",
+      "wall_s": 480.72752856789157,
+      "dir": "docs/results/qwen3.8-27b/2026-10-02T040054Z-index-subset",
+      "telemetry": {
+        "samples": 94,
+        "median_sm_clock": 1545.0,
+        "median_power": 449.97,
+        "median_temp": 70.0,
+        "median_util": 100.0,
+        "throttled_share": 0.8829787234042553
+      }
+    }
+  },
+  "latency": {
+    "median_ms": 104.73895911127329,
+    "p95_ms": 724.6821210719645
+  },
+  "throughput": {
+    "x1": 0.7365190935485805,
+    "x4": 0.8208835807571189,
+    "x16": 0.8134408215328796
+  },
+  "index_rows_listed": 2016,
+  "index_rows": 2016,
+  "index_rows_per_min": 251.618625545213
+}

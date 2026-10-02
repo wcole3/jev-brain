@@ -1,7 +1,7 @@
 {
  "format": 2,
- "version": 4,
- "date": "2026-10-02T17:47:08Z",
+ "version": 5,
+ "date": "2026-10-02T20:26:24Z",
  "comments": [
   {
    "version": 1,
@@ -22,6 +22,11 @@
    "version": 4,
    "date": "2026-10-02T17:47:08Z",
    "text": "gate ships lowest eval ECE among passing T candidates (owner 3b); choice: fitted T 1.627, score: pooled T 1.958, noul: fitted T 1.284, b not shipped"
+  },
+  {
+   "version": 5,
+   "date": "2026-10-02T20:26:24Z",
+   "text": "T = 1 is a gate candidate (owner); choice: fitted T 1.627, score: none T 1.000, noul: fitted T 1.284, b not shipped"
   }
  ],
  "stamp": {
@@ -36,7 +41,7 @@
    "T": 1.626739845878971
   },
   "score": {
-   "T": 1.9577583066935726
+   "T": 1.0
   },
   "noul": {
    "T": 1.2842455905297372,
@@ -61,7 +66,7 @@
     },
     "after": {
      "choice": 0.5421395603525179,
-     "score": 1.804653359064299,
+     "score": 3.0851213268685114,
      "noul": 0.2475239883109972
     }
    },
@@ -73,7 +78,7 @@
     },
     "after": {
      "choice": 0.03437617679058158,
-     "score": 0.2930074783828798,
+     "score": 0.41218874547534456,
      "noul": 0.02501691101425965
     }
    }
@@ -87,7 +92,7 @@
     },
     "after": {
      "choice": 0.4959158126763665,
-     "score": 1.1797704575835155,
+     "score": 1.7027254568313153,
      "noul": 0.2657479025805242
     }
    },
@@ -99,7 +104,7 @@
     },
     "after": {
      "choice": 0.029088579286908042,
-     "score": 0.20826762151651526,
+     "score": 0.17754901646419377,
      "noul": 0.022528159200037787
     }
    }
@@ -138,8 +143,8 @@
    "score": {
     "fitted_T": 7.1949801560041315,
     "pooled_T": 1.9577583066935726,
-    "shipped_T": 1.9577583066935726,
-    "source": "pooled",
+    "shipped_T": 1.0,
+    "source": "none",
     "ece": [
      0.12660451953430454,
      0.05042691455608256,

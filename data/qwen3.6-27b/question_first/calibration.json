@@ -1,7 +1,7 @@
 {
  "format": 2,
- "version": 4,
- "date": "2026-10-02T17:48:03Z",
+ "version": 5,
+ "date": "2026-10-02T20:27:16Z",
  "comments": [
   {
    "version": 1,
@@ -22,6 +22,11 @@
    "version": 4,
    "date": "2026-10-02T17:48:03Z",
    "text": "gate ships lowest eval ECE among passing T candidates (owner 3b); choice: fitted T 1.484, score: fitted T 8.055, noul: fitted T 1.145, b +0.253 shipped"
+  },
+  {
+   "version": 5,
+   "date": "2026-10-02T20:27:16Z",
+   "text": "T = 1 is a gate candidate (owner); choice: fitted T 1.484, score: fitted T 8.055, noul: fitted T 1.145, b +0.253 shipped"
   }
  ],
  "stamp": {

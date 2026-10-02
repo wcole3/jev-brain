@@ -1,17 +1,18 @@
 #!/usr/bin/env bash
 # Run a job file's `name: command` lines in order from the repo root; done jobs are skipped, a failure stops the queue.
-# usage: queue.sh JOBFILE  (env REMOTE_STATE: state and log root, default .cache/remote)
+# usage: queue.sh JOBFILE  (markers and job logs per job-file name; env REMOTE_STATE: root, default .cache/remote)
 set -euo pipefail
 jobfile=$(realpath "$1")
 cd "$(dirname "$0")/../.."
 root=${REMOTE_STATE:-.cache/remote}
-state=$root/state
-logs=$root/logs
+profile=$(basename "$jobfile" .txt)
+state=$root/state/$profile
+logs=$root/logs/$profile
 mkdir -p "$state" "$logs"
 
-note() { echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) == $*" | tee -a "$logs/queue.log"; }
+note() { echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) == $*" | tee -a "$root/logs/queue.log"; }
 
-while IFS= read -r line; do
+while IFS= read -r line || [[ -n $line ]]; do
   [[ -z ${line// } || $line == \#* ]] && continue
   name=${line%%:*}
   command=${line#*:}
@@ -29,4 +30,4 @@ while IFS= read -r line; do
   note "$name done"
 done < "$jobfile"
 touch "$state/QUEUE_DONE"
-note "queue done"
+note "$profile queue done"

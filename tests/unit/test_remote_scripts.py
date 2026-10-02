@@ -38,8 +38,14 @@ def test_index_job_resumes_the_box_run_tag():
     assert "--run-dir .cache/index-runs/qwen3.8-27b/$(cat .cache/remote/run_tag)" in text
 
 
-def queue(tmp_path, jobs: str) -> subprocess.CompletedProcess:
-    jobfile = tmp_path / "jobs.txt"
+def test_job_commands_name_only_their_own_profile():
+    for path in JOB_FILES:
+        others = [p.stem for p in JOB_FILES if p != path]
+        assert not [o for o in others if o in path.read_text()], path
+
+
+def queue(tmp_path, jobs: str, name: str = "p") -> subprocess.CompletedProcess:
+    jobfile = tmp_path / f"{name}.txt"
     jobfile.write_text(jobs)
     env = os.environ | {"REMOTE_STATE": str(tmp_path / "remote")}
     command = ["bash", str(REMOTE / "queue.sh"), str(jobfile)]
@@ -47,12 +53,12 @@ def queue(tmp_path, jobs: str) -> subprocess.CompletedProcess:
 
 
 def test_queue_stops_at_a_failure_and_resumes_after_it(tmp_path):
-    state, logs = tmp_path / "remote" / "state", tmp_path / "remote" / "logs"
+    state, logs = tmp_path / "remote" / "state" / "p", tmp_path / "remote" / "logs"
     jobs = "# comment\n\nok: echo hi: there\nbad: false\nnever: true\n"
     assert queue(tmp_path, jobs).returncode != 0
-    assert (state / "ok.done").exists() and (logs / "ok.log").read_text() == "hi: there\n"
+    assert (state / "ok.done").exists() and (logs / "p" / "ok.log").read_text() == "hi: there\n"
     assert "exit=1" in (state / "bad.failed").read_text()
-    assert not (state / "never.done").exists() and not (logs / "never.log").exists()
+    assert not (state / "never.done").exists() and not (logs / "p" / "never.log").exists()
     assert not (state / "QUEUE_DONE").exists()
 
     assert queue(tmp_path, jobs.replace("bad: false", "bad: true")).returncode == 0
@@ -61,3 +67,64 @@ def test_queue_stops_at_a_failure_and_resumes_after_it(tmp_path):
     assert "== bad FAILED" in log and "== bad done" in log
     assert (state / "bad.done").exists() and not (state / "bad.failed").exists()
     assert (state / "never.done").exists() and (state / "QUEUE_DONE").exists()
+
+
+def test_queue_runs_a_last_line_without_newline(tmp_path):
+    assert queue(tmp_path, "a: true\nlast: true").returncode == 0
+    assert (tmp_path / "remote" / "state" / "p" / "last.done").exists()
+
+
+def test_queue_state_is_per_profile(tmp_path):
+    assert queue(tmp_path, "ok: true\n", name="p1").returncode == 0
+    assert queue(tmp_path, "ok: true\n", name="p2").returncode == 0
+    assert (tmp_path / "remote" / "state" / "p2" / "ok.done").exists()
+    assert (tmp_path / "remote" / "logs" / "queue.log").read_text().count("== ok start") == 2
+
+
+FAKE_TMUX = """#!/usr/bin/env bash
+# Windows live in $FAKE_TMUX, one name per line; new-session/new-window add one.
+case $1 in
+  list-windows) [[ -s $FAKE_TMUX ]] && cat "$FAKE_TMUX" ;;
+  has-session) [[ -s $FAKE_TMUX ]] ;;
+  new-session|new-window) while [[ $1 != -n ]]; do shift; done; echo "$2" >> "$FAKE_TMUX" ;;
+esac
+"""
+
+
+def start(tmp_path, windows: str) -> tuple[list[str], Path]:
+    repo, bin_dir = tmp_path / "repo", tmp_path / "bin"
+    (repo / ".cache" / "remote" / "state" / "p").mkdir(parents=True)
+    (repo / "scripts").symlink_to(REMOTE.parent)
+    (repo / ".cache" / "remote" / "profile").write_text("p\n")
+    (repo / ".cache" / "remote" / "state" / "bootstrap.done").write_text("p\n")
+    stack_done = repo / ".cache" / "remote" / "state" / "p" / "stack.done"
+    stack_done.touch()
+    bin_dir.mkdir()
+    (bin_dir / "tmux").write_text(FAKE_TMUX)
+    (bin_dir / "tmux").chmod(0o755)
+    (tmp_path / "windows").write_text(windows)
+    env = os.environ | {"JEV_REPO": str(repo), "FAKE_TMUX": str(tmp_path / "windows"),
+                        "PATH": f"{bin_dir}:{os.environ['PATH']}"}
+    subprocess.run(["bash", str(REMOTE / "start.sh")], env=env, check=True)
+    assert (repo / ".cache" / "remote" / "run_tag").read_text().endswith("-vast\n")
+    return (tmp_path / "windows").read_text().split(), stack_done
+
+
+def test_start_opens_both_windows_on_a_fresh_boot(tmp_path):
+    windows, stack_done = start(tmp_path, "")
+    assert windows == ["telemetry", "queue"] and not stack_done.exists()
+
+
+def test_start_reopens_a_finished_queue_window(tmp_path):
+    windows, stack_done = start(tmp_path, "telemetry\n")
+    assert windows == ["telemetry", "queue"] and not stack_done.exists()
+
+
+def test_start_reopens_only_a_missing_telemetry_window(tmp_path):
+    windows, stack_done = start(tmp_path, "queue\n")
+    assert windows == ["queue", "telemetry"] and stack_done.exists()
+
+
+def test_start_leaves_a_running_session_alone(tmp_path):
+    windows, stack_done = start(tmp_path, "telemetry\nqueue\n")
+    assert windows == ["telemetry", "queue"] and stack_done.exists()

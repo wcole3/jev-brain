@@ -30,14 +30,24 @@
   - an ECE gain (the ECE-decrease CI's high end < 0) without an accuracy loss beyond its CI (the accuracy-change CI's high end ≥ 0).
 
   Otherwise b = 0, and noul's T is refitted with b = 0.
-- **File v2 (spec):**
+- **File v2 (spec, plus owner's informational fields):**
 
   ```json
-  {"version": 2,
+  {"format": 2,
+   "version": 3,
+   "date": "2026-10-02T15:10:00Z",
+   "comments": [{"version": 1, "date": "...", "text": "..."}],
    "stamp": {"tokenizer_sha256", "layout_sha256", "hf_revision", "prefix_pad", "prefix_block"},
    "types": {"choice": {"T": x}, "score": {"T": x}, "noul": {"T": x, "b": x}},
    "fit": {...}}
   ```
+- **Format vs version (owner decision, 2026-10-02):**
+  - `format` is the schema marker the loader checks: v1 has no `format`, so v1 is refused.
+  - `version`, `date` and `comments` are **informational only**, never read by the gateway.
+    `version` counts refits of this file (1, 2, 3 …). `date` is the UTC time of the latest fit.
+    `comments` is the change history, one `{"version", "date", "text"}` entry per fit, oldest first.
+  - A refit carries the existing `comments` forward and appends one entry. With no readable v2
+    file there is no history to carry, and the history restarts at version 1.
 - **Gateway:**
   - a stamp mismatch, or a v1 or unstamped file, refuses startup with a message naming the field;
   - a missing file means a warning plus T = 1 and b = 0;
@@ -88,7 +98,8 @@
   ```
 - **`load_calibration` rules:**
   - missing file: `log.warning(...)`, return `UNCALIBRATED`;
-  - `version != 2` or no `stamp`: `RuntimeError(f"{path}: not a v2 calibration file; rerun scripts/calibrate.py")`;
+  - `format != 2` or no `stamp`: `RuntimeError(f"{path}: not a v2 calibration file; rerun scripts/calibrate.py")`;
+  - `version`, `date` and `comments` are not read;
   - when `expect` is given, the first differing key raises `RuntimeError(f"{path}: {key} changed ({file} != {expect}); rerun scripts/calibrate.py")`;
   - otherwise return `Calibration(T={t: types[t]["T"]}, b=types["noul"].get("b", 0.0), source=str(path))`.
 - **Produces, in `gateway/decide.py`:**
@@ -117,7 +128,7 @@ STAMP = {"tokenizer_sha256": "t", "layout_sha256": "l", "hf_revision": "r", "pre
 
 
 def v2(tmp_path, **over):
-    data = {"version": 2, "stamp": dict(STAMP),
+    data = {"format": 2, "version": 1, "date": "2026-10-02T00:00:00Z", "comments": [], "stamp": dict(STAMP),
             "types": {"choice": {"T": 1.5}, "score": {"T": 2.0}, "noul": {"T": 0.8, "b": 0.3}}, "fit": {}}
     data.update(over)
     path = tmp_path / "calibration.json"
@@ -245,7 +256,7 @@ def load_calibration(path: Path, expect: dict | None) -> Calibration:
         log.warning("%s missing: uncalibrated (T = 1, no yes-offset)", path)
         return UNCALIBRATED
     data = json.loads(path.read_text())
-    if data.get("version") != 2 or "stamp" not in data:
+    if data.get("format") != 2 or "stamp" not in data:  # version/date/comments are informational only
         raise RuntimeError(f"{path}: not a v2 calibration file; rerun scripts/calibrate.py")
     for key in STAMP_KEYS if expect is not None else ():
         if data["stamp"].get(key) != expect[key]:
@@ -577,9 +588,15 @@ EOF
       # {"choice": {"T"}, "score": {"T"}, "noul": {"T", "b"}, "noul_b0": {"T"}}; a type with < 30 questions keeps T = 1.0
   def ship_offset(eval_noul: list[Question], with_b: tuple[float, float], without_b: float) -> tuple[bool, dict]
       # the spec rule on eval noul questions; returns (ship, {"acc": (mean, lo, hi), "ece": (mean, lo, hi)})
-  def calibration_file(fit: dict, stamp: dict, orders: str, calib_n: dict, before_after: dict, decision: dict) -> dict
+  def history(path: Path) -> tuple[int, list[dict]]
+      # (last version, comments) from an existing v2 file; (0, []) when missing, v1 or unreadable
+  def calibration_file(fit: dict, stamp: dict, orders: str, calib_n: dict, before_after: dict, decision: dict,
+                       previous: tuple[int, list[dict]], comment: str, date: str) -> dict
+      # version = previous[0] + 1; comments = previous[1] + [{"version", "date", "text": comment}]
   def main(argv=None) -> None
-      # CLI: calibrate.py --profile P [--layouts a,b] [--orders identity] [--dry-run]
+      # CLI: calibrate.py --profile P [--layouts a,b] [--orders identity] [--comment TEXT] [--dry-run]
+      # default comment: "refit on calib (orders <orders>)"; when replacing a v1 file:
+      # "first own fit; replaces v1 file (T=<its choice T>)"
   ```
 - **Behaviour of `main`:**
   - It loads the calib and eval records from `COLLECT/<P>/{calib,eval}.jsonl.gz` and the rows from `rows_for("calib")`/`rows_for("eval")`.
@@ -662,15 +679,39 @@ def test_offset_not_shipped_without_a_gain():
     assert ship is False and stats["acc"][0] == 0.0
 
 
+FIT = {"choice": {"T": 1.2}, "score": {"T": 1.4}, "noul": {"T": 0.9, "b": 0.0}}
+
+
+def write(path, previous, comment, date):
+    data = calibrate.calibration_file(FIT, STAMP, "identity", {"choice": 1}, {"nll": {}, "ece": {}}, {"ship": False},
+                                      previous, comment, date)
+    path.write_text(json.dumps(data))
+    return data
+
+
 def test_calibration_file_is_v2_and_loadable(tmp_path):
     from gateway.calibration import load_calibration
 
-    fit = {"choice": {"T": 1.2}, "score": {"T": 1.4}, "noul": {"T": 0.9, "b": 0.0}}
-    data = calibrate.calibration_file(fit, STAMP, "identity", {"choice": 1}, {"nll": {}, "ece": {}}, {"ship": False})
     path = tmp_path / "calibration.json"
-    path.write_text(json.dumps(data))
+    write(path, (0, []), "first fit", "2026-10-02T00:00:00Z")
     cal = load_calibration(path, STAMP)
     assert cal.T == {"choice": 1.2, "score": 1.4, "noul": 0.9} and cal.b == 0.0
+
+
+def test_refit_bumps_version_and_keeps_the_comment_history(tmp_path):
+    path = tmp_path / "calibration.json"
+    write(path, calibrate.history(path), "first fit", "2026-10-02T00:00:00Z")
+    data = write(path, calibrate.history(path), "refit after layout change", "2026-10-03T00:00:00Z")
+    assert data["format"] == 2 and data["version"] == 2 and data["date"] == "2026-10-03T00:00:00Z"
+    assert [c["text"] for c in data["comments"]] == ["first fit", "refit after layout change"]
+    assert [c["version"] for c in data["comments"]] == [1, 2]
+
+
+def test_v1_or_missing_file_starts_history_at_zero(tmp_path):
+    path = tmp_path / "calibration.json"
+    assert calibrate.history(path) == (0, [])
+    path.write_text(json.dumps({"choice": 1.943, "score": 1.943, "noul": 1.943}))
+    assert calibrate.history(path) == (0, [])
 ```
 
 - [ ] **Step 2: Run to verify failure**
@@ -761,10 +802,26 @@ def ship_offset(eval_noul, with_b: tuple[float, float], without_b: float) -> tup
     return ship, {"acc": acc, "ece": ece}
 
 
-def calibration_file(fit: dict, stamp: dict, orders: str, calib_n: dict, before_after: dict, decision: dict) -> dict:
+def history(path: Path) -> tuple[int, list[dict]]:
+    """Last version and comment history of an existing v2 file; a v1, missing or unreadable file starts fresh."""
+    try:
+        data = json.loads(path.read_text())
+    except (OSError, ValueError):
+        return 0, []
+    if data.get("format") != 2:
+        return 0, []
+    return int(data.get("version", 0)), list(data.get("comments", []))
+
+
+def calibration_file(fit: dict, stamp: dict, orders: str, calib_n: dict, before_after: dict, decision: dict,
+                     previous: tuple[int, list[dict]], comment: str, date: str) -> dict:
     split = SPLITS / "calib.json"
+    version = previous[0] + 1
     return {
-        "version": 2,
+        "format": 2,
+        "version": version,  # version, date and comments are informational; the gateway never reads them
+        "date": date,
+        "comments": [*previous[1], {"version": version, "date": date, "text": comment}],
         "stamp": stamp,
         "types": {"choice": fit["choice"], "score": fit["score"], "noul": fit["noul"]},
         "fit": {"split": str(split.relative_to(ROOT)) if split.is_absolute() else str(split),
@@ -782,11 +839,27 @@ def fmt(x) -> str:
     return "n/a" if x is None else f"{x:.3f}"
 
 
+def now_iso() -> str:
+    return datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def default_comment(path: Path, orders: str) -> str:
+    """Says when a fit replaces a v1 file, so the history starts with where the old numbers came from."""
+    try:
+        old = json.loads(path.read_text())
+    except (OSError, ValueError):
+        old = None
+    if isinstance(old, dict) and old.get("format") != 2 and "choice" in old:
+        return f"first own fit; replaces v1 file (T={old['choice']})"
+    return f"refit on calib (orders {orders})"
+
+
 def main(argv=None) -> None:
     p = argparse.ArgumentParser()
     p.add_argument("--profile", required=True)
     p.add_argument("--layouts")
     p.add_argument("--orders", default="identity")
+    p.add_argument("--comment", help="one line for this file's change history")
     p.add_argument("--dry-run", action="store_true")
     args = p.parse_args(argv)
     s = Settings.from_profile(args.profile)
@@ -813,9 +886,11 @@ def main(argv=None) -> None:
         before_after = {"nll": {"before": {t: before[t]["nll"] for t in TYPES}, "after": {t: after[t]["nll"] for t in TYPES}},
                         "ece": {"before": {t: before[t]["ece"] for t in TYPES}, "after": {t: after[t]["ece"] for t in TYPES}}}
         decision = {"ship": ship, "acc": list(stats["acc"]), "ece": list(stats["ece"]), "b_fitted": b_fitted}
-        data = calibration_file(fit, stamp, args.orders, {t: len(calib[t]) for t in TYPES}, before_after, decision)
+        path = s.data_dir(layout) / "calibration.json"
+        previous = history(path)
+        data = calibration_file(fit, stamp, args.orders, {t: len(calib[t]) for t in TYPES}, before_after, decision,
+                                previous, args.comment or default_comment(path, args.orders), now_iso())
         if not args.dry_run:
-            path = s.data_dir(layout) / "calibration.json"
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(json.dumps(data, indent=1) + "\n")
         lines += [f"## {layout}", "", "| type | n calib/eval | T | b | eval NLL before → after | eval ECE before → after | eval acc |",
@@ -879,6 +954,8 @@ Owner context: this step is CPU-only and needs no ok. qwen3.8 and gemma get the 
 uv run python scripts/calibrate.py --profile qwen3.6-27b --dry-run
 uv run python scripts/calibrate.py --profile qwen3.6-27b
 ```
+
+For `decider_chat`, the default comment records "first own fit; replaces v1 file (T=1.943)". The other layouts had no file and start at version 1 with "refit on calib (orders identity)". Check that each file has `format: 2`, `version: 1`, a UTC `date` and one comment.
 
 Expected checks:
 1. Every type's eval NLL after ≤ before (T only lowers NLL in expectation; a small rise on eval means overfit, so stop and report it).

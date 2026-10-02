@@ -238,3 +238,22 @@ def test_b0_source_writes_b_as_zero(monkeypatch):
     r = calibrate.fit_and_judge(LAYOUT, held, held)
     assert r.gate["noul"]["source"] == "b0" and r.fit["noul"] == {"T": 1.05, "b": 0.0} and r.ship is False
     assert "b = 0 " in calibrate_report.gate_text(r.gate["noul"])
+
+
+def test_gate_ships_pooled_when_both_pass_and_pooled_has_the_lower_ece():
+    held = {"choice": calibrated_choice(), "score": [], "noul": []}
+    g = calibrate.gate_temperatures(gate_fit(1.1, 1.0), held)["choice"]
+    assert g["source"] == "pooled" and g["shipped_T"] == 1.0 and g["ece"][1] <= 0
+
+
+def test_gate_ships_fitted_when_both_pass_and_fitted_has_the_lower_ece():
+    held = {"choice": calibrated_choice(), "score": [], "noul": []}
+    g = calibrate.gate_temperatures(gate_fit(1.0, 1.1), held)["choice"]
+    assert g["source"] == "fitted" and g["shipped_T"] == 1.0
+
+
+def test_gate_keeps_a_passing_noul_b_even_when_pooled_has_the_lower_ece():
+    held = {"choice": [], "score": [], "noul": calibrated_choice()}
+    fit = gate_fit(1.0, 1.0, (1.0, 0.1)) | {"noul_b0": {"T": 1.0}}
+    g = calibrate.gate_temperatures(fit, held)["noul"]
+    assert g["source"] == "fitted" and g["ece_pooled"][0] < g["ece"][0]

@@ -2,8 +2,8 @@
 
 ## Provenance
 
-- timestamp: 2026-10-02T163703Z
-- repo commit: e93c263
+- timestamp: 2026-10-02T174851Z
+- repo commit: efacbbd
 - host: RTX PRO 6000 Blackwell, 540/600 W, drv 610.62, PCIe 4x16, AMD Ryzen 7 3800X 8-Core Processor (16 thr), 94 GB, WSL
 - profile: qwen3.6-27b
 - split: index-dev

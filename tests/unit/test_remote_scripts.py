@@ -163,6 +163,30 @@ def test_start_leaves_a_running_session_alone(tmp_path):
     assert windows == ["telemetry", "queue"] and stack_done.exists()
 
 
+def test_start_marks_a_failed_bootstrap_until_one_succeeds(tmp_path):
+    """start.sh with a stand-in bootstrap.sh that exits $BOOT_EXIT; the real start.sh and queue.sh."""
+    repo, remote = tmp_path / "repo", tmp_path / "repo" / ".cache" / "remote"
+    (repo / "scripts" / "remote").mkdir(parents=True)
+    for name in ("start.sh", "queue.sh"):
+        (repo / "scripts" / "remote" / name).symlink_to(REMOTE / name)
+    (repo / "scripts" / "remote" / "bootstrap.sh").write_text("exit $BOOT_EXIT\n")
+    remote.mkdir(parents=True)
+    (remote / "profile").write_text("p\n")
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    (bin_dir / "tmux").write_text(FAKE_TMUX)
+    (bin_dir / "tmux").chmod(0o755)
+    (tmp_path / "windows").touch()
+    env = os.environ | {"JEV_REPO": str(repo), "FAKE_TMUX": str(tmp_path / "windows"),
+                        "PATH": f"{bin_dir}:{os.environ['PATH']}"}
+    assert subprocess.run(["bash", str(REMOTE / "start.sh")], env=env | {"BOOT_EXIT": "7"}, check=False).returncode
+    assert "exit=7" in (remote / "state" / "bootstrap.failed").read_text()
+    assert (tmp_path / "windows").read_text() == ""
+    subprocess.run(["bash", str(REMOTE / "start.sh")], env=env | {"BOOT_EXIT": "0"}, check=True)
+    assert not (remote / "state" / "bootstrap.failed").exists()
+    assert (tmp_path / "windows").read_text().split() == ["telemetry", "queue"]
+
+
 PROFILE = "qwen3.8-27b"
 IMAGE = "vllm/vllm-openai:v0.30.0@sha256:8a69ffad015f138d7170c4ddc429e230a3bc1c1719f67e14324749df200a4b90"
 URL, HOST, PORT = "ssh://root@203.0.113.7:41022", "root@203.0.113.7", "41022"
@@ -394,25 +418,33 @@ def test_pull_rejects_bad_arguments(tmp_path, args):
 
 
 FAKE_RSYNC = """#!/usr/bin/env bash
-# Log each call in $FAKE_RSYNC; the first call fails (box down); the 2nd pull of box state brings QUEUE_DONE.
+# Log each call in $FAKE_RSYNC; the first call fails (box down); box state is a copy of $FAKE_REMOTE, and the
+# 2nd pull of it brings QUEUE_DONE.
 printf '%q ' "$@" >> "$FAKE_RSYNC"
 echo >> "$FAKE_RSYNC"
 (( $(wc -l < "$FAKE_RSYNC") == 1 )) && [[ -n ${FAIL_FIRST:-} ]] && exit 255
 dest=${!#}
 [[ $dest == *remote-boxes* ]] || exit "${FAKE_EXIT:-0}"
-mkdir -p "$dest/logs" "$dest/state/qwen3.8-27b"
-printf 'one\ntwo\nthree\nfour\n' > "$dest/logs/queue.log"
+cp -r "$FAKE_REMOTE/." "$dest"
+mkdir -p "$dest/state/qwen3.8-27b"
 (( $(grep -c 'remote-boxes/qwen3.8-27b/ $' "$FAKE_RSYNC") >= 2 )) && touch "$dest/state/qwen3.8-27b/QUEUE_DONE"
 exit "${FAKE_EXIT:-0}"
 """
+QUEUE_LOG = "one\ntwo\nthree\nfour\n"
 
 
-def pull(tmp_path, *args: str, fail_first: bool = False, exit_code: int = 0) -> tuple[subprocess.CompletedProcess, list[list[str]], Path]:
+def pull(tmp_path, *args: str, fail_first: bool = False, exit_code: int = 0,
+         box: dict[str, str] | None = None) -> tuple[subprocess.CompletedProcess, list[list[str]], Path]:
+    """pull.sh against a stub rsync; `box` maps paths under the box's .cache/remote to their text."""
     repo = scratch_repo(tmp_path)
     (tmp_path / "bin" / "rsync").write_text(FAKE_RSYNC)
+    remote = tmp_path / "box-remote"
+    for path, text in ({"logs/queue.log": QUEUE_LOG} | (box or {})).items():
+        (remote / path).parent.mkdir(parents=True, exist_ok=True)
+        (remote / path).write_text(text)
     calls = tmp_path / "rsync-calls"
-    env = {"FAKE_RSYNC": str(calls), "FAKE_EXIT": str(exit_code)} | ({"FAIL_FIRST": "1"} if fail_first else {})
-    out = local(repo, "pull.sh", URL, PROFILE, *args, env=env)
+    env = {"FAKE_RSYNC": str(calls), "FAKE_EXIT": str(exit_code), "FAKE_REMOTE": str(remote)}
+    out = local(repo, "pull.sh", URL, PROFILE, *args, env=env | ({"FAIL_FIRST": "1"} if fail_first else {}))
     return out, [shlex.split(line) for line in calls.read_text().splitlines()], repo
 
 
@@ -431,8 +463,46 @@ def test_pull_copies_results_runs_and_box_state_without_deleting(tmp_path):
     for call in calls:
         assert call[call.index("-e") + 1] == shlex.join(ssh_options(repo)) and "--delete" not in call
     assert all("--update" in call for call in calls[:3]) and "--update" not in calls[3]
-    assert out.stdout.splitlines()[-3:] == ["two", "three", "four"]
+    assert out.stdout.splitlines()[-4:] == ["two", "three", "four", "bootstrap: running; job: none; failed: none"]
     assert (repo / "docs" / "results" / PROFILE).is_dir()
+
+
+def test_pull_names_the_job_that_is_running(tmp_path):
+    log = "t == stack start\nt == stack done\nt == index start\nt == index retry (exit 1)\n"
+    out, _, _ = pull(tmp_path, box={"logs/queue.log": log, "state/bootstrap.done": PROFILE})
+    assert out.returncode == 0 and out.stdout.splitlines()[-1] == "bootstrap: done; job: index; failed: none"
+
+
+def test_pull_exits_3_on_a_failed_job(tmp_path):
+    log = "t == index start\nt == index retry (exit 1)\nt == index FAILED (exit 1)\n"
+    failed = {"logs/queue.log": log, "state/bootstrap.done": PROFILE, f"state/{PROFILE}/index.failed": "exit=1"}
+    out, _, _ = pull(tmp_path, box=failed)
+    assert out.returncode == 3 and out.stdout.splitlines()[-1] == "bootstrap: done; job: none; failed: index"
+
+
+def test_pull_shows_the_start_log_when_bootstrap_failed(tmp_path):
+    start_log = "".join(f"line {n}\n" for n in range(1, 8))
+    out, _, _ = pull(tmp_path, box={"logs/start.log": start_log, "state/bootstrap.failed": "exit=1"})
+    lines = out.stdout.splitlines()
+    assert out.returncode == 3 and lines[-6:] == ["bootstrap: FAILED; job: none; failed: none",
+                                                  *(f"line {n}" for n in range(3, 8))]
+
+
+def test_pull_drops_alarms_the_box_has_cleared(tmp_path):
+    state = tmp_path / "repo" / ".cache" / "remote-boxes" / PROFILE / "state"
+    (state / PROFILE).mkdir(parents=True)
+    for marker in ("bootstrap.done", "bootstrap.failed", f"{PROFILE}/index.failed"):
+        (state / marker).write_text("old")
+    (state / PROFILE / "index.done").write_text("kept")
+    out, _, _ = pull(tmp_path)
+    assert out.returncode == 0 and out.stdout.splitlines()[-1] == "bootstrap: running; job: none; failed: none"
+    assert (state / PROFILE / "index.done").exists()
+
+
+def test_pull_loop_keeps_going_and_reports_a_failure_every_pass(tmp_path):
+    out, calls, _ = pull(tmp_path, "--loop", "0", box={f"state/{PROFILE}/collect-eval.failed": "exit=1"})
+    assert out.returncode == 0 and len(calls) == 12
+    assert out.stdout.count("failed: collect-eval") == 3
 
 
 @pytest.mark.parametrize("code, ok", [(24, True), (23, False)])

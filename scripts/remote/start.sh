@@ -18,7 +18,12 @@ if has telemetry && has queue; then
   echo "tmux session jev already running both windows"
   exit 0
 fi
-bash scripts/remote/bootstrap.sh "$profile"
+# The marker tells pull.sh that bootstrap failed (not still running); the next start.sh clears it.
+rm -f .cache/remote/state/bootstrap.failed
+bash scripts/remote/bootstrap.sh "$profile" || {
+  echo "exit=$? at $(date -u +%Y-%m-%dT%H:%M:%SZ)" > .cache/remote/state/bootstrap.failed
+  exit 1
+}
 
 # open NAME COMMAND: a window in session jev, creating the session if it is gone.
 # `9>&-` keeps the lock out of the tmux server, which would otherwise hold it forever.

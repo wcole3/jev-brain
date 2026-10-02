@@ -1,4 +1,7 @@
 import json
+from pathlib import Path
+
+import pytest
 
 from scripts import host_compare
 
@@ -41,7 +44,7 @@ def write_jsonl(path, records):
 def test_parse_latency_median_p95_skips_errors(tmp_path):
     f = tmp_path / "raw.jsonl"
     write_jsonl(f, [{"status": 200, "ms": ms} for ms in range(1, 101)] + [{"status": 500, "ms": 9999}])
-    assert host_compare.parse_latency(f) == {"median_ms": 50.5, "p95_ms": 96}
+    assert host_compare.parse_latency(f) == {"median_ms": 51, "p95_ms": 96}
 
 
 def test_parse_bench_throughput_by_workers(tmp_path):
@@ -83,6 +86,9 @@ def test_run_phases_in_order_and_writes_host_json(tmp_path, monkeypatch):
     ids.mkdir(parents=True)
     (ids / "compare-2k.json").write_text(json.dumps({"ids": ["a", "b", "c"]}))
     results = tmp_path / "docs/results/p"
+    for old in ("1999-latency", "1999-quick", "1999-index-subset"):  # earlier runs must be ignored
+        (results / old).mkdir(parents=True)
+    summarized = []
 
     def fake_run(cmd, **kw):
         calls.append(cmd)
@@ -97,8 +103,14 @@ def test_run_phases_in_order_and_writes_host_json(tmp_path, monkeypatch):
             write_jsonl(d / "raw.jsonl", [{"test": "throughput", "workers": 1, "requests_per_s": 2.0}])
         elif script == "evaluate.py":
             (results / "2026-index-subset").mkdir(parents=True)
+            merged = tmp_path / ".cache/index-runs/p/2026/merged"
+            merged.mkdir(parents=True)
+            write_jsonl(merged / "results.jsonl", [{"status": "ok"}, {"status": "unsupported"}, {"status": "error"}])
 
     class Sampler:
+        def poll(self):
+            return None
+
         def terminate(self):
             calls.append("stop")
 
@@ -106,13 +118,50 @@ def test_run_phases_in_order_and_writes_host_json(tmp_path, monkeypatch):
             return 0
 
     monkeypatch.setattr(host_compare.subprocess, "run", fake_run)
-    monkeypatch.setattr(host_compare.subprocess, "Popen", lambda cmd, **kw: calls.append(cmd) or Sampler())
+    monkeypatch.setattr(host_compare.subprocess, "Popen", lambda cmd, **kw: calls.append(cmd) or Path(cmd[cmd.index("--out") + 1]).touch() or Sampler())
     monkeypatch.setattr(host_compare.host_info, "collect", lambda: {"hostname": "h"})
-    monkeypatch.setattr(host_compare.gpu_telemetry, "summarize", lambda *a, **k: {"samples": 0})
+    monkeypatch.setattr(host_compare.gpu_telemetry, "summarize", lambda csv, since, until: summarized.append((since, until)) or {"samples": 1, "median_sm_clock": 2400, "throttled_share": 0.0})
     out = host_compare.run("p", "http://g", "http://v")
     names = [c[1].rsplit("/", 1)[-1] for c in calls if isinstance(c, list)]
     assert names == ["gpu_telemetry.py", "latency.py", "bench.py", "evaluate.py"] and calls[-1] == "stop"
     data = json.loads((out / "host.json").read_text())
     assert data["latency"]["median_ms"] == 10 and data["throughput"]["x1"] == 2.0
     assert set(data["phases"]) == {"latency", "bench", "index"} and data["index_rows_per_min"] > 0
+    assert data["index_rows"] == 2 and data["index_rows_listed"] == 3
+    assert data["phases"]["latency"]["dir"].endswith("2026-latency")
+    assert summarized == [(data["phases"][n]["start"], data["phases"][n]["end"]) for n in ("latency", "bench", "index")]
     assert (out / "summary.md").exists() and out.name.endswith("-host")
+
+
+def test_run_without_new_result_dir_fails(tmp_path, monkeypatch):
+    monkeypatch.setattr(host_compare, "ROOT", tmp_path)
+    (tmp_path / "docs/results/p/1999-latency").mkdir(parents=True)
+    monkeypatch.setattr(host_compare.subprocess, "run", lambda *a, **k: None)
+    monkeypatch.setattr(host_compare.subprocess, "Popen", lambda *a, **k: type("S", (), {
+        "poll": lambda s: None, "terminate": lambda s: None, "wait": lambda s, timeout=None: 0})())
+    with pytest.raises(SystemExit, match="created no result dir"):
+        host_compare.run("p", "g", "v")
+
+
+def test_run_marks_telemetry_unavailable_when_sampler_died(tmp_path, monkeypatch):
+    results = tmp_path / "docs/results/p"
+    monkeypatch.setattr(host_compare, "ROOT", tmp_path)
+    monkeypatch.setattr(host_compare, "git_revision", lambda: "abc")
+    (tmp_path / "data/splits").mkdir(parents=True)
+    (tmp_path / "data/splits/compare-2k.json").write_text(json.dumps({"ids": ["a"]}))
+
+    def fake_run(cmd, **kw):
+        name = cmd[1].rsplit("/", 1)[-1]
+        d = results / {"latency.py": "2-latency", "bench.py": "2-quick", "evaluate.py": "2-index-subset"}[name]
+        d.mkdir(parents=True)
+        write_jsonl(d / "raw.jsonl", [{"status": 200, "ms": 1, "test": "throughput", "workers": 1, "requests_per_s": 1}])
+        if name == "evaluate.py":
+            (tmp_path / ".cache/index-runs/p/2/merged").mkdir(parents=True)
+            write_jsonl(tmp_path / ".cache/index-runs/p/2/merged/results.jsonl", [{"status": "ok"}])
+
+    dead = type("S", (), {"poll": lambda s: 1, "terminate": lambda s: None, "wait": lambda s, timeout=None: 0})()
+    monkeypatch.setattr(host_compare.subprocess, "run", fake_run)
+    monkeypatch.setattr(host_compare.subprocess, "Popen", lambda *a, **k: dead)
+    monkeypatch.setattr(host_compare.host_info, "collect", lambda: {"hostname": "h"})
+    data = json.loads((host_compare.run("p", "g", "v") / "host.json").read_text())
+    assert data["phases"]["index"]["telemetry"] == "unavailable (sampler died)"

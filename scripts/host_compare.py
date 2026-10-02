@@ -6,7 +6,6 @@ usage: uv run python scripts/host_compare.py make-ids | run PROFILE [--gateway U
 import argparse
 import datetime
 import json
-import statistics
 import subprocess
 import sys
 import time
@@ -40,7 +39,7 @@ def read_jsonl(path: Path) -> list[dict]:
 
 def parse_latency(raw: Path) -> dict:
     ms = [r["ms"] for r in read_jsonl(raw) if r.get("status") == 200]
-    return {"median_ms": statistics.median(ms), "p95_ms": percentile(ms, 0.95)}
+    return {"median_ms": percentile(ms, 0.5), "p95_ms": percentile(ms, 0.95)}
 
 
 def parse_bench(raw: Path) -> dict:
@@ -52,8 +51,21 @@ def utc_now() -> str:
     return datetime.datetime.now(datetime.UTC).strftime(UTC)
 
 
-def newest(profile: str, pattern: str) -> Path:
-    return max((ROOT / "docs" / "results" / profile).glob(pattern))
+def result_dirs(profile: str, pattern: str) -> set[Path]:
+    return set((ROOT / "docs" / "results" / profile).glob(pattern))
+
+
+def created_since(profile: str, pattern: str, before: set[Path]) -> Path:
+    """The newest result dir a step added; fail loudly rather than pick up an older run's."""
+    if not (new := result_dirs(profile, pattern) - before):
+        raise SystemExit(f"{pattern}: the step created no result dir under docs/results/{profile}")
+    return max(new)
+
+
+def merged_rows(profile: str, subset_dir: Path) -> int:
+    """Rows the Index subset run actually produced (ok or unsupported), from its merged results."""
+    merged = ROOT / ".cache" / "index-runs" / profile / subset_dir.name.removesuffix("-index-subset") / "merged"
+    return sum(r["status"] in ("ok", "unsupported") for r in read_jsonl(merged / "results.jsonl"))
 
 
 def script(name: str, *args: str) -> list[str]:
@@ -74,21 +86,26 @@ def run(profile: str, gateway: str, vllm: str) -> Path:
     phases = {}
     try:
         for name, cmd in steps.items():
+            before = result_dirs(profile, PHASES[name])
             start, began = utc_now(), time.monotonic()
             subprocess.run(cmd, cwd=ROOT, check=True)
             phases[name] = {"start": start, "end": utc_now(), "wall_s": time.monotonic() - began,
-                            "dir": str(newest(profile, PHASES[name]).relative_to(ROOT))}
+                            "dir": str(created_since(profile, PHASES[name], before).relative_to(ROOT))}
+        sampler_died = sampler.poll() is not None
     finally:
         sampler.terminate()
         sampler.wait(timeout=30)
     for p in phases.values():
         p["telemetry"] = gpu_telemetry.summarize(csv, p["start"], p["end"]) if csv.exists() else {"samples": 0}
-    rows = len(json.loads((ROOT / IDS).read_text())["ids"])
+        if sampler_died or not p["telemetry"]["samples"]:
+            p["telemetry"] = "unavailable (" + ("sampler died" if sampler_died else "no samples in window") + ")"
+    listed = len(json.loads((ROOT / IDS).read_text())["ids"])
+    rows = merged_rows(profile, ROOT / phases["index"]["dir"])
     host = {
         "profile": profile, "repo commit": git_revision(), "fingerprint": host_info.collect(), "phases": phases,
         "latency": parse_latency(ROOT / phases["latency"]["dir"] / "raw.jsonl"),
         "throughput": parse_bench(ROOT / phases["bench"]["dir"] / "raw.jsonl"),
-        "index_rows": rows, "index_rows_per_min": rows / (max(phases["index"]["wall_s"], 1) / 60),
+        "index_rows_listed": listed, "index_rows": rows, "index_rows_per_min": rows / (max(phases["index"]["wall_s"], 1) / 60),
     }
     (out / "host.json").write_text(json.dumps(host, indent=2) + "\n")
     (out / "summary.md").write_text(f"# {profile} host run\n\n{host_info.summary_line(host['fingerprint'])}\n\n"
@@ -104,8 +121,8 @@ def metrics(host: dict) -> dict[str, str]:
     out |= {f"throughput {k} (req/s)": f"{thr[k]:.2f}" for k in ("x1", "x4", "x16") if k in thr}
     out["index rows/min"] = f"{host['index_rows_per_min']:.1f}"
     for name, phase in host["phases"].items():
-        t = phase.get("telemetry") or {}
-        if t.get("samples"):
+        t = phase["telemetry"]
+        if isinstance(t, dict) and t.get("samples"):
             out[f"{name} sm clock (MHz)"] = f"{t['median_sm_clock']:.0f}"
             out[f"{name} throttled"] = f"{t['throttled_share']:.0%}"
     return out

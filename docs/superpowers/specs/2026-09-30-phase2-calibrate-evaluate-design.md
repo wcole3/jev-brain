@@ -148,9 +148,10 @@ and calls `read_rows()` for each row.
   Otherwise b = 0.
 - **Shipping T (owner's per-type gate, 2026-10-02):** per type, the candidates are the fitted T,
   for noul with b shipping the noul T fitted with b = 0 (`b0`, b dropped), and the pooled T
-  (one T fitted on all types, b = 0). A candidate passes when the eval split's paired bootstrap
+  (one T fitted on all types, b = 0), and last T = 1.0 (b = 0, ECE change exactly 0). A candidate passes when the eval split's paired bootstrap
   of its ECE change vs T = 1 has CI low ≤ 0. The passing candidate with the lowest point ECE
-  change ships (ties go to the earlier in that order); none passing ships T = 1.0. A noul b that
+  change ships (ties go to the earlier in that order); T = 1 always passes, so it ships only when every other
+  passing candidate is worse than no calibration. A noul b that
   passes with its fitted T ships as is: it never competes. A T can ship with a worse point ECE
   when the CI includes 0.
 - **File (v2):** `format` is the schema marker the gateway checks (v1 has none and is
@@ -261,7 +262,7 @@ tables and refitting.
 | Milestone | Deliverables | Gate |
 |---|---|---|
 | **M1 evaluate** | `index_suite`, `datasets`, `splits`, `metrics`, the `read_rows`/`finish` seam, `collect`, `evaluate`, `latency`; a baseline full Index and latency run per profile; the decision length-cap comparison | parity gate passes; offline matches live on the spot check |
-| **M2 calibrate** | `calibrate.py`, the v2 `calibration.json` with the gateway stamp check and noul offset, fits for 3 profiles × 3 layouts | owner's per-type gate (fitted T ships if its eval ECE-change CI low ≤ 0 vs T = 1, else the passing candidate among fitted, b = 0 (noul with b only) and pooled with the lowest eval ECE, else 1.0; a T may ship with worse point ECE when the CI includes 0); Index ECE reported as a transfer result |
+| **M2 calibrate** | `calibrate.py`, the v2 `calibration.json` with the gateway stamp check and noul offset, fits for 3 profiles × 3 layouts | owner's per-type gate (fitted T ships if its eval ECE-change CI low ≤ 0 vs T = 1, else the passing candidate among fitted, b = 0 (noul with b only), pooled and T = 1 (always passes) with the lowest eval ECE; a T may ship with worse point ECE when the CI includes 0); Index ECE reported as a transfer result |
 | **M3 experiments** | order and layout reports with recommendations, a final full Index per profile, `phase2_report.py`, the README table | DS-002's verify criteria |
 
 ### Long runs (each needs the owner's explicit ok)

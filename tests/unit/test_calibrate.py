@@ -148,17 +148,22 @@ def calibrated_choice(n=200):
     return [([([0.0, -1.0], [0, 1])], 0 if i % 100 < 73 else 1) for i in range(n)]
 
 
+def underconfident_choice(n=200):
+    """Same logit gap, right 90% of the time: a T below 1 sharpens it and cuts ECE."""
+    return [([([0.0, -1.0], [0, 1])], 0 if i % 100 < 90 else 1) for i in range(n)]
+
+
 def gate_fit(choice_T, pooled_T, noul=(1.0, 0.0)):
     return {"choice": {"T": choice_T}, "score": {"T": 1.0}, "noul": {"T": noul[0], "b": noul[1]},
             "pooled": {"T": pooled_T}}
 
 
 def test_gate_falls_back_to_pooled_when_the_fitted_T_worsens_eval_ece():
-    held = {"choice": calibrated_choice(), "score": [], "noul": []}
-    gate = calibrate.gate_temperatures(gate_fit(20.0, 1.05), held)
-    assert gate["choice"]["source"] == "pooled" and gate["choice"]["shipped_T"] == 1.05
+    held = {"choice": underconfident_choice(), "score": [], "noul": []}
+    gate = calibrate.gate_temperatures(gate_fit(20.0, 0.5), held)
+    assert gate["choice"]["source"] == "pooled" and gate["choice"]["shipped_T"] == 0.5
     assert gate["choice"]["fitted_T"] == 20.0 and gate["choice"]["ece"][1] > 0
-    assert gate["score"] == {"fitted_T": 1.0, "pooled_T": 1.05, "shipped_T": 1.0, "source": "fitted",
+    assert gate["score"] == {"fitted_T": 1.0, "pooled_T": 0.5, "shipped_T": 1.0, "source": "fitted",
                              "ece": [0.0, 0.0, 0.0], "ece_pooled": [0.0, 0.0, 0.0]}
 
 
@@ -210,33 +215,33 @@ def test_dry_run_writes_nothing_and_prints_the_report(tmp_path, monkeypatch, cap
 
 
 def noul_gate(b0_T, pooled_T):
-    held = {"choice": [], "score": [], "noul": calibrated_choice()}
+    held = {"choice": [], "score": [], "noul": underconfident_choice()}
     return calibrate.gate_temperatures(gate_fit(1.0, pooled_T, (20.0, 0.5)) | {"noul_b0": {"T": b0_T}}, held)
 
 
 def test_gate_noul_tries_the_b0_temperature_before_pooled():
-    g = noul_gate(1.05, 1.05)["noul"]
-    assert g["source"] == "b0" and g["shipped_T"] == 1.05 and g["ece"][1] > 0 and len(g["ece_b0"]) == 3
+    g = noul_gate(0.5, 0.5)["noul"]
+    assert g["source"] == "b0" and g["shipped_T"] == 0.5 and g["ece"][1] > 0 and len(g["ece_b0"]) == 3
 
 
 def test_gate_noul_falls_to_pooled_when_b0_fails_too():
-    g = noul_gate(20.0, 1.05)["noul"]
-    assert g["source"] == "pooled" and g["shipped_T"] == 1.05 and g["ece_b0"][1] > 0
+    g = noul_gate(20.0, 0.5)["noul"]
+    assert g["source"] == "pooled" and g["shipped_T"] == 0.5 and g["ece_b0"][1] > 0
 
 
 def test_gate_noul_without_b_makes_no_b0_attempt():
-    held = {"choice": [], "score": [], "noul": calibrated_choice()}
-    g = calibrate.gate_temperatures(gate_fit(1.0, 1.05, (20.0, 0.0)), held)["noul"]
+    held = {"choice": [], "score": [], "noul": underconfident_choice()}
+    g = calibrate.gate_temperatures(gate_fit(1.0, 0.5, (20.0, 0.0)), held)["noul"]
     assert g["source"] == "pooled" and "ece_b0" not in g
 
 
 def test_b0_source_writes_b_as_zero(monkeypatch):
-    held = {"choice": [], "score": [], "noul": calibrated_choice()}
-    fit = gate_fit(1.0, 15.0, (20.0, 0.5)) | {"noul_b0": {"T": 1.05}}
+    held = {"choice": [], "score": [], "noul": underconfident_choice()}
+    fit = gate_fit(1.0, 15.0, (20.0, 0.5)) | {"noul_b0": {"T": 0.5}}
     monkeypatch.setattr(calibrate, "fit_layout", lambda calib: fit)
     monkeypatch.setattr(calibrate, "ship_offset", lambda *a: (True, {"acc": (0, 0, 0), "ece": (0, 0, 0)}))
     r = calibrate.fit_and_judge(LAYOUT, held, held)
-    assert r.gate["noul"]["source"] == "b0" and r.fit["noul"] == {"T": 1.05, "b": 0.0} and r.ship is False
+    assert r.gate["noul"]["source"] == "b0" and r.fit["noul"] == {"T": 0.5, "b": 0.0} and r.ship is False
     assert "b = 0 " in calibrate_report.gate_text(r.gate["noul"])
 
 
@@ -257,3 +262,19 @@ def test_gate_keeps_a_passing_noul_b_even_when_pooled_has_the_lower_ece():
     fit = gate_fit(1.0, 1.0, (1.0, 0.1)) | {"noul_b0": {"T": 1.0}}
     g = calibrate.gate_temperatures(fit, held)["noul"]
     assert g["source"] == "fitted" and g["ece_pooled"][0] < g["ece"][0]
+
+
+def test_gate_ships_none_when_every_passing_candidate_is_worse_than_no_calibration():
+    held = {"choice": calibrated_choice(), "score": [], "noul": []}
+    g = calibrate.gate_temperatures(gate_fit(1.0, 1.0), held)["choice"]
+    assert g["source"] == "fitted"  # ties go to the earlier candidate
+    worse = calibrate.ece_change(held["choice"], "choice", 1.05)
+    assert worse[0] > 0 and worse[1] <= 0  # passes the CI test but is worse than T = 1
+    g = calibrate.gate_temperatures(gate_fit(1.05, 1.05), held)["choice"]
+    assert g["source"] == "none" and g["shipped_T"] == 1.0
+
+
+def test_gate_a_candidate_with_a_negative_point_change_beats_none():
+    held = {"choice": underconfident_choice(), "score": [], "noul": []}
+    g = calibrate.gate_temperatures(gate_fit(0.5, 15.0), held)["choice"]
+    assert g["ece"][0] < 0 and g["source"] == "fitted" and g["shipped_T"] == 0.5

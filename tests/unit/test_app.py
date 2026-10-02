@@ -102,7 +102,7 @@ def test_health(client):
     assert padding == (s.prefix_pad, s.prefix_block, s.prefix_pad_always, s.warm_min_prefix_tokens)
     assert body["warm_up"] == s.warm_up
     assert body["systemone_max_len"] == s.systemone_max_len
-    assert body["temperatures"] == client.app.state.engine.temperatures
+    assert body["calibration"] == {k: c.as_dict() for k, c in client.app.state.engine.calibration.items()}
 
 
 def test_padded_gateway_reports_padding_and_bills_without_it(qwen_settings, vllm, sent):

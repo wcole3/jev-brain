@@ -14,7 +14,7 @@ from starlette.exceptions import HTTPException
 from transformers import AutoTokenizer
 
 from gateway import chat
-from gateway.calibration import load_temperatures
+from gateway.calibration import load_calibration, stamp_for
 from gateway.config import Settings
 from gateway.decide import Engine, decide
 from gateway.disconnect import unless_disconnected
@@ -48,7 +48,10 @@ def load_engine(s: Settings, client: httpx.AsyncClient) -> Engine:
         layouts=layouts,
         frames={name: chat_frame(tok, layout) for name, layout in layouts.items()},
         labels={name: load_labels(s.data_dir(name) / "labels.json", tok, layout) for name, layout in layouts.items()},
-        temperatures={name: load_temperatures(s.data_dir(name) / "calibration.json") for name in layouts},
+        calibration={
+            name: load_calibration(s.data_dir(name) / "calibration.json", stamp_for(tok, layout, s))
+            for name, layout in layouts.items()
+        },
         readout=Readout(client, s.served_model, s.warm_min_prefix_tokens, s.warm_up),
         padding=load_padding(s, tok),
     )
@@ -159,7 +162,7 @@ def create_app(settings: Settings | None = None, transport: httpx.AsyncBaseTrans
             "systemone_max_len": s.systemone_max_len,
             "warm_min_prefix_tokens": s.warm_min_prefix_tokens,
             "warm_up": s.warm_up,
-            "temperatures": engine.temperatures,
+            "calibration": {name: cal.as_dict() for name, cal in engine.calibration.items()},
             "vllm_version": await vllm_version(request.app.state.client) if ok else None,
             "layouts": sorted(engine.layouts),
         }

@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from gateway.answers import answer
-from gateway.calibration import softmax
+from gateway.calibration import Calibration, softmax
 from gateway.config import Settings
 from gateway.labels import Labels
 from gateway.layouts import Layout
@@ -27,7 +27,7 @@ class Engine:
     layouts: dict[str, Layout]
     frames: dict[str, ChatFrame]
     labels: dict[str, Labels]
-    temperatures: dict[str, dict[str, float]]
+    calibration: dict[str, Calibration]
     readout: Any
     padding: Padding = OFF
 
@@ -88,19 +88,27 @@ async def read_rows(
     return Reads(name, questions, reads, batch.input_tokens)
 
 
-def blend(reads: list[tuple[list[float], list[int]]], temperature: float) -> list[float]:
-    """Softmax each order's logprobs at this temperature, then average back to the caller's option order."""
-    return average_back([softmax(lp, temperature) for lp, _ in reads], [perm for _, perm in reads])
+def blend(reads: list[tuple[list[float], list[int]]], temperature: float, yes_offset: float = 0.0) -> list[float]:
+    """Softmax each order at T (noul: "yes" shifted by yes_offset after /T), then average back to caller order."""
+    probs = []
+    for lp, perm in reads:
+        shifted = [x + yes_offset * temperature if perm[j] == 1 else x for j, x in enumerate(lp)] if yes_offset else lp
+        probs.append(softmax(shifted, temperature))
+    return average_back(probs, [perm for _, perm in reads])
 
 
-def answers_for(questions: dict[str, Rendered], reads: dict, temperatures: dict[str, float]) -> dict:
-    return {qid: answer(q, blend(reads[qid], temperatures[q.type])) for qid, q in questions.items()}
+def probabilities(reads: list[tuple[list[float], list[int]]], q_type: str, cal: Calibration) -> list[float]:
+    return blend(reads, cal.T[q_type], cal.b if q_type == "noul" else 0.0)
+
+
+def answers_for(questions: dict[str, Rendered], reads: dict, cal: Calibration) -> dict:
+    return {qid: answer(q, probabilities(reads[qid], q.type, cal)) for qid, q in questions.items()}
 
 
 async def decide(engine: Engine, request: SystemOneRequest) -> dict:
     r = await read_rows(engine, request)
     return {
         "model": engine.settings.served_model,
-        "answers": answers_for(r.questions, r.reads, engine.temperatures[r.layout]),
+        "answers": answers_for(r.questions, r.reads, engine.calibration[r.layout]),
         "usage": {"input_tokens": r.input_tokens, "output_tokens": 0},
     }

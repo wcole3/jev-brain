@@ -1,10 +1,11 @@
-"""Experiment arms from collected logprobs: pick the orders, apply temperatures, average, score against gold."""
+"""Experiment arms from collected logprobs: pick the orders, apply the calibration, average, score against gold."""
 
 from collections import Counter, defaultdict
 from collections.abc import Iterable
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
-from gateway.decide import blend
+from gateway.calibration import UNCALIBRATED, Calibration
+from gateway.decide import probabilities
 from gateway.layouts import load_layouts
 from gateway.orders import option_orders
 from gateway.questions import Rendered, render_question
@@ -12,14 +13,12 @@ from gateway.schema import Question
 from scripts import metrics
 from scripts.metrics import Scored
 
-UNCALIBRATED = {"choice": 1.0, "score": 1.0, "noul": 1.0}
-
 
 @dataclass(frozen=True)
 class Arm:
     layout: str = "decider_chat"
     orders: str = "identity"
-    temperatures: dict[str, float] = field(default_factory=lambda: dict(UNCALIBRATED))
+    calibration: Calibration = UNCALIBRATED
 
 
 def gold_index(q: Rendered, gold) -> int | None:
@@ -46,7 +45,7 @@ def scored(record: dict, row: dict, arm: Arm, layouts: dict) -> list[Scored]:
         chosen = [(r["logprobs"], r["perm"]) for r in reads if r["perm"] in wanted]
         if len(chosen) != len(wanted):
             raise ValueError(f"arm {arm.orders} needs {len(wanted)} orders for {record['id']}/{qid}, collected {len(chosen)}")
-        out.append(Scored(row["source"], row["family"], q.type, gold, blend(chosen, arm.temperatures[q.type])))
+        out.append(Scored(row["source"], row["family"], q.type, gold, probabilities(chosen, q.type, arm.calibration)))
     return out
 
 
@@ -75,7 +74,7 @@ def evaluate(recs: Iterable[dict], rows_by_id: dict[str, dict], arm: Arm) -> dic
         else:
             refused += sum(gold is not None for gold in row["gold"].values())
     return {
-        "arm": {"layout": arm.layout, "orders": arm.orders, "temperatures": arm.temperatures},
+        "arm": {"layout": arm.layout, "orders": arm.orders, "calibration": arm.calibration.as_dict()},
         "overall": metrics.summary(items),
         "all_rows": all_rows(items, refused),
         "by_type": grouped(items, lambda i: i.type),

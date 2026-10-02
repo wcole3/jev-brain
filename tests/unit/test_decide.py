@@ -1,9 +1,10 @@
 import dataclasses
+import math
 
 import pytest
 
-from gateway.calibration import softmax
-from gateway.decide import answers_for, blend, build_batch, decide, read_rows
+from gateway.calibration import Calibration, softmax
+from gateway.decide import answers_for, blend, build_batch, decide, probabilities, read_rows
 from gateway.orders import option_orders
 from gateway.padding import Padding, newline_token
 from gateway.schema import RequestError, SystemOneRequest
@@ -98,7 +99,7 @@ async def test_orders_function_overrides_the_setting(engine):
 async def test_decide_is_read_rows_then_answers_for(engine):
     r = await read_rows(engine, request())
     out = await decide(engine, request())
-    assert out["answers"] == answers_for(r.questions, r.reads, engine.temperatures["decider_chat"])
+    assert out["answers"] == answers_for(r.questions, r.reads, engine.calibration["decider_chat"])
     assert out["usage"] == {"input_tokens": r.input_tokens, "output_tokens": 0}
 
 
@@ -106,3 +107,15 @@ def test_blend_maps_a_reversed_order_back():
     q = softmax([0.0, -1.0], 2.0)
     assert blend([([0.0, -1.0], [0, 1])], 2.0) == pytest.approx(q)
     assert blend([([0.0, -1.0], [1, 0])], 2.0) == pytest.approx([q[1], q[0]])
+
+
+def test_yes_offset_shifts_noul_toward_yes_in_every_order():
+    reads = [([0.0, 0.0], [0, 1]), ([0.0, 0.0], [1, 0])]  # no/yes even in both orders
+    p = probabilities(reads, "noul", Calibration({"choice": 1, "score": 1, "noul": 2.0}, b=1.0))
+    assert p[1] == pytest.approx(1 / (1 + math.exp(-1.0)))  # sigma(0/T + b)
+
+
+def test_offset_is_ignored_for_choice_and_zero_keeps_old_math():
+    reads = [([0.0, -1.0, -2.0], [0, 1, 2])]
+    cal = Calibration({"choice": 1.0, "score": 1.0, "noul": 1.0}, b=3.0)
+    assert probabilities(reads, "choice", cal) == pytest.approx(softmax([0.0, -1.0, -2.0], 1.0))

@@ -23,7 +23,7 @@ from pathlib import Path
 import httpx
 
 from gateway.app import load_engine
-from gateway.calibration import load_temperatures
+from gateway.calibration import STAMP_KEYS, UNCALIBRATED, load_calibration
 from gateway.config import ROOT, Settings
 from scripts import board, host_info, index_run, metrics
 from scripts.bench import CHAT_PROMPTS, chat_once, git_revision
@@ -33,7 +33,7 @@ from scripts.collect import COLLECT, records
 from scripts.decision_rows import index_meta, index_rows
 from scripts.index_suite import EDITION, EXPORT, HARNESS_SHA, harness_env
 from scripts.lengths import NAMES, bucket_counts, real_lengths
-from scripts.offline import UNCALIBRATED, Arm, evaluate, markdown
+from scripts.offline import Arm, evaluate, markdown
 from scripts.splits import SPLITS, rows_for
 
 RUNS = ROOT / ".cache" / "index-runs"
@@ -68,11 +68,13 @@ def check_coverage(got: int, want: int, layout: str, allow_partial: bool) -> Non
 
 def cmd_offline(args) -> None:
     s = Settings.from_profile(args.profile)
-    temps = dict(UNCALIBRATED) if args.uncalibrated else load_temperatures(s.data_dir(args.layout) / "calibration.json")
-    arm = Arm(args.layout, args.orders, temps)
     rows = {r["id"]: r for r in rows_for(args.split)}
     collected = COLLECT / args.profile / f"{args.split}.jsonl.gz"
     recs = list(records(collected))
+    seen = next((r["stamp"] for r in recs if r["layout"] == args.layout), None)
+    expect = {k: seen[k] for k in STAMP_KEYS} if seen else None
+    cal = UNCALIBRATED if args.uncalibrated else load_calibration(s.data_dir(args.layout) / "calibration.json", expect)
+    arm = Arm(args.layout, args.orders, cal)
     got, want = coverage(recs, set(rows), args.layout)
     check_coverage(got, want, args.layout, args.allow_partial)
     report = evaluate(recs, rows, arm)
@@ -217,7 +219,7 @@ async def cmd_index(args) -> None:
     outcome = await run_index(args, run, health)
     index_run.merge(sorted(p for p in run.glob("shard-*") if p.is_dir()), run / "merged")
     scores = score(run / "merged")
-    keys = ("profile", "hf_model", "hf_revision", "prompt_layout", "option_orders", "systemone_max_len", "temperatures",
+    keys = ("profile", "hf_model", "hf_revision", "prompt_layout", "option_orders", "systemone_max_len", "calibration",
             "vllm_version")
     meta = {"timestamp": now(), "repo commit": git_revision(),
             "host": host_info.summary(), "harness": HARNESS_SHA, "edition": EDITION,

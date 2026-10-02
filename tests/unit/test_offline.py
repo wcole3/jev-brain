@@ -1,5 +1,6 @@
 import pytest
 
+from gateway.calibration import Calibration
 from gateway.layouts import load_layouts
 from scripts.offline import Arm, evaluate, markdown, scored
 
@@ -37,9 +38,16 @@ def test_reversed_arm_averages_both_orders():
 
 def test_noul_gold_and_temperature():
     cold = next(i for i in scored(REC, ROW, Arm(), LAYOUTS) if i.type == "noul")
-    warm = next(i for i in scored(REC, ROW, Arm(temperatures={"choice": 1, "score": 1, "noul": 4.0}), LAYOUTS)
+    warm = next(i for i in scored(REC, ROW, Arm(calibration=Calibration({"choice": 1, "score": 1, "noul": 4.0})), LAYOUTS)
                 if i.type == "noul")
     assert cold.gold == 1 and cold.correct and warm.probs[1] < cold.probs[1]
+
+
+def test_yes_offset_reaches_offline_arms():
+    base = next(i for i in scored(REC, ROW, Arm(), LAYOUTS) if i.type == "noul")
+    cal = Calibration({"choice": 1, "score": 1, "noul": 1}, b=2.0)
+    pushed = next(i for i in scored(REC, ROW, Arm(calibration=cal), LAYOUTS) if i.type == "noul")
+    assert pushed.probs[1] > base.probs[1]
 
 
 def test_unsupported_and_other_layouts_are_not_scored():

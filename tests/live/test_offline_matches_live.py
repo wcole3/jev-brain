@@ -9,7 +9,7 @@ import pytest
 from gateway.answers import answer
 from gateway.app import load_engine, vllm_client
 from gateway.config import Settings
-from gateway.decide import blend
+from gateway.decide import probabilities
 from gateway.orders import option_orders
 from gateway.questions import render_question
 from gateway.schema import Question
@@ -45,7 +45,7 @@ def spread(rows: list[dict], n: int) -> list[dict]:
 
 def drift(engine, health: dict) -> list[str]:
     """Settings where the test's engine differs from the running gateway's."""
-    ours = {k: getattr(engine.settings, k) for k in SETTINGS} | {"temperatures": engine.temperatures}
+    ours = {k: getattr(engine.settings, k) for k in SETTINGS} | {"calibration": {k: c.as_dict() for k, c in engine.calibration.items()}}
     return [f"{k}: test {v!r}, gateway {health.get(k)!r}" for k, v in ours.items() if v != health.get(k)]
 
 
@@ -56,7 +56,7 @@ def offline_answers(engine, row: dict, rec: dict, layout: str, orders: str) -> d
         q = render_question(Question(**row["questions"][qid]), engine.layouts[layout])
         wanted = option_orders(len(q.options), orders)
         chosen = [(r["logprobs"], r["perm"]) for r in reads if r["perm"] in wanted]
-        out[qid] = answer(q, blend(chosen, engine.temperatures[layout][q.type]))
+        out[qid] = answer(q, probabilities(chosen, q.type, engine.calibration[layout]))
     return out
 
 

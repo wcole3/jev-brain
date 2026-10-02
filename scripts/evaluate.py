@@ -76,7 +76,8 @@ def cmd_offline(args) -> None:
     check_coverage(got, want, args.layout, args.allow_partial)
     report = evaluate(recs, rows, arm)
     stamp = now()
-    meta = {"timestamp": stamp, "repo commit": git_revision(), "host": host_info.summary_line(host_info.collect()), "profile": args.profile, "split": args.split,
+    meta = {"timestamp": stamp, "repo commit": git_revision(),
+            "host": host_info.summary(), "profile": args.profile, "split": args.split,
             "collected": str(collected.relative_to(ROOT)), "coverage": f"{got} of {want} rows"}
     out = results_dir(args.profile, f"{stamp}-offline-{args.split}-{args.layout}-{args.orders.replace(':', '')}")
     (out / "summary.md").write_text(f"# {args.profile} offline: {args.split}\n\n{provenance(meta)}\n{markdown(report)}")
@@ -208,7 +209,8 @@ async def cmd_index(args) -> None:
     scores = score(run / "merged")
     keys = ("profile", "hf_model", "hf_revision", "prompt_layout", "option_orders", "systemone_max_len", "temperatures",
             "vllm_version")
-    meta = {"timestamp": now(), "repo commit": git_revision(), "host": host_info.summary_line(host_info.collect()), "harness": HARNESS_SHA, "edition": EDITION,
+    meta = {"timestamp": now(), "repo commit": git_revision(),
+            "host": host_info.summary(), "harness": HARNESS_SHA, "edition": EDITION,
             "run dir": str(run.relative_to(ROOT)), "shards": len(outcome["codes"]), "ids": args.ids or "full suite"}
     meta |= {k: health.get(k) for k in keys}
     out = results_dir(args.profile, f"{run.name}-index{'-subset' if args.ids else ''}")

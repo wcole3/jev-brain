@@ -13,6 +13,9 @@ PROFILES = ROOT / "profiles"
 
 def exports(profile: str, overrides: list[str]) -> str:
     env = read_env_file(PROFILES / f"{profile}.env")
+    bad = [item for item in overrides if "=" not in item]
+    if bad:
+        raise SystemExit(f"override must be K=V, got: {bad[0]}")
     env |= dict(item.split("=", 1) for item in overrides)
     return "\n".join(f"export {key}={shlex.quote(value)}" for key, value in env.items())
 

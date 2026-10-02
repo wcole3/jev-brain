@@ -5,6 +5,7 @@ import platform
 import socket
 import subprocess
 
+NO_VALUE = {"", "N/A", "[N/A]", "[Not Supported]", "Not Supported"}
 SMI_FIELDS = {
     "gpu_name": ("name", str),
     "driver": ("driver_version", str),
@@ -23,7 +24,7 @@ def parse_smi(text: str) -> dict:
     out = {}
     for i, (key, (_, cast)) in enumerate(SMI_FIELDS.items()):
         try:
-            out[key] = cast(parts[i]) if parts[i] else None
+            out[key] = None if parts[i] in NO_VALUE else cast(parts[i])
         except (IndexError, ValueError):
             out[key] = None
     return out
@@ -75,18 +76,26 @@ def collect() -> dict:
 
 
 def summary_line(d: dict) -> str:
-    gpu = (d.get("gpu_name") or "no GPU").replace("NVIDIA ", "").replace(" Workstation Edition", "")
-    cpu = (d.get("cpu_model") or "unknown CPU").replace(" 8-Core Processor", "")
-    parts = [gpu]
-    if d.get("power_limit_w") is not None:
-        parts.append(f"{d['power_limit_w']:.0f}/{d['power_max_w']:.0f} W")
+    """One line for provenance; every field is optional."""
+    parts = [(d.get("gpu_name") or "no GPU").replace("NVIDIA ", "").replace(" Workstation Edition", "")]
+    watts = [f"{d[k]:.0f}" for k in ("power_limit_w", "power_max_w") if d.get(k) is not None]
+    if watts:
+        parts.append("/".join(watts) + " W")
     if d.get("driver"):
         parts.append(f"drv {d['driver']}")
-    if d.get("pcie_gen_max"):
+    if d.get("pcie_gen_max") and d.get("pcie_width_max"):
         parts.append(f"PCIe {d['pcie_gen_max']}x{d['pcie_width_max']}")
-    parts += [f"{cpu} ({d.get('cpu_cores')} thr)", f"{d.get('ram_gb')} GB"]
+    if d.get("cpu_model"):
+        threads = f" ({d['cpu_cores']} thr)" if d.get("cpu_cores") else ""
+        parts.append(d["cpu_model"] + threads)
+    if d.get("ram_gb"):
+        parts.append(f"{d['ram_gb']} GB")
     if d.get("wsl"):
         parts.append("WSL")
     if d.get("vast_instance"):
         parts.append(f"vast {d['vast_instance']}")
     return ", ".join(parts)
+
+
+def summary() -> str:
+    return summary_line(collect())

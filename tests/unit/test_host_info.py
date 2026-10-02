@@ -31,3 +31,12 @@ def test_summary_line_is_short_and_tolerates_none():
     assert "RTX PRO 6000" in line and "540/600 W" in line and "drv 610.62" in line
     assert "PCIe 4x16" in line and "16 thr" in line and "94 GB" in line and line.endswith("WSL")
     assert host_info.summary_line(host_info.parse_smi(""))
+
+
+def test_na_values_and_missing_fields_do_not_break_summary():
+    d = host_info.parse_smi("NVIDIA L4, 550.1, [N/A], [N/A], [Not Supported], N/A, 4, 16")
+    assert d["power_limit_w"] is None and d["power_max_w"] is None and d["sm_clock_max_mhz"] is None
+    line = host_info.summary_line({**d, "cpu_model": "EPYC", "cpu_cores": None, "ram_gb": None})
+    assert "None" not in line and "L4" in line and "EPYC" in line and " W" not in line
+    assert host_info.summary_line({"power_max_w": 600.0}).endswith("600 W")
+    assert host_info.summary_line({})

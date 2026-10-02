@@ -245,7 +245,7 @@ async def main(args) -> None:
     # TypeSafe's terms forbid using Jev outputs for training or calibration, so keep them out of the repo.
     raw = ROOT / ".cache" / "jev-results" / suffix if jev else out
     async with httpx.AsyncClient(base_url=base_url, headers=headers, timeout=600) as client:
-        meta = {"timestamp": started.isoformat(), "repo commit": revision, "host": host_info.summary_line(host_info.collect()),
+        meta = {"timestamp": started.isoformat(), "repo commit": revision, "host": host_info.summary(),
                 "target": args.target}
         if not jev:
             health = await gateway_health(client, args.profile)

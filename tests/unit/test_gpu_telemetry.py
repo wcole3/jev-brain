@@ -1,3 +1,5 @@
+import pytest
+
 from scripts import gpu_telemetry
 
 CSV = """utc,util,sm_clock,mem_clock,power_draw,power_limit,temp,throttle
@@ -33,3 +35,17 @@ def test_summarize_empty(tmp_path):
     f = tmp_path / "t.csv"
     f.write_text("utc,util,sm_clock,mem_clock,power_draw,power_limit,temp,throttle\n")
     assert gpu_telemetry.summarize(f)["samples"] == 0
+
+
+def test_summarize_skips_truncated_and_na_rows(tmp_path):
+    f = tmp_path / "t.csv"
+    f.write_text(CSV + "2026-10-02T10:00:20,50,[N/A],405,100.0,600,40,0x0\n2026-10-02T10:00:25,50,20")
+    assert gpu_telemetry.summarize(f)["samples"] == 4
+
+
+
+@pytest.mark.parametrize("bits,counted", [("0x4", True), ("0x8", True), ("0x20", True), ("0x40", True), ("0x1", False)])
+def test_each_throttle_bit(tmp_path, bits, counted):
+    f = tmp_path / "t.csv"
+    f.write_text(f"utc,util,sm_clock,mem_clock,power_draw,power_limit,temp,throttle\nt,1,1,1,1,1,1,{bits}\n")
+    assert gpu_telemetry.summarize(f)["throttled_share"] == (1.0 if counted else 0.0)

@@ -43,9 +43,21 @@ def sample(out: Path, interval: float) -> None:
             time.sleep(interval)
 
 
+def usable(row: dict) -> bool:
+    """False for truncated rows and [N/A] values."""
+    try:
+        for key in HEADER[1:-1]:
+            float(row[key])
+        int(row["throttle"], 16)
+    except (TypeError, ValueError, KeyError):
+        return False
+    return bool(row["utc"])
+
+
 def summarize(csv_path: Path, since: str | None = None, until: str | None = None) -> dict:
     with open(csv_path, newline="") as f:
-        rows = [r for r in csv.DictReader(f) if (not since or r["utc"] >= since) and (not until or r["utc"] <= until)]
+        rows = [r for r in csv.DictReader(f) if usable(r)]
+    rows = [r for r in rows if (not since or r["utc"] >= since) and (not until or r["utc"] <= until)]
     if not rows:
         return {"samples": 0}
 

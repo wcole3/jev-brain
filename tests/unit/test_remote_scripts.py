@@ -119,12 +119,13 @@ FAKE_TMUX = """#!/usr/bin/env bash
 case $1 in
   list-windows) [[ -s $FAKE_TMUX ]] && cat "$FAKE_TMUX" ;;
   has-session) [[ -s $FAKE_TMUX ]] ;;
-  new-session|new-window) while [[ $1 != -n ]]; do shift; done; echo "$2" >> "$FAKE_TMUX" ;;
+  new-session|new-window) while [[ $1 != -n ]]; do shift; done; echo "$2" >> "$FAKE_TMUX"
+    echo "${FROM_IMAGE:-unset} ${KEPT:-unset}" > "$FAKE_TMUX.env" ;;
 esac
 """
 
 
-def start(tmp_path, windows: str) -> tuple[list[str], Path]:
+def start(tmp_path, windows: str, extra: dict | None = None) -> tuple[list[str], Path]:
     repo, bin_dir = tmp_path / "repo", tmp_path / "bin"
     (repo / ".cache" / "remote" / "state" / "p").mkdir(parents=True)
     (repo / "scripts").symlink_to(REMOTE.parent)
@@ -137,8 +138,8 @@ def start(tmp_path, windows: str) -> tuple[list[str], Path]:
     (bin_dir / "tmux").chmod(0o755)
     (tmp_path / "windows").write_text(windows)
     env = os.environ | {"JEV_REPO": str(repo), "FAKE_TMUX": str(tmp_path / "windows"),
-                        "PATH": f"{bin_dir}:{os.environ['PATH']}"}
-    subprocess.run(["bash", str(REMOTE / "start.sh")], env=env, check=True)
+                        "PATH": f"{bin_dir}:{os.environ['PATH']}", "JEV_PID1_ENVIRON": str(tmp_path / "no-environ")}
+    subprocess.run(["bash", str(REMOTE / "start.sh")], env=env | (extra or {}), check=True)
     assert (repo / ".cache" / "remote" / "run_tag").read_text().endswith("-vast\n")
     return (tmp_path / "windows").read_text().split(), stack_done
 
@@ -163,6 +164,19 @@ def test_start_leaves_a_running_session_alone(tmp_path):
     assert windows == ["telemetry", "queue"] and stack_done.exists()
 
 
+def test_start_takes_missing_variables_from_the_image_environment(tmp_path):
+    """Over ssh, start.sh lacks the image's Docker ENV; PID 1 has it. Variables already set win."""
+    environ = tmp_path / "environ"
+    environ.write_bytes(b"FROM_IMAGE=cuda=1\0KEPT=image\0bad.name=x\0")
+    start(tmp_path, "", {"JEV_PID1_ENVIRON": str(environ), "KEPT": "ours"})
+    assert (tmp_path / "windows.env").read_text() == "cuda=1 ours\n"
+
+
+def test_start_runs_without_a_readable_image_environment(tmp_path):
+    windows, _ = start(tmp_path, "", {"KEPT": "ours"})
+    assert windows == ["telemetry", "queue"] and (tmp_path / "windows.env").read_text() == "unset ours\n"
+
+
 def test_start_marks_a_failed_bootstrap_until_one_succeeds(tmp_path):
     """start.sh with a stand-in bootstrap.sh that exits $BOOT_EXIT; the real start.sh and queue.sh."""
     repo, remote = tmp_path / "repo", tmp_path / "repo" / ".cache" / "remote"
@@ -178,13 +192,80 @@ def test_start_marks_a_failed_bootstrap_until_one_succeeds(tmp_path):
     (bin_dir / "tmux").chmod(0o755)
     (tmp_path / "windows").touch()
     env = os.environ | {"JEV_REPO": str(repo), "FAKE_TMUX": str(tmp_path / "windows"),
-                        "PATH": f"{bin_dir}:{os.environ['PATH']}"}
+                        "PATH": f"{bin_dir}:{os.environ['PATH']}", "JEV_PID1_ENVIRON": str(tmp_path / "no-environ")}
     assert subprocess.run(["bash", str(REMOTE / "start.sh")], env=env | {"BOOT_EXIT": "7"}, check=False).returncode
     assert "exit=7" in (remote / "state" / "bootstrap.failed").read_text()
     assert (tmp_path / "windows").read_text() == ""
     subprocess.run(["bash", str(REMOTE / "start.sh")], env=env | {"BOOT_EXIT": "0"}, check=True)
     assert not (remote / "state" / "bootstrap.failed").exists()
     assert (tmp_path / "windows").read_text().split() == ["telemetry", "queue"]
+
+
+FAKE_UV = """#!/usr/bin/env bash
+# Log each call; `index_suite.py setup` installs $FAKE_HARNESS; fetch_model fails its first $FETCH_FAILS calls.
+echo "uv $*" >> "$FAKE_LOG"
+case $* in
+  *"index_suite.py setup"*) mkdir -p .cache/decision-index-venv/bin && cp "$FAKE_HARNESS" .cache/decision-index-venv/bin/python ;;
+  *fetch_model.py*) (( $(grep -c fetch_model "$FAKE_LOG") > ${FETCH_FAILS:-0} )) ;;
+esac
+"""
+HARNESS_OK = "#!/usr/bin/env bash\n[[ $1 == -c ]] || echo '{\"match\": true}'\n"
+
+
+def bootstrap(tmp_path, harness: str | None, fetch_fails: int = 0) -> tuple[subprocess.CompletedProcess, list[str], Path]:
+    """bootstrap.sh with uv, sleep and the harness venv stubbed; `harness` is the venv python already there."""
+    repo, bin_dir = tmp_path / "repo", tmp_path / "bin"
+    repo.mkdir()
+    (repo / "scripts").symlink_to(REMOTE.parent)
+    bin_dir.mkdir()
+    stubs = {"uv": FAKE_UV, "sleep": 'echo "sleep $*" >> "$FAKE_LOG"', "tmux": "", "rsync": "", "apt-get": REFUSE}
+    for tool, text in stubs.items():
+        (bin_dir / tool).write_text(text if text.startswith("#!") else f"#!/usr/bin/env bash\n{text}\n")
+        (bin_dir / tool).chmod(0o755)
+    (tmp_path / "harness").write_text(HARNESS_OK)
+    (tmp_path / "harness").chmod(0o755)
+    for path in (".cache/decision-index/src/partial", ".cache/decision-index/suite-0.2/keep"):
+        (repo / path).parent.mkdir(parents=True)
+        (repo / path).touch()
+    if harness is not None:
+        venv_python = repo / ".cache" / "decision-index-venv" / "bin" / "python"
+        venv_python.parent.mkdir(parents=True)
+        venv_python.write_text(harness)
+        venv_python.chmod(0o755)
+    log = tmp_path / "log"
+    log.touch()
+    env = os.environ | {"PATH": f"{bin_dir}:{os.environ['PATH']}", "FAKE_LOG": str(log),
+                        "FAKE_HARNESS": str(tmp_path / "harness"), "FETCH_FAILS": str(fetch_fails)}
+    out = subprocess.run(["bash", str(repo / "scripts" / "remote" / "bootstrap.sh"), "p"], env=env,
+                         capture_output=True, text=True, check=False)
+    return out, log.read_text().splitlines(), repo
+
+
+SETUP = "uv run python scripts/index_suite.py setup"
+
+
+def test_bootstrap_starts_over_a_harness_setup_left_half_done(tmp_path):
+    out, log, repo = bootstrap(tmp_path, harness="#!/usr/bin/env bash\nexit 1\n")
+    assert out.returncode == 0, out.stderr
+    assert SETUP in log and not (repo / ".cache" / "decision-index" / "src" / "partial").exists()
+    assert (repo / ".cache" / "decision-index" / "suite-0.2" / "keep").exists()
+    assert (repo / ".cache" / "remote" / "state" / "bootstrap.done").read_text() == "p\n"
+
+
+@pytest.mark.parametrize("harness", [None, HARNESS_OK], ids=["no venv", "working venv"])
+def test_bootstrap_sets_the_harness_up_only_when_it_does_not_import(tmp_path, harness):
+    out, log, _ = bootstrap(tmp_path, harness=harness)
+    assert out.returncode == 0, out.stderr
+    assert (SETUP in log) == (harness is None)
+
+
+@pytest.mark.parametrize("fails, ok", [(2, True), (3, False)])
+def test_bootstrap_retries_the_weight_download(tmp_path, fails, ok):
+    out, log, repo = bootstrap(tmp_path, harness=HARNESS_OK, fetch_fails=fails)
+    assert (out.returncode == 0) == ok
+    assert sum("fetch_model.py --profile p" in line for line in log) == 3
+    assert log.count("sleep 60") == 2 and ("uv run pytest -q" in log) == ok
+    assert (repo / ".cache" / "remote" / "state" / "bootstrap.done").exists() == ok
 
 
 PROFILE = "qwen3.8-27b"

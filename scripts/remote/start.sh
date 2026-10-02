@@ -2,6 +2,9 @@
 # Box onstart entry, safe at every boot or rerun: bootstrap once, then reopen whichever `jev` tmux window is gone.
 # Retry after a failed job: fix the cause, then `bash scripts/remote/start.sh` (the queue resumes at that job).
 set -euo pipefail
+# Launched over ssh we lack the image's Docker ENV (CUDA paths, VLLM_*, CONTAINER_ID); take what is missing from PID 1.
+while IFS= read -r -d '' entry; do [[ -v ${entry%%=*} ]] || export "$entry"; done 2> /dev/null \
+  < "${JEV_PID1_ENVIRON:-/proc/1/environ}" || true
 cd "${JEV_REPO:-/workspace/jev-brain}" 2> /dev/null || exit 0
 [[ -f .cache/remote/profile ]] || exit 0
 profile=$(cat .cache/remote/profile)

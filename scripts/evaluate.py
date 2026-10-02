@@ -1,8 +1,8 @@
 """Phase-2 evaluation CLI.
 
 usage:
-  uv run python scripts/evaluate.py offline --profile P --split S [--layout L] [--orders O] [--uncalibrated]
-      [--allow-partial]
+  uv run python scripts/evaluate.py offline --profile P --split S [--layout L] [--orders O]
+      [--uncalibrated | --temperature T] [--allow-partial]
   uv run python scripts/evaluate.py index --profile P [--gateway URL] [--shards 8] [--ids FILE] [--chat-probe]
       [--run-dir DIR] [--strict]
   uv run python scripts/evaluate.py lengths --profile P [--near 0.5] [--baseline RUN_DIR]
@@ -23,7 +23,7 @@ from pathlib import Path
 import httpx
 
 from gateway.app import load_engine
-from gateway.calibration import STAMP_KEYS, UNCALIBRATED, load_calibration
+from gateway.calibration import STAMP_KEYS, TYPES, UNCALIBRATED, Calibration, load_calibration, orders_warning
 from gateway.config import ROOT, Settings
 from scripts import board, host_info, index_run, metrics
 from scripts.bench import CHAT_PROMPTS, chat_once, git_revision
@@ -66,6 +66,19 @@ def check_coverage(got: int, want: int, layout: str, allow_partial: bool) -> Non
         raise SystemExit(f"only {got} of {want} rows collected: collect the rest, or pass --allow-partial")
 
 
+def offline_calibration(args, s: Settings, expect: dict | None) -> Calibration:
+    """The arm's calibration: T = 1, one T for every type (no offset), or the layout's file."""
+    if args.uncalibrated:
+        return UNCALIBRATED
+    if args.temperature is not None:
+        return Calibration(dict.fromkeys(TYPES, args.temperature), source=f"override T={args.temperature}")
+    return load_calibration(s.data_dir(args.layout) / "calibration.json", expect)
+
+
+def arm_suffix(args) -> str:
+    return "-uncalibrated" if args.uncalibrated else f"-T{args.temperature}" if args.temperature is not None else ""
+
+
 def cmd_offline(args) -> None:
     s = Settings.from_profile(args.profile)
     rows = {r["id"]: r for r in rows_for(args.split)}
@@ -73,7 +86,9 @@ def cmd_offline(args) -> None:
     recs = list(records(collected))
     seen = next((r["stamp"] for r in recs if r["layout"] == args.layout), None)
     expect = {k: seen.get(k) for k in STAMP_KEYS} if seen else None
-    cal = UNCALIBRATED if args.uncalibrated else load_calibration(s.data_dir(args.layout) / "calibration.json", expect)
+    cal = offline_calibration(args, s, expect)
+    if warning := orders_warning(cal, args.orders):
+        print(f"warning: {warning}")
     arm = Arm(args.layout, args.orders, cal)
     got, want = coverage(recs, set(rows), args.layout)
     check_coverage(got, want, args.layout, args.allow_partial)
@@ -82,7 +97,8 @@ def cmd_offline(args) -> None:
     meta = {"timestamp": stamp, "repo commit": git_revision(),
             "host": host_info.summary(), "profile": args.profile, "split": args.split,
             "collected": str(collected.relative_to(ROOT)), "coverage": f"{got} of {want} rows"}
-    out = results_dir(args.profile, f"{stamp}-offline-{args.split}-{args.layout}-{args.orders.replace(':', '')}")
+    name = f"{stamp}-offline-{args.split}-{args.layout}-{args.orders.replace(':', '')}{arm_suffix(args)}"
+    out = results_dir(args.profile, name)
     (out / "summary.md").write_text(f"# {args.profile} offline: {args.split}\n\n{provenance(meta)}\n{markdown(report)}")
     print(out / "summary.md")
 
@@ -250,7 +266,7 @@ async def cmd_lengths(args) -> None:
     baseline = Path(args.baseline).resolve() if args.baseline else None
     refused = context_refusals(baseline) if baseline else set()
     near = {m["id"] for m in meta if (m["meta"]["proxy_tokens"] or 0) >= args.near * s.systemone_max_len}
-    engine = load_engine(s, None)
+    engine = load_engine(s, None, calibrated=False)  # lengths only tokenize
     longest = await real_lengths(engine, index_rows(near | refused))
     over = over_cap(longest, s.systemone_max_len, refused)
     split = {"meta": {"profile": args.profile, "cap": s.systemone_max_len, "max_model_len": s.max_model_len,
@@ -297,7 +313,9 @@ def parse_args(argv=None) -> argparse.Namespace:
     o.add_argument("--split", required=True, choices=("calib", "eval", "index-dev", "latency-v1"))
     o.add_argument("--layout", default="decider_chat")
     o.add_argument("--orders", default="identity")
-    o.add_argument("--uncalibrated", action="store_true", help="T = 1 for every type instead of calibration.json")
+    cal = o.add_mutually_exclusive_group()
+    cal.add_argument("--uncalibrated", action="store_true", help="T = 1 for every type instead of calibration.json")
+    cal.add_argument("--temperature", type=float, help="this T for every type (b = 0) instead of calibration.json")
     o.add_argument("--allow-partial", action="store_true", help="score even when some rows were not collected")
     i = sub.add_parser("index")
     i.add_argument("--profile", required=True)

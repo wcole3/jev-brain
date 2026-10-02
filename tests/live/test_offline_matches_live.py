@@ -10,10 +10,10 @@ from gateway.answers import answer
 from gateway.app import load_engine, vllm_client
 from gateway.config import Settings
 from gateway.decide import probabilities
-from gateway.orders import option_orders
 from gateway.questions import render_question
 from gateway.schema import Question
 from scripts.collect import collect_one
+from scripts.offline import chosen_reads
 from scripts.splits import rows_for
 from tests.live.api import auth
 
@@ -55,9 +55,7 @@ def offline_answers(engine, row: dict, rec: dict, layout: str, orders: str) -> d
     out = {}
     for qid, reads in rec["questions"].items():
         q = render_question(Question(**row["questions"][qid]), engine.layouts[layout])
-        wanted = option_orders(len(q.options), orders)
-        chosen = [(r["logprobs"], r["perm"]) for r in reads if r["perm"] in wanted]
-        out[qid] = answer(q, probabilities(chosen, q.type, engine.calibration[layout]))
+        out[qid] = answer(q, probabilities(chosen_reads(q, reads, orders), q.type, engine.calibration[layout]))
     return out
 
 

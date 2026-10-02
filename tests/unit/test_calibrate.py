@@ -3,7 +3,7 @@ import json
 import pytest
 
 from gateway.calibration import Calibration
-from scripts import calibrate
+from scripts import calibrate, calibrate_report
 from scripts import fit as fits
 
 LAYOUT = "decider_chat"
@@ -55,7 +55,8 @@ FIT = {"choice": {"T": 1.2}, "score": {"T": 1.4}, "noul": {"T": 0.9, "b": 0.0}}
 
 
 def write(path, previous, comment, date):
-    data = calibrate.calibration_file(FIT, STAMP, "identity", {"choice": 1}, {"nll": {}, "ece": {}},
+    by_split = {"calib": {"nll": {}, "ece": {}}, "eval": {"nll": {"after": {"choice": 0.5}}, "ece": {}}}
+    data = calibrate.calibration_file(FIT, STAMP, "identity", {"choice": 1}, by_split,
                                       {"b_decision": {"ship": False}, "t_decision": {}}, previous, comment, date)
     path.write_text(json.dumps(data))
     return data
@@ -67,7 +68,13 @@ def test_calibration_file_is_v2_and_loadable(tmp_path):
     path = tmp_path / "calibration.json"
     write(path, (0, []), "first fit", "2026-10-02T00:00:00Z")
     cal = load_calibration(path, STAMP)
-    assert cal.T == {"choice": 1.2, "score": 1.4, "noul": 0.9} and cal.b == 0.0
+    assert cal.T == {"choice": 1.2, "score": 1.4, "noul": 0.9} and cal.b == 0.0 and cal.orders == "identity"
+
+
+def test_fit_block_keeps_eval_metrics_apart_from_the_calib_split(tmp_path):
+    fit = write(tmp_path / "calibration.json", (0, []), "first fit", "2026-10-02T00:00:00Z")["fit"]
+    assert fit["split"] == "data/splits/calib.json" and fit["eval"]["nll"]["after"] == {"choice": 0.5}
+    assert "nll" not in fit and "ece" not in fit
 
 
 def test_refit_bumps_version_and_keeps_the_comment_history(tmp_path):
@@ -87,8 +94,9 @@ def test_v1_or_missing_file_starts_history_at_zero(tmp_path):
 
 
 def test_edge_flag_marks_values_at_the_search_edge():
-    assert calibrate.at_edge(20.0, fits.LOG_T, log=True) and calibrate.at_edge(0.05, fits.LOG_T, log=True)
-    assert calibrate.at_edge(-10.0, fits.B_RANGE) and not calibrate.at_edge(1.9, fits.LOG_T, log=True)
+    at_edge = calibrate_report.at_edge
+    assert at_edge(20.0, fits.LOG_T, log=True) and at_edge(0.05, fits.LOG_T, log=True)
+    assert at_edge(-10.0, fits.B_RANGE) and not at_edge(1.9, fits.LOG_T, log=True)
 
 
 def test_uncollected_orders_are_refused_clearly():
@@ -98,9 +106,9 @@ def test_uncollected_orders_are_refused_clearly():
 
 
 def test_layout_without_ok_records_is_refused():
+    recs, rows = [rec(0, [0.0, -1.0], [0, 1], layout="header")], {"r0": row(0, "choice", "a")}
     with pytest.raises(SystemExit, match="decider_chat: no ok records in eval"):
-        calibrate.split_questions([rec(0, [0.0, -1.0], [0, 1], layout="header")], {"r0": row(0, "choice", "a")},
-                                  LAYOUT, "identity", "eval")
+        calibrate.split_questions(recs, rows, LAYOUT, "identity", "eval")
 
 
 def biased_noul(n=200):
@@ -125,7 +133,8 @@ def test_offset_ships_when_it_fixes_a_bias_and_not_when_reversed():
 def test_unshipped_offset_falls_back_to_the_b0_temperature_and_before_is_raw(monkeypatch):
     qs = biased_noul()
     monkeypatch.setattr(calibrate, "ship_offset", lambda *a: (False, {"acc": (0, 0, 0), "ece": (0, 0, 0)}))
-    monkeypatch.setattr(calibrate, "gate_temperatures", lambda fit, held: {t: {"source": "fitted"} for t in calibrate.TYPES})
+    fitted = {t: {"source": "fitted"} for t in calibrate.TYPES}
+    monkeypatch.setattr(calibrate, "gate_temperatures", lambda fit, held: fitted)
     calib = {"choice": [], "score": [], "noul": qs}
     r = calibrate.fit_and_judge(LAYOUT, calib, calib)
     b0 = calibrate.fit_layout(calib)["noul_b0"]["T"]
@@ -149,7 +158,15 @@ def test_gate_falls_back_to_pooled_when_the_fitted_T_worsens_eval_ece():
     gate = calibrate.gate_temperatures(gate_fit(20.0, 1.05), held)
     assert gate["choice"]["source"] == "pooled" and gate["choice"]["shipped_T"] == 1.05
     assert gate["choice"]["fitted_T"] == 20.0 and gate["choice"]["ece"][1] > 0
-    assert gate["score"] == {"fitted_T": 1.0, "shipped_T": 1.0, "source": "fitted", "ece": [0.0, 0.0, 0.0]}
+    assert gate["score"] == {"fitted_T": 1.0, "pooled_T": 1.05, "shipped_T": 1.0, "source": "fitted",
+                             "ece": [0.0, 0.0, 0.0], "ece_pooled": [0.0, 0.0, 0.0]}
+
+
+def test_gate_records_the_pooled_T_for_every_type_even_when_fitted_ships():
+    held = {"choice": calibrated_choice(), "score": [], "noul": []}
+    gate = calibrate.gate_temperatures(gate_fit(1.0, 1.05), held)
+    assert gate["choice"]["source"] == "fitted"
+    assert all(g["pooled_T"] == 1.05 and len(g["ece_pooled"]) == 3 for g in gate.values())
 
 
 def test_gate_uses_temperature_one_when_pooled_fails_too():
@@ -162,9 +179,31 @@ def test_gate_uses_temperature_one_when_pooled_fails_too():
 def test_gated_noul_drops_its_offset_and_the_decision_is_recorded(monkeypatch):
     noul = [([([0.0, -1.0], [0, 1])], 0 if i % 100 < 73 else 1) for i in range(200)]
     held = {"choice": [], "score": [], "noul": noul}
-    monkeypatch.setattr(calibrate, "fit_layout", lambda calib: gate_fit(1.0, 15.0, (20.0, 0.5)) | {"noul_b0": {"T": 20.0}})
+    fit = gate_fit(1.0, 15.0, (20.0, 0.5)) | {"noul_b0": {"T": 20.0}}
+    monkeypatch.setattr(calibrate, "fit_layout", lambda calib: fit)
     monkeypatch.setattr(calibrate, "ship_offset", lambda *a: (True, {"acc": (0, 0, 0), "ece": (0, 0, 0)}))
     r = calibrate.fit_and_judge(LAYOUT, held, held)
     assert r.fit["noul"] == {"T": 1.0, "b": 0.0} and r.ship is False
     assert r.gate["noul"]["source"] == "none" and r.gate["noul"]["fitted_T"] == 20.0
     assert r.after["eval"]["noul"]["nll"] == r.before["eval"]["noul"]["nll"]
+
+
+def test_gate_outcome_names_what_each_type_ships(monkeypatch):
+    noul = [([([0.0, -1.0], [0, 1])], 0 if i % 100 < 73 else 1) for i in range(200)]
+    held = {"choice": [], "score": [], "noul": noul}
+    fit = gate_fit(1.2, 15.0, (20.0, 0.5)) | {"noul_b0": {"T": 20.0}}
+    monkeypatch.setattr(calibrate, "fit_layout", lambda calib: fit)
+    monkeypatch.setattr(calibrate, "ship_offset", lambda *a: (True, {"acc": (0, 0, 0), "ece": (0, 0, 0)}))
+    r = calibrate.fit_and_judge(LAYOUT, held, held)
+    assert calibrate.gate_outcome(r) == ("choice: fitted T 1.200, score: fitted T 1.000, noul: none T 1.000,"
+                                         " b not shipped")
+    assert "pooled T (one T for every type, b = 0; the gate's fallback): 15.000" in calibrate.layout_report(r)
+
+
+def test_dry_run_writes_nothing_and_prints_the_report(tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr(calibrate, "RESULTS", tmp_path)
+    monkeypatch.setattr(calibrate, "rows_for", lambda name: [])
+    monkeypatch.setattr(calibrate, "records", lambda path: [])
+    monkeypatch.setattr(calibrate, "calibrate_layout", lambda args, s, layout, recs, rows: [f"## {layout}"])
+    calibrate.main(["--profile", "qwen3.6-27b", "--layouts", LAYOUT, "--dry-run"])
+    assert list(tmp_path.iterdir()) == [] and f"## {LAYOUT}" in capsys.readouterr().out

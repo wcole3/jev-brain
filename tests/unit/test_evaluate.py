@@ -108,3 +108,18 @@ async def test_index_strict_exits_nonzero_after_writing_the_summary(index_run_he
         await evaluate.cmd_index(evaluate.parse_args(argv))
     summary = index_run_here.parent / "docs" / "results" / "p" / "run-index" / "summary.md"
     assert summary.read_text().endswith("body\n")
+
+
+def offline_args(*extra):
+    return evaluate.parse_args(["offline", "--profile", "qwen3.6-27b", "--split", "eval", *extra])
+
+
+def test_offline_temperature_overrides_every_type_without_an_offset():
+    args = offline_args("--temperature", "1.943")
+    cal = evaluate.offline_calibration(args, None, None)
+    assert cal.T == {"choice": 1.943, "score": 1.943, "noul": 1.943} and cal.b == 0.0
+    assert cal.source == "override T=1.943" and cal.orders is None
+    assert evaluate.arm_suffix(args) == "-T1.943"
+    assert evaluate.arm_suffix(offline_args("--uncalibrated")) == "-uncalibrated"
+    with pytest.raises(SystemExit):
+        offline_args("--temperature", "2", "--uncalibrated")

@@ -31,6 +31,15 @@ def gold_index(q: Rendered, gold) -> int | None:
     return int(gold) if 0 <= int(gold) < len(q.names) else None
 
 
+def chosen_reads(q: Rendered, reads: list[dict], orders: str) -> list[tuple[list[float], list[int]]]:
+    """The collected reads an order setting would have made live, as (logprobs, perm) pairs."""
+    wanted = option_orders(len(q.options), orders)
+    chosen = [(r["logprobs"], r["perm"]) for r in reads if r["perm"] in wanted]
+    if len(chosen) != len(wanted):
+        raise ValueError(f"arm {orders} needs {len(wanted)} orders, collected {len(chosen)}")
+    return chosen
+
+
 def questions(record: dict, row: dict, layout: str, orders: str, layouts: dict) -> Iterator[tuple[str, list, int]]:
     """(type, chosen reads, gold) for each gold-labelled question of an ok record of this layout."""
     if record["status"] != "ok" or record["layout"] != layout:
@@ -40,10 +49,10 @@ def questions(record: dict, row: dict, layout: str, orders: str, layouts: dict) 
         gold = gold_index(q, row["gold"].get(qid))
         if gold is None:
             continue
-        wanted = option_orders(len(q.options), orders)
-        chosen = [(r["logprobs"], r["perm"]) for r in reads if r["perm"] in wanted]
-        if len(chosen) != len(wanted):
-            raise ValueError(f"arm {orders} needs {len(wanted)} orders for {record['id']}/{qid}, collected {len(chosen)}")
+        try:
+            chosen = chosen_reads(q, reads, orders)
+        except ValueError as e:
+            raise ValueError(f"{record['id']}/{qid}: {e}") from None
         yield q.type, chosen, gold
 
 

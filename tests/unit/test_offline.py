@@ -2,7 +2,9 @@ import pytest
 
 from gateway.calibration import Calibration
 from gateway.layouts import load_layouts
-from scripts.offline import Arm, evaluate, markdown, scored
+from gateway.questions import render_question
+from gateway.schema import Question
+from scripts.offline import Arm, chosen_reads, evaluate, markdown, scored
 
 LAYOUTS = load_layouts()
 ROW = {
@@ -74,5 +76,13 @@ def test_all_rows_accuracy_counts_refused_questions_as_wrong():
 
 
 def test_arm_refuses_uncollected_orders():
-    with pytest.raises(ValueError, match="arm cyclic:3 needs 3 orders for r1/c, collected 1"):
+    with pytest.raises(ValueError, match="r1/c: arm cyclic:3 needs 3 orders, collected 1"):
         scored(REC, ROW, Arm(orders="cyclic:3"), LAYOUTS)
+
+
+def test_chosen_reads_picks_the_arm_orders_and_refuses_missing_ones():
+    q = render_question(Question(**ROW["questions"]["c"]), LAYOUTS["decider_chat"])
+    assert chosen_reads(q, REC["questions"]["c"], "identity") == [([0.0, -1.0, -5.0], [0, 1, 2])]
+    assert len(chosen_reads(q, REC["questions"]["c"], "identity+reversed")) == 2
+    with pytest.raises(ValueError, match="arm cyclic:3 needs 3 orders, collected 1"):
+        chosen_reads(q, REC["questions"]["c"], "cyclic:3")

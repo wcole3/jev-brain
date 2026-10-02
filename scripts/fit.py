@@ -28,7 +28,8 @@ def golden_min(f, lo: float, hi: float, tol: float = 1e-4) -> float:
 
 
 def nll(questions: list[Question], T: float, b: float = 0.0, noul: bool = False) -> float:
-    return sum(-math.log(max(blend(reads, T, b if noul else 0.0)[gold], 1e-12)) for reads, gold in questions) / len(questions)
+    offset = b if noul else 0.0
+    return sum(-math.log(max(blend(reads, T, offset)[gold], 1e-12)) for reads, gold in questions) / len(questions)
 
 
 def fit_temperature(questions: list[Question]) -> float:

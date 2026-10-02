@@ -235,6 +235,7 @@ gateway runs.
 
 Design: [docs/superpowers/specs/2026-09-30-phase2-calibrate-evaluate-design.md](docs/superpowers/specs/2026-09-30-phase2-calibrate-evaluate-design.md).
 Long runs (suite rebuild, collect, full Index) take hours; plan them.
+To run them on a rented GPU box (vast.ai), see [docs/remote-gpu.md](docs/remote-gpu.md).
 
 ```bash
 uv run python scripts/index_suite.py setup     # pinned harness clone + venv in .cache/

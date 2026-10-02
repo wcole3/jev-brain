@@ -19,6 +19,9 @@ state=$mirror/state
 queue_done=$state/$profile/QUEUE_DONE
 ssh=(ssh -p "$port" -o StrictHostKeyChecking=accept-new -o "UserKnownHostsFile=$PWD/$mirror/known_hosts"
   -o ServerAliveInterval=30)
+# Vast key: JEV_SSH_KEY, else ~/.ssh/id_vast when it exists (ssh never offers that name by default).
+key=${JEV_SSH_KEY:-$HOME/.ssh/id_vast}
+[[ -f $key ]] && ssh+=(-i "$key" -o IdentitiesOnly=yes)
 
 # fetch RSYNC_ARGS...: exit 24 (files vanished mid-copy while jobs write) is fine; the next pass gets them.
 fetch() { rsync -az --ignore-missing-args -e "${ssh[*]}" "$@" || (( $? == 24 )); }

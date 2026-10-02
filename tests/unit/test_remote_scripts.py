@@ -297,7 +297,7 @@ def scratch_repo(tmp_path, git: bool = False) -> Path:
 
 def local(repo: Path, name: str, *args: str, env: dict | None = None) -> subprocess.CompletedProcess:
     path = f"{repo.parent / 'bin'}:{os.environ['PATH']}"
-    env = os.environ | {"PATH": path} | (env or {})
+    env = os.environ | {"PATH": path, "JEV_SSH_KEY": "/nonexistent"} | (env or {})
     command = ["bash", str(repo / "scripts" / "remote" / name), *args]
     return subprocess.run(command, cwd=repo, env=env, capture_output=True, text=True, check=False)
 
@@ -613,3 +613,12 @@ def test_pull_loop_survives_a_down_box_and_stops_after_a_pass_past_queue_done(tm
     assert "warning" in out.stderr
     # failed pass (1 call), pass without QUEUE_DONE, pass that pulls it, final pass (4 calls each)
     assert len(calls) == 13
+
+
+def test_push_offers_the_vast_key_when_present(tmp_path):
+    repo = scratch_repo(tmp_path, git=True)
+    key = tmp_path / "id_vast"
+    key.write_text("k")
+    out = local(repo, "push.sh", URL, PROFILE, "--dry-run", env={"JEV_SSH_KEY": str(key)})
+    assert out.returncode == 0, out.stderr
+    assert all(f"-i {key} -o IdentitiesOnly=yes" in " ".join(c) for c in commands(out.stdout))

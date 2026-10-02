@@ -24,6 +24,9 @@ mirror=.cache/remote-boxes/$profile
 mkdir -p "$mirror"
 ssh=(ssh -p "$port" -o StrictHostKeyChecking=accept-new
   -o "UserKnownHostsFile=$PWD/$mirror/known_hosts" -o ServerAliveInterval=30)
+# Vast key: JEV_SSH_KEY, else ~/.ssh/id_vast when it exists (ssh never offers that name by default).
+key=${JEV_SSH_KEY:-$HOME/.ssh/id_vast}
+[[ -f $key ]] && ssh+=(-i "$key" -o IdentitiesOnly=yes)
 rsync=(rsync -az --no-owner --no-group -e "${ssh[*]}")
 run() { if (( dry )); then printf '%q ' "$@"; echo; else "$@"; fi; }
 

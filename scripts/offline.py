@@ -1,7 +1,7 @@
 """Experiment arms from collected logprobs: pick the orders, apply the calibration, average, score against gold."""
 
 from collections import Counter, defaultdict
-from collections.abc import Iterable
+from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 
 from gateway.calibration import UNCALIBRATED, Calibration
@@ -31,22 +31,26 @@ def gold_index(q: Rendered, gold) -> int | None:
     return int(gold) if 0 <= int(gold) < len(q.names) else None
 
 
-def scored(record: dict, row: dict, arm: Arm, layouts: dict) -> list[Scored]:
-    """One Scored per gold-labelled question, as the gateway would answer it under this arm."""
-    if record["status"] != "ok" or record["layout"] != arm.layout:
-        return []
-    out = []
+def questions(record: dict, row: dict, layout: str, orders: str, layouts: dict) -> Iterator[tuple[str, list, int]]:
+    """(type, chosen reads, gold) for each gold-labelled question of an ok record of this layout."""
+    if record["status"] != "ok" or record["layout"] != layout:
+        return
     for qid, reads in record["questions"].items():
-        q = render_question(Question(**row["questions"][qid]), layouts[arm.layout])
+        q = render_question(Question(**row["questions"][qid]), layouts[layout])
         gold = gold_index(q, row["gold"].get(qid))
         if gold is None:
             continue
-        wanted = option_orders(len(q.options), arm.orders)
+        wanted = option_orders(len(q.options), orders)
         chosen = [(r["logprobs"], r["perm"]) for r in reads if r["perm"] in wanted]
         if len(chosen) != len(wanted):
-            raise ValueError(f"arm {arm.orders} needs {len(wanted)} orders for {record['id']}/{qid}, collected {len(chosen)}")
-        out.append(Scored(row["source"], row["family"], q.type, gold, probabilities(chosen, q.type, arm.calibration)))
-    return out
+            raise ValueError(f"arm {orders} needs {len(wanted)} orders for {record['id']}/{qid}, collected {len(chosen)}")
+        yield q.type, chosen, gold
+
+
+def scored(record: dict, row: dict, arm: Arm, layouts: dict) -> list[Scored]:
+    """One Scored per gold-labelled question, as the gateway would answer it under this arm."""
+    return [Scored(row["source"], row["family"], t, gold, probabilities(chosen, t, arm.calibration))
+            for t, chosen, gold in questions(record, row, arm.layout, arm.orders, layouts)]
 
 
 def grouped(items: list[Scored], key) -> dict[str, dict]:

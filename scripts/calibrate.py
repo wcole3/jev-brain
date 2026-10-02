@@ -6,29 +6,33 @@ Fits on data/splits/calib.json only (never Jev outputs, never Index rows); judge
 
 import argparse
 import datetime
+import functools
 import hashlib
 import json
 import math
+from dataclasses import dataclass
 from pathlib import Path
 
 from gateway.calibration import STAMP_KEYS, Calibration
 from gateway.config import ROOT, Settings
 from gateway.decide import probabilities
 from gateway.layouts import load_layouts
-from gateway.orders import option_orders
-from gateway.questions import render_question
-from gateway.schema import Question as Q
 from scripts import fit as fits
-from scripts import metrics
+from scripts import metrics, offline
 from scripts.bench import git_revision
 from scripts.bench_report import provenance
 from scripts.collect import COLLECT, records
 from scripts.metrics import Scored
-from scripts.offline import gold_index
 from scripts.splits import SPLITS, rows_for
 
 MIN_QUESTIONS = 30  # fewer and the fitted T is mostly noise: keep 1.0
 TYPES = ("choice", "score", "noul")
+SPLIT = SPLITS / "calib.json"
+
+
+@functools.cache
+def split_sha256() -> str:
+    return hashlib.sha256(SPLIT.read_bytes()).hexdigest()
 
 
 def questions_by_type(recs, rows, layout: str, orders: str):
@@ -42,15 +46,8 @@ def questions_by_type(recs, rows, layout: str, orders: str):
         elif this != stamp:
             changed = [k for k in STAMP_KEYS if this[k] != stamp[k]]
             raise SystemExit(f"{layout}: records disagree on {', '.join(changed)}; recollect before fitting")
-        row = rows[rec["id"]]
-        for qid, reads in rec["questions"].items():
-            q = render_question(Q(**row["questions"][qid]), layouts[layout])
-            gold = gold_index(q, row["gold"].get(qid))
-            if gold is None:
-                continue
-            wanted = option_orders(len(q.options), orders)
-            chosen = [(r["logprobs"], r["perm"]) for r in reads if r["perm"] in wanted]
-            by_type[q.type].append((chosen, gold))
+        for q_type, chosen, gold in offline.questions(rec, rows[rec["id"]], layout, orders, layouts):
+            by_type[q_type].append((chosen, gold))
     return by_type, stamp
 
 
@@ -93,7 +90,7 @@ def history(path: Path) -> tuple[int, list[dict]]:
 
 def calibration_file(fit: dict, stamp: dict, orders: str, calib_n: dict, before_after: dict, decision: dict,
                      previous: tuple[int, list[dict]], comment: str, date: str) -> dict:
-    split = SPLITS / "calib.json"
+    split = SPLIT
     version = previous[0] + 1
     return {
         "format": 2,
@@ -103,7 +100,7 @@ def calibration_file(fit: dict, stamp: dict, orders: str, calib_n: dict, before_
         "stamp": stamp,
         "types": {"choice": fit["choice"], "score": fit["score"], "noul": fit["noul"]},
         "fit": {"split": str(split.relative_to(ROOT)) if split.is_absolute() else str(split),
-                "split_sha256": hashlib.sha256(split.read_bytes()).hexdigest() if split.exists() else None,
+                "split_sha256": split_sha256() if split.exists() else None,
                 "orders": orders, "n": calib_n, **before_after, "b_decision": decision},
     }
 
@@ -138,28 +135,49 @@ def default_comment(path: Path, orders: str) -> str:
     return f"refit on calib (orders {orders})"
 
 
-def layout_report(layout, fit, calib, held, before, after, stats, b_fitted, ship) -> list[str]:
-    lines = [f"## {layout}", "", "| type | n calib/eval | T | b | eval NLL before → after | eval ECE before → after | eval acc |",
-             "|---|---|---|---|---|---|---|"]
+@dataclass
+class LayoutResult:
+    layout: str
+    fit: dict
+    n: dict  # {type: (calib, eval)}
+    before: dict  # {"calib" | "eval": {type: summary}} at T = 1, b = 0
+    after: dict  # the same under the shipped calibration
+    stats: dict
+    b_fitted: float
+    ship: bool
+
+
+def mark(text: str, edge: bool) -> str:
+    return text + (" (edge)" if edge else "")
+
+
+def layout_report(r: LayoutResult) -> list[str]:
+    head = ("| type | n calib/eval | T | b | NLL before → after (calib) | NLL before → after (eval) "
+            "| ECE before → after (calib) | ECE before → after (eval) | eval acc |")
+    lines = [f"## {r.layout}", "", head, "|---|---|---|---|---|---|---|---|---|"]
     for t in TYPES:
-        T_text = f"{fit[t]['T']:.3f}" + (" (edge)" if at_edge(fit[t]["T"], fits.LOG_T, log=True) else "")
-        b = fit["noul"]["b"]
-        b_text = f"{b:+.3f}" + (" (edge)" if at_edge(b, fits.B_RANGE) else "") if t == "noul" else ""
-        lines.append(f"| {t} | {len(calib[t])}/{len(held[t])} | {T_text} | {b_text} | {fmt(before[t]['nll'])} → "
-                     f"{fmt(after[t]['nll'])} | {fmt(before[t]['ece'])} → {fmt(after[t]['ece'])} | {fmt(after[t]['accuracy'])} |")
-    acc, ece = stats["acc"], stats["ece"]
-    verdict = "shipped" if ship else "not shipped (b = 0)"
-    lines += ["", (f"noul offset: fitted b = {b_fitted:+.3f}; eval accuracy change {acc[0]:+.4f} [{acc[1]:+.4f}, {acc[2]:+.4f}], "
+        T_text = mark(f"{r.fit[t]['T']:.3f}", at_edge(r.fit[t]["T"], fits.LOG_T, log=True))
+        b = r.fit["noul"]["b"]
+        b_text = mark(f"{b:+.3f}", at_edge(b, fits.B_RANGE)) if t == "noul" else ""
+        moves = [f"{fmt(r.before[s][t][m])} → {fmt(r.after[s][t][m])}" for m in ("nll", "ece") for s in ("calib", "eval")]
+        lines.append(f"| {t} | {r.n[t][0]}/{r.n[t][1]} | {T_text} | {b_text} | {' | '.join(moves)} | {fmt(r.after['eval'][t]['accuracy'])} |")
+    acc, ece = r.stats["acc"], r.stats["ece"]
+    verdict = "shipped" if r.ship else "not shipped (b = 0)"
+    b_text = mark(f"{r.b_fitted:+.3f}", at_edge(r.b_fitted, fits.B_RANGE))
+    lines += ["", (f"noul offset: fitted b = {b_text}; eval accuracy change {acc[0]:+.4f} [{acc[1]:+.4f}, {acc[2]:+.4f}], "
                     f"ECE change {ece[0]:+.4f} [{ece[1]:+.4f}, {ece[2]:+.4f}] → {verdict}"), ""]
     return lines
 
 
-def calibrate_layout(args, s, layout, recs, rows) -> list[str]:
-    """Fit one layout on calib, judge b on eval, write its file (unless dry run) and return its report lines."""
-    calib, stamp = questions_by_type(recs["calib"], rows["calib"], layout, args.orders)
-    held, eval_stamp = questions_by_type(recs["eval"], rows["eval"], layout, args.orders)
-    if stamp != eval_stamp:
-        raise SystemExit(f"{layout}: calib and eval were collected under different stamps")
+def split_questions(recs, rows, layout: str, orders: str, name: str):
+    by_type, stamp = questions_by_type(recs, rows, layout, orders)
+    if stamp is None:
+        raise SystemExit(f"{layout}: no ok records in {name}")
+    return by_type, stamp
+
+
+def fit_and_judge(layout: str, calib: dict, held: dict) -> LayoutResult:
+    """Fit on calib, decide b on eval, and measure before (T = 1, b = 0) and after on both splits."""
     fit = fit_layout(calib)
     if held["noul"]:
         ship, stats = ship_offset(held["noul"], (fit["noul"]["T"], fit["noul"]["b"]), fit["noul_b0"]["T"])
@@ -169,18 +187,30 @@ def calibrate_layout(args, s, layout, recs, rows) -> list[str]:
     if not ship:
         fit["noul"] = {"T": fit["noul_b0"]["T"], "b": 0.0}
     cal = Calibration({t: fit[t]["T"] for t in TYPES}, fit["noul"]["b"])
-    before = {t: summarize(held[t], t, Calibration({x: 1.0 for x in TYPES})) for t in TYPES}
-    after = {t: summarize(held[t], t, cal) for t in TYPES}
-    before_after = {m: {"before": {t: before[t][m] for t in TYPES}, "after": {t: after[t][m] for t in TYPES}}
+    raw, splits = Calibration({t: 1.0 for t in TYPES}), {"calib": calib, "eval": held}
+    before = {n: {t: summarize(qs[t], t, raw) for t in TYPES} for n, qs in splits.items()}
+    after = {n: {t: summarize(qs[t], t, cal) for t in TYPES} for n, qs in splits.items()}
+    n = {t: (len(calib[t]), len(held[t])) for t in TYPES}
+    return LayoutResult(layout, fit, n, before, after, stats, b_fitted, ship)
+
+
+def calibrate_layout(args, s, layout, recs, rows) -> list[str]:
+    """Fit one layout, write its file (unless dry run) and return its report lines."""
+    calib, stamp = split_questions(recs["calib"], rows["calib"], layout, args.orders, "calib")
+    held, eval_stamp = split_questions(recs["eval"], rows["eval"], layout, args.orders, "eval")
+    if stamp != eval_stamp:
+        raise SystemExit(f"{layout}: calib and eval were collected under different stamps")
+    r = fit_and_judge(layout, calib, held)
+    before_after = {m: {"before": {t: r.before["eval"][t][m] for t in TYPES}, "after": {t: r.after["eval"][t][m] for t in TYPES}}
                     for m in ("nll", "ece")}
-    decision = {"ship": ship, "acc": list(stats["acc"]), "ece": list(stats["ece"]), "b_fitted": b_fitted}
+    decision = {"ship": r.ship, "acc": list(r.stats["acc"]), "ece": list(r.stats["ece"]), "b_fitted": r.b_fitted}
     path = s.data_dir(layout) / "calibration.json"
-    data = calibration_file(fit, stamp, args.orders, {t: len(calib[t]) for t in TYPES}, before_after, decision,
+    data = calibration_file(r.fit, stamp, args.orders, {t: len(calib[t]) for t in TYPES}, before_after, decision,
                             history(path), args.comment or default_comment(path, args.orders), now_iso())
     if not args.dry_run:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(data, indent=1) + "\n")
-    return layout_report(layout, fit, calib, held, before, after, stats, b_fitted, ship)
+    return layout_report(r)
 
 
 def main(argv=None) -> None:
@@ -198,8 +228,8 @@ def main(argv=None) -> None:
     stamp_utc = datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%dT%H%M%SZ")
     lines = [line for layout in layouts for line in calibrate_layout(args, s, layout, recs, rows)]
     meta = {"timestamp": stamp_utc, "repo commit": git_revision(), "profile": args.profile, "orders": args.orders,
-            "calib split sha256": hashlib.sha256((SPLITS / "calib.json").read_bytes()).hexdigest(),
-            "collect": f".cache/collect/{args.profile}/{{calib,eval}}.jsonl.gz", "written": not args.dry_run}
+            "calib split sha256": split_sha256(),
+            "collect": (COLLECT / args.profile).relative_to(ROOT) / "{calib,eval}.jsonl.gz", "written": not args.dry_run}
     out = ROOT / "docs" / "results" / args.profile / f"{stamp_utc}-calibrate"
     out.mkdir(parents=True, exist_ok=True)
     (out / "summary.md").write_text(f"# {args.profile} calibration\n\n{provenance(meta)}\n" + "\n".join(lines) + "\n")

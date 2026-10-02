@@ -28,7 +28,7 @@ client --HTTP--> gateway :9000 --HTTP (httpx, one pool)--> vLLM :8000 --> GPU
 |---|---|---|
 | Runs | uvicorn + FastAPI on CPU ([Dockerfile](../../docker/gateway.Dockerfile)) | `vllm serve` on the GPU ([entrypoint](../../docker/vllm-entrypoint.sh)) |
 | Port | 9000, bound to `127.0.0.1` | 8000, bound to `127.0.0.1` |
-| Loads | tokenizer, prompt layouts, label tables, temperatures | model weights, KV cache |
+| Loads | tokenizer, prompt layouts, label tables, calibration | model weights, KV cache |
 | Mounts (read-only) | `~/.cache/huggingface`, `prompts/`, `data/` | `~/.cache/huggingface` |
 
 - **Start order:** the gateway `depends_on` vLLM being healthy, so it starts second

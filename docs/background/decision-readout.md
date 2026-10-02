@@ -217,11 +217,11 @@ Illustrative logprobs `[-0.2, -2.1, -4.0]` for three options:
 | 1.943 | 0.6589, 0.2478, 0.0932 |
 
 `T > 1` flattens an overconfident model. The temperatures live in
-`data/<profile>/<layout>/calibration.json`, one per question type, and are valid only for that
-model, precision and layout. For qwen3.6 and `decider_chat` the file currently holds
-**1.943 for all three types**, a value copied from decider-ai's docs (`docs/SERVING.md`
-section 8, per the file's `source` field), pending our own fit. A missing file means
-`T = 1.0` and a warning. How a temperature is fitted: [calibration.md](calibration.md).
+`data/<profile>/<layout>/calibration.json`, one per question type plus a noul yes-offset `b`,
+and are valid only for that model, precision and layout (the file is stamped; stale ones are
+refused). For qwen3.6 and `decider_chat` our fit is T = 1.648 / 6.323 / 1.386 for choice /
+score / noul, b = 0. A missing file means `T = 1.0` and a warning. Fits and their
+numbers: [calibration.md](calibration.md).
 
 ## 7. Answers: the Jev shapes
 
@@ -255,7 +255,8 @@ T = 1.943:
   tokenizer; gemma and qwen3.8 tables differ (`data/<profile>/`).
 - **In-context check is partial.** Only `A`..`J` are verified after the answer slot;
   labels beyond 10 are safe because their ids are spliced in, not encoded.
-- **Temperature.** The current 1.943 is decider's number, not our fit.
+- **Temperature.** The examples use decider's 1.943; our own qwen3.6 fit is in
+  [calibration.md](calibration.md).
 - **Decider parity** is tested for the `decider_chat` layout; the other layouts
   (`header`, `question_first`) are our own experiments.
 

@@ -10,18 +10,20 @@ and the papers under Sources.
 - **Calibrated** means: of all answers given at 80%, about 80% are right. It is a property
   of many answers together, not of one answer.
 - **The gateway calibrates with a temperature T per question type:**
-  `p = softmax(logprobs / T)`. Only `qwen3.6-27b` + `decider_chat` has one (T = 1.943 for
-  all types, borrowed from decider). Everything else runs at T = 1.0, uncalibrated.
+  `p = softmax(logprobs / T)`, plus a yes-offset `b` for noul: `p(yes) = σ(Δ/T + b)`.
+  qwen3.6-27b has our own fit for all three layouts (2026-10-02, §2). qwen3.8 and gemma
+  run at T = 1, b = 0 until fitted.
 - **T never changes which answer wins,** so accuracy and the side of 0.5 a `noul` lands on
-  are unchanged. T only changes how sure the answers sound.
+  are unchanged. T only changes how sure the answers sound. `b` can flip a noul answer, so
+  it ships only when it helps on held-out rows.
 - **We measure calibration with ECE (15 bins) and the Brier score.** JevBench summaries
   report both, plus a noul yes/no bias table (runs from 2026-09-30 on).
 - **Jev's `confidence` is not a chance of being right.** It rescales the probabilities so
   that a uniform guess reads 0 and certainty reads 1.
 - **Our biggest noul error is a lean, and T can't fix a lean.** qwen3.6 says "no" on 74 of
   267 gold-yes rows (Jev: 8); gemma says "yes" on 72 of 358 gold-no rows. A fix needs an
-  offset term or option-order averaging, fitted in phase 2 (DS-002) on labelled data,
-  never on Jev's outputs.
+  offset term or option-order averaging, fitted on labelled data, never on Jev's outputs.
+  The offset exists now; for qwen3.6 it only earned its place in `question_first`.
 
 ## 1. What calibration means
 
@@ -70,31 +72,62 @@ vLLM letter logprobs  →  softmax(logprobs / T)  →  average over option order
   readout.py             calibration.py            orders.py                       answers.py
 ```
 
-- [`calibration.py`](../../gateway/calibration.py): `load_temperatures` reads `choice`,
-  `score` and `noul` from `data/<profile>/<layout>/calibration.json`. A missing file or type
-  means T = 1.0 plus a startup warning ([test](../../tests/unit/test_calibration.py)).
+- [`calibration.py`](../../gateway/calibration.py): `load_calibration` reads
+  `data/<profile>/<layout>/calibration.json` (format 2): T for `choice`, `score` and `noul`,
+  and the noul offset `b`, added per option order before averaging. A missing file means
+  T = 1, b = 0 plus a startup warning ([test](../../tests/unit/test_calibration.py)).
+- **Files are stamped.** Each records the tokenizer hash, layout hash, model revision and
+  prefix padding it was fitted under. Startup refuses a stale, v1 or unstamped file and
+  names the field, as it does for `labels.json`.
 - vLLM returns logprobs over the whole vocabulary: `logprob = logit − log Z`. The
   `log Z / T` term is the same for every letter and cancels, so scaling logprobs equals
   scaling logits.
 
-| Profile | `decider_chat` (default) | `header` | `question_first` |
-|---|---|---|---|
-| qwen3.6-27b | **T = 1.943** for all three types ([file](../../data/qwen3.6-27b/decider_chat/calibration.json)) | 1.0 | 1.0 |
-| qwen3.8-27b | 1.0 | 1.0 | 1.0 |
-| gemma-4-31b | 1.0 | 1.0 | 1.0 |
+Fitted 2026-10-02 by [`scripts/calibrate.py`](../../scripts/calibrate.py)
+([report](../results/qwen3.6-27b/2026-10-02T154740Z-calibrate/summary.md)):
 
-- **Where 1.943 comes from:** decider's fit for stock Qwen3.6-27B, bf16, chat layout, one
-  temperature for every type (decider SERVING.md §8). Our `decider_chat` matches that
-  prompt token for token ([`tests/parity`](../../tests/parity)).
-- **How it did there:** ECE 0.021 on the Decision Index board
-  ([3-leaderboard.md](../3-leaderboard.md)). We have not measured our own ECE yet.
+| Profile | Layout | T choice | T score | T noul | noul b |
+|---|---|---|---|---|---|
+| qwen3.6-27b | `decider_chat` (default) | 1.648 | 6.323 | 1.386 | 0 |
+| qwen3.6-27b | `header` | 1.627 | 7.195 | 1.284 | 0 |
+| qwen3.6-27b | `question_first` | 1.484 | 8.055 | 1.145 | +0.253 |
+| qwen3.8-27b, gemma-4-31b | all | no file: 1.0 | 1.0 | 1.0 | 0 |
+
+Held-out eval split, before (T = 1, b = 0) → after:
+
+| Layout | Type | n | NLL | ECE | Accuracy |
+|---|---|---|---|---|---|
+| `decider_chat` | choice | 1607 | 0.545 → 0.501 | 0.067 → 0.041 | 0.811, same |
+| | score | 554 | 1.602 → 1.179 | 0.197 → 0.236 | 0.616, same |
+| | noul | 666 | 0.296 → 0.286 | 0.045 → 0.038 | 0.880, same |
+| `header` | choice | 1607 | 0.553 → 0.496 | 0.079 → 0.029 | 0.817, same |
+| | score | 554 | 1.703 → 1.179 | 0.178 → 0.304 | 0.664, same |
+| | noul | 666 | 0.278 → 0.266 | 0.040 → 0.023 | 0.895, same |
+| `question_first` | choice | 1607 | 0.576 → 0.529 | 0.068 → 0.025 | 0.811, same |
+| | score | 554 | 2.181 → 1.318 | 0.253 → 0.167 | 0.448, same |
+| | noul | 666 | 0.287 → 0.277 | 0.037 → 0.026 | 0.860 → 0.877 |
+
+- **How it is fitted:** minimise NLL on the calib split (JevBench gold + filtered
+  DecisionBench), `identity` order. The eval split judges; Index rows are never used.
+- **NLL falls for every type and layout.** Accuracy is unchanged except `question_first`
+  noul, where b ships (+1.65 points, 95% CI +0.30 to +3.00).
+- **b ships only by the eval bootstrap rule.** `decider_chat` (+0.17) and `header` (+0.30)
+  fitted a b that showed no gain on eval, so they run with b = 0.
+- **Score is the weak spot.** Its T is large (6–8) and its eval ECE rises in
+  `decider_chat` and `header` while NLL falls. Calib's score rows are far more
+  overconfident than eval's (NLL 2.7 vs 1.6 at T = 1), so one T can't suit both.
+- **Transfer check (index-dev, never fitted on), `decider_chat`:** ECE 0.108 → 0.040,
+  NLL 0.887 → 0.723 ([offline run](../results/qwen3.6-27b/2026-10-02T154827Z-offline-index-dev-decider_chat-identity/summary.md)).
+  Decider's borrowed T = 1.943 did slightly better there (ECE 0.025, NLL 0.710).
+- **Replaces decider's 1.943**, one T for every type (decider SERVING.md §8); the old value
+  sits in the file's first comment.
 
 Worked example, three options with letter logprobs −0.1, −2.5, −5.0:
 
 | | p(A) | p(B) | p(C) | Winner | Jev `confidence` |
 |---|---|---|---|---|---|
 | T = 1.0 | 0.911 | 0.083 | 0.007 | A | 0.866 |
-| T = 1.943 | 0.729 | 0.212 | 0.059 | A | 0.594 |
+| T = 1.648 (qwen3.6 choice) | 0.779 | 0.182 | 0.040 | A | 0.668 |
 
 Same winner and same order of options; only the certainty changes.
 
@@ -230,8 +263,8 @@ so it must be fitted on labelled data to balance the two.
 
 | Fix | What it fits | Labels? | Changes answers? | Notes |
 |---|---|---|---|---|
-| Temperature (today) | σ(Δ/T) | yes | no | Over/underconfidence only |
-| **Platt scaling** (Platt 1999) | σ(aΔ + b): scale + offset | yes | yes | Temperature is Platt with b = 0. For noul: one `b` per profile, layout, type |
+| Temperature (all types) | σ(Δ/T) | yes | no | Over/underconfidence only |
+| **Platt scaling** (Platt 1999) | σ(aΔ + b): scale + offset | yes | yes | Temperature is Platt with b = 0. The gateway's noul fit is this, with a = 1/T: one `b` per profile and layout |
 | **Vector / matrix scaling** (Guo et al.) | softmax(w ⊙ z + b), or softmax(Wz + b) | yes | yes | Multi-option Platt; matrix has K² parameters and overfits with many options |
 | **Contextual calibration** (Zhao et al. 2021) | Divide by the probabilities for a content-free input ("N/A") | **no**, one extra row | yes | = a per-option offset of −log p_baseline. Up to 30 points accuracy gained on GPT-3/GPT-2 |
 | **Option-order averaging** ([`orders.py`](../../gateway/orders.py)) | Nothing: ask `no`-first and `yes`-first, average | no | yes | 2× rows. Cancels a lean to a position or letter, not to the word "no" |
@@ -243,19 +276,21 @@ can trade false "no" for false "yes", so judge it on held-out rows, never on its
 
 ## 7. The phase-2 plan (DS-002)
 
-DS-002 is still in triage (no spec yet). The ticket and the JevBench report propose:
+Spec: [phase-2 design](../superpowers/specs/2026-09-30-phase2-calibrate-evaluate-design.md).
+Items 2, 3 and 5 are done ([report](../results/qwen3.6-27b/2026-10-02T154740Z-calibrate/summary.md)):
 
 1. **Labelled data only:** JevBench gold plus Decision Index, DecisionBench and
    typed-decisions, with a **calibration split** kept apart from the evaluation rows.
-2. **Fit T per question type,** per profile and layout, by NLL (`calibrate.py`, not written
-   yet). Per type because the direction differs: Jev was underconfident on noul (refit
-   T = 0.66) but overconfident on choice and score (1.30, 1.92) ([jev-notes.md §5](../appendix/jev-notes.md)).
-3. **Fit a noul offset per profile** (Platt-style) on the same split. The gateway has no
-   offset term yet; [`calibration.py`](../../gateway/calibration.py) only knows T.
+2. **Done: fit T per question type,** per profile and layout, by NLL (`calibrate.py`;
+   qwen3.6 fitted, §2). Per type because the direction differs: Jev was underconfident on
+   noul (refit T = 0.66) but overconfident on choice and score (1.30, 1.92)
+   ([jev-notes.md §5](../appendix/jev-notes.md)).
+3. **Done: fit a noul offset** (Platt-style) on the same split, per profile and layout.
+   It ships only when the eval split shows a gain (qwen3.6: `question_first` only).
 4. **Run the option-order experiment** (flip rate, accuracy, ECE) before changing the
    `identity` default.
-5. **Stamp `calibration.json`** with tokenizer hash, layout hash and model revision, and
-   refuse stale files as the gateway does for `labels.json`. Today a stale T loads silently.
+5. **Done: stamp `calibration.json`** with tokenizer hash, layout hash, model revision and
+   prefix padding; the gateway refuses stale files as it does for `labels.json`.
 
 **Never calibrate on Jev's outputs:** TypeSafe's terms forbid it
 ([1-what-is-jev.md](../1-what-is-jev.md)). Jev's per-row answers stay in `.cache/jev-results/`.
@@ -266,8 +301,8 @@ DS-008's prompt padding would each need their own fit.
 
 ## Caveats
 
-- **1.943 is decider's fit on decider's data, not ours.** Our own ECE is not measured yet;
-  JevBench runs recorded before the new table have no probabilities to compute it from.
+- **Fits so far are qwen3.6 only.** qwen3.8 and gemma get the same run once their collects
+  are pulled. JevBench runs before 2026-10-02 used decider's T = 1.943 (qwen3.6) or T = 1.
 - **Pooled ECE:** the bench pools choice, score and noul, so opposite errors in one bin can
   partly cancel. A per-type split would show them.
 - **ECE is not portable:** it depends on binning and sample size, so numbers from different

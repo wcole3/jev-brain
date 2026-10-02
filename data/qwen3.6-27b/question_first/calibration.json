@@ -1,0 +1,79 @@
+{
+ "format": 2,
+ "version": 1,
+ "date": "2026-10-02T15:47:50Z",
+ "comments": [
+  {
+   "version": 1,
+   "date": "2026-10-02T15:47:50Z",
+   "text": "refit on calib (orders identity)"
+  }
+ ],
+ "stamp": {
+  "tokenizer_sha256": "f1738377fb7acbc5a747d00bc34135bac9fd81777240ba1aaa8eb53c0aed08e1",
+  "layout_sha256": "97445f325f30f5f252d8a4af276d99b3197888fbbb4f9b1d1236ebf51077e83c",
+  "hf_revision": "6a9e13bd6fc8f0983b9b99948120bc37f49c13e9",
+  "prefix_pad": "front",
+  "prefix_block": 784
+ },
+ "types": {
+  "choice": {
+   "T": 1.4836733616074274
+  },
+  "score": {
+   "T": 8.054659971948029
+  },
+  "noul": {
+   "T": 1.1446681550320104,
+   "b": 0.2527877422356274
+  }
+ },
+ "fit": {
+  "split": "data/splits/calib.json",
+  "split_sha256": "a4e492db25b2be6fb34f65689bbb715031e938a3d449e12c2677f8aa4d0e6ca8",
+  "orders": "identity",
+  "n": {
+   "choice": 898,
+   "score": 259,
+   "noul": 670
+  },
+  "nll": {
+   "before": {
+    "choice": 0.5764958413296265,
+    "score": 2.1809134023375827,
+    "noul": 0.286774634937011
+   },
+   "after": {
+    "choice": 0.5291637439832739,
+    "score": 1.3175285628436881,
+    "noul": 0.27744509651519056
+   }
+  },
+  "ece": {
+   "before": {
+    "choice": 0.06808814893287043,
+    "score": 0.25291191616685993,
+    "noul": 0.03700839660795464
+   },
+   "after": {
+    "choice": 0.02545181737772405,
+    "score": 0.16725220113023245,
+    "noul": 0.02644239653529278
+   }
+  },
+  "b_decision": {
+   "ship": true,
+   "acc": [
+    0.016516516516516533,
+    0.0030030030030030463,
+    0.03003003003003002
+   ],
+   "ece": [
+    -0.01648345620351777,
+    -0.026513565835146836,
+    0.009189714257338062
+   ],
+   "b_fitted": 0.2527877422356274
+  }
+ }
+}

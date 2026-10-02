@@ -160,8 +160,8 @@ every result on the test half only. Keep a copy of today's run as the baseline.
 
 **Experiment 1: per-profile noul offset (Platt-style).**
 
-1. Add an optional `noul_bias` to `calibration.json`; apply p = σ(logit(p_T) + b) after the
-   temperature. `gateway/calibration.py` has no offset term today.
+1. Done (2026-10-02): `calibration.json` v2 carries noul `b`, applied as σ(Δ/T + b);
+   for qwen3.6 it ships only in `question_first` ([calibration.md §2](calibration.md)).
 2. Fit b (and optionally a scale a) by NLL on the fit half, per profile + layout; log the
    unrounded letter logprobs, not the 4-decimal answers, so gemma's saturated rows stay
    distinguishable.

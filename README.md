@@ -244,6 +244,7 @@ uv run python scripts/index_suite.py export    # scoreable 0.2.1 rows -> .cache/
 uv run python scripts/splits.py                # data/splits/*.json (committed)
 
 uv run python scripts/collect.py --profile qwen3.6-27b --split eval       # raw letter logprobs, stack up
+uv run python scripts/calibrate.py --profile qwen3.6-27b                  # fit T (+ noul offset) on calib, judge on eval; CPU only
 uv run python scripts/evaluate.py offline --profile qwen3.6-27b --split eval --orders identity+reversed
 uv run python scripts/evaluate.py index --profile qwen3.6-27b             # full Index via the upstream harness, 8 shards
 uv run python scripts/evaluate.py replace --profile qwen3.6-27b --base RUN_DIR --override RUN_DIR  # swap re-run rows into an Index run
@@ -258,7 +259,7 @@ uv run python scripts/evaluate.py lengths --profile qwen3.6-27b --baseline RUN_D
   - Jev's outputs are never read.
 - **Offline vs live:** `collect.py` uses the gateway's own code, so offline answers equal
   live ones within bf16 noise (`tests/live/test_offline_matches_live.py`).
-- **Results:** `docs/results/<profile>/<timestamp>-{index,offline-...,latency,lengths}/summary.md`.
+- **Results:** `docs/results/<profile>/<timestamp>-{index,offline-...,calibrate,latency,lengths}/summary.md`.
   Large run data stays in `.cache/` (`collect/`, `index-runs/`).
 
 ## When you change prompts or tokenizers
@@ -272,8 +273,10 @@ tables for every profile and restart:
 uv run python scripts/build_labels.py --profile qwen3.6-27b   # repeat per profile
 ```
 
-A layout change also invalidates its fitted temperatures
-(`data/<profile>/<layout>/calibration.json`). Phase 2 refits them.
+A layout change also invalidates its calibration
+(`data/<profile>/<layout>/calibration.json`; the gateway refuses the stale file):
+rerun `uv run python scripts/calibrate.py --profile <profile>` (needs a fresh collect of the
+calib and eval splits).
 
 ## Repository map
 
@@ -282,8 +285,8 @@ A layout change also invalidates its fitted temperatures
 | `gateway/` | FastAPI gateway: `/v1/systemone` flow (`decide.py`), chat proxy (`chat.py`), disconnect cancellation (`disconnect.py`) |
 | `prompts/` | Prompt layouts (`decider_chat` default, `header`, `question_first`) |
 | `profiles/` | One env file per model |
-| `data/` | Label tables and temperatures per profile/layout; benchmark corpus |
-| `scripts/` | `fetch_model.py`, `build_labels.py`, `bench.py` (+ `bench_data.py`, `bench_report.py`), `decider_fixtures.py`; phase 2: `index_suite.py`, `splits.py`, `collect.py`, `evaluate.py`, `latency.py` (+ helpers) |
+| `data/` | Label tables and calibration per profile/layout; benchmark corpus |
+| `scripts/` | `fetch_model.py`, `build_labels.py`, `bench.py` (+ `bench_data.py`, `bench_report.py`), `decider_fixtures.py`; phase 2: `index_suite.py`, `splits.py`, `collect.py`, `calibrate.py` (+ `fit.py`), `evaluate.py`, `latency.py` (+ helpers) |
 | `data/splits/` | Committed calibration, evaluation, index-dev and latency-v1 row ids |
 | `tests/` | `unit/`, `parity/`, `live/` |
 | `docker/`, `compose.yaml` | vLLM entrypoint, gateway image, stack definition |

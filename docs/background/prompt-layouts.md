@@ -20,8 +20,8 @@ the same method as [prompt-sharing.md](prompt-sharing.md) §4: it rebuilds the r
   a full state prefill per question.
 - **Averaging option orders costs rows.** `identity+reversed` doubles the rows and computes
   1.88x the tokens (`decider_chat`), not 2x, because the state stays cached.
-- **Only one layout is calibrated.** Just qwen3.6 `decider_chat` has a temperature, and that
-  one is borrowed from decider's docs, not fitted by us.
+- **Only qwen3.6 is calibrated.** All three of its layouts have our own fit; qwen3.8 and
+  gemma run uncalibrated until their collects are fitted.
 
 ## 1. The three layouts
 
@@ -169,12 +169,11 @@ share, so it is free), and A/B `header` on long, multi-question states.
 
 | Model | Layout | `calibration.json` |
 |---|---|---|
-| qwen3.6-27b | `decider_chat` | yes: temperature 1.943 for choice/score/noul, **copied from decider-ai's SERVING.md, not our own fit** |
-| qwen3.6-27b | `header`, `question_first` | none: gateway logs "temperature 1.0 (uncalibrated)" |
-| gemma-4-31b, qwen3.8-27b | all three | none |
+| qwen3.6-27b | all three | yes: our fit, 2026-10-02 (T per type; noul offset only in `question_first`) |
+| gemma-4-31b, qwen3.8-27b | all three | none: gateway warns and runs at T = 1, b = 0 |
 
 Labels tables exist for every (model, layout) pair in `data/`. Because temperature is tied to one model + precision +
-layout, `header` and `question_first` answers are uncalibrated probabilities until fitted. Details and the fitting method:
+layout, each (model, layout) pair needs its own fit. Details and the fitting method:
 [calibration.md](calibration.md).
 
 ## Caveats

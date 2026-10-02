@@ -80,7 +80,8 @@ p = 0.5 the slope is 1 / (4T), so for letter logits in the 16–32 range:
 | Setup | Δ moves one step (0.125) | Δ moves two steps (0.25) |
 |---|---|---|
 | T = 1 (uncalibrated: qwen3.8, gemma) | p moves ~0.031 | ~0.062 |
-| T = 1.943 (qwen3.6, decider's value in [calibration.json](../../data/qwen3.6-27b/decider_chat/calibration.json)) | ~0.016 | ~0.032 |
+| T = 1.943 (decider's value, qwen3.6 before 2026-10-02) | ~0.016 | ~0.032 |
+| T = 1.386 (qwen3.6 `decider_chat` noul, our [fit](../../data/qwen3.6-27b/decider_chat/calibration.json)) | ~0.023 | ~0.045 |
 
 Two steps is the usual worst case, because each of the two logits can round one step in
 opposite directions. The slope is steepest at p = 0.5 and falls towards 0 and 1 (at
@@ -157,12 +158,13 @@ About vLLM's mode:
 **Tests:**
 
 - **Never assert exact probabilities from a live server.**
-  - `MAX_DRIFT = 0.05` covers two bf16 steps at T = 1.943 (0.032) with margin.
+  - `MAX_DRIFT = 0.05` covered two bf16 steps at T = 1.943 (0.032) with margin; at the
+    fitted noul T = 1.386 two steps are ~0.045, little margin.
   - `DECISIVE_GAP = 2 × MAX_DRIFT`, because each of the top two can move by 0.05.
   - Unit and parity tests check tokens on the CPU, so exact equality is right there.
 - **Revisit the bound when T changes.** Near p = 0.5 drift scales with 1 / T (an estimate).
-  After a phase-2 refit, one step at T = 1 is already 0.031, and two steps (0.062) would
-  exceed 0.05.
+  One step at T = 1 is already 0.031, and two steps (0.062) would exceed 0.05; so would
+  `question_first`'s noul T = 1.145 (~0.055).
 
 **Benchmarks and comparing runs:**
 

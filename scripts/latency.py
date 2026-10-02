@@ -11,6 +11,7 @@ from collections import defaultdict
 
 import httpx
 
+from scripts import host_info
 from scripts.bench import git_revision
 from scripts.bench_report import percentile, provenance
 from scripts.board import BOARD, MATCHES
@@ -65,7 +66,7 @@ def main(args) -> None:
         f"| {BOARD[k]['name']} (board, its own sample) | {BOARD[k]['median_ms']:.1f} | n/a |"
         for k in [*MATCHES.get(args.profile, []), "jev"]
     ]
-    meta = {"timestamp": stamp, "repo commit": git_revision(), "design": split["meta"]["design"], **extra}
+    meta = {"timestamp": stamp, "repo commit": git_revision(), "host": host_info.summary_line(host_info.collect()), "design": split["meta"]["design"], **extra}
     keys = ("profile", "hf_revision", "prompt_layout", "option_orders", "temperatures", "vllm_version")
     meta |= {k: health.get(k) for k in keys}
     table = [

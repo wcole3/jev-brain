@@ -18,6 +18,7 @@ import httpx
 from transformers import AutoTokenizer
 
 from gateway.config import ROOT, Settings
+from scripts import host_info
 from scripts.bench_data import (
     JEVBENCH_SHA,
     jevbench_request,
@@ -244,7 +245,8 @@ async def main(args) -> None:
     # TypeSafe's terms forbid using Jev outputs for training or calibration, so keep them out of the repo.
     raw = ROOT / ".cache" / "jev-results" / suffix if jev else out
     async with httpx.AsyncClient(base_url=base_url, headers=headers, timeout=600) as client:
-        meta = {"timestamp": started.isoformat(), "repo commit": revision, "target": args.target}
+        meta = {"timestamp": started.isoformat(), "repo commit": revision, "host": host_info.summary_line(host_info.collect()),
+                "target": args.target}
         if not jev:
             health = await gateway_health(client, args.profile)
         gold_rows = jevbench_rows()

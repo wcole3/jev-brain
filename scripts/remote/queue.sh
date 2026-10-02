@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Run a job file's `name: command` lines in order from the repo root; done jobs are skipped, a failure stops the queue.
+# Run a job file's `name: command` lines in order from the repo root; skip done jobs, retry a failure once, then stop.
 # usage: queue.sh JOBFILE  (markers and job logs per job-file name; env REMOTE_STATE: root, default .cache/remote)
 set -euo pipefail
 jobfile=$(realpath "$1")
@@ -12,6 +12,11 @@ mkdir -p "$state" "$logs"
 rm -f "$state/QUEUE_DONE"  # a rerun (e.g. after a reboot) must not look finished to pull.sh --loop
 
 note() { echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) == $*" | tee -a "$root/logs/queue.log"; }
+# attempt NAME COMMAND N: append the job's output to its log under a header, so earlier tries stay readable.
+attempt() {
+  echo "== $(date -u +%Y-%m-%dT%H:%M:%SZ) attempt $3" >> "$logs/$1.log"
+  bash -c "$2" >> "$logs/$1.log" 2>&1 < /dev/null
+}
 
 while IFS= read -r line || [[ -n $line ]]; do
   [[ -z ${line// } || $line == \#* ]] && continue
@@ -21,7 +26,12 @@ while IFS= read -r line || [[ -n $line ]]; do
   rm -f "$state/$name.failed"
   note "$name start"
   code=0
-  bash -c "$command" > "$logs/$name.log" 2>&1 < /dev/null || code=$?
+  attempt "$name" "$command" 1 || code=$?
+  if (( code != 0 )); then
+    note "$name retry (exit $code)"
+    code=0
+    attempt "$name" "$command" 2 || code=$?
+  fi
   if (( code != 0 )); then
     echo "exit=$code at $(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$state/$name.failed"
     note "$name FAILED (exit $code)"

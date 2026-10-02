@@ -35,9 +35,19 @@ def test_job_files_parse_with_unique_names_starting_at_stack(path):
     assert path.stem in path.read_text()
 
 
-def test_index_job_resumes_the_box_run_tag():
-    text = (REMOTE / "jobs" / "qwen3.8-27b.txt").read_text()
-    assert "--run-dir .cache/index-runs/qwen3.8-27b/$(cat .cache/remote/run_tag)" in text
+@pytest.mark.parametrize("profile", ["qwen3.8-27b", "gemma-4-31b"])
+def test_index_job_resumes_the_box_run_tag_and_fails_on_holes(profile):
+    index = [line for line in (REMOTE / "jobs" / f"{profile}.txt").read_text().splitlines() if line.startswith("index:")]
+    assert f"--run-dir .cache/index-runs/{profile}/$(cat .cache/remote/run_tag)" in index[0]
+    assert " --strict" in index[0]
+
+
+@pytest.mark.parametrize("path", JOB_FILES, ids=lambda p: p.name)
+def test_gpu_jobs_bring_the_stack_back_first(path):
+    """A vLLM crash fails the job; its retry then restarts the stack (a no-op when it is healthy)."""
+    jobs = [line.split(":", 1) for line in path.read_text().splitlines() if line and not line.startswith("#")]
+    for name, command in jobs[1:]:
+        assert command.startswith(f" bash scripts/remote/stack.sh up {path.stem} && "), name
 
 
 def test_job_commands_name_only_their_own_profile():
@@ -56,19 +66,32 @@ def queue(tmp_path, jobs: str, name: str = "p") -> subprocess.CompletedProcess:
 
 def test_queue_stops_at_a_failure_and_resumes_after_it(tmp_path):
     state, logs = tmp_path / "remote" / "state" / "p", tmp_path / "remote" / "logs"
-    jobs = "# comment\n\nok: echo hi: there\nbad: false\nnever: true\n"
+    jobs = "# comment\n\nok: echo hi: there\nbad: echo try; false\nnever: true\n"
     assert queue(tmp_path, jobs).returncode != 0
-    assert (state / "ok.done").exists() and (logs / "p" / "ok.log").read_text() == "hi: there\n"
+    ok_log = (logs / "p" / "ok.log").read_text().splitlines()
+    assert (state / "ok.done").exists() and ok_log[0].endswith("Z attempt 1") and ok_log[1:] == ["hi: there"]
     assert "exit=1" in (state / "bad.failed").read_text()
     assert not (state / "never.done").exists() and not (logs / "p" / "never.log").exists()
     assert not (state / "QUEUE_DONE").exists()
 
-    assert queue(tmp_path, jobs.replace("bad: false", "bad: true")).returncode == 0
+    assert queue(tmp_path, jobs.replace("bad: echo try; false", "bad: true")).returncode == 0
     log = (logs / "queue.log").read_text()
     assert log.count("== ok start") == 1 and log.count("== bad start") == 2
-    assert "== bad FAILED" in log and "== bad done" in log
+    assert log.count("== bad retry (exit 1)") == 1 and "== bad FAILED" in log and "== bad done" in log
     assert (state / "bad.done").exists() and not (state / "bad.failed").exists()
     assert (state / "never.done").exists() and (state / "QUEUE_DONE").exists()
+    # every attempt is appended under its own header: two failed tries, then the run that worked
+    bad_log = (logs / "p" / "bad.log").read_text()
+    assert [line[-9:] for line in bad_log.splitlines() if "attempt" in line] == ["attempt 1", "attempt 2", "attempt 1"]
+    assert bad_log.count("try\n") == 2
+
+
+def test_queue_retries_a_failed_job_once(tmp_path):
+    flag = tmp_path / "failed-once"
+    assert queue(tmp_path, f"flaky: [ -f {flag} ] || {{ touch {flag}; false; }}\n").returncode == 0
+    state, log = tmp_path / "remote" / "state" / "p", (tmp_path / "remote" / "logs" / "queue.log").read_text()
+    assert "== flaky retry (exit 1)" in log and "FAILED" not in log
+    assert (state / "flaky.done").exists() and not (state / "flaky.failed").exists()
 
 
 def test_queue_clears_a_stale_queue_done_when_it_starts(tmp_path):

@@ -5,7 +5,9 @@ import httpx
 import pytest
 from fastapi.testclient import TestClient
 
+import gateway.app
 from gateway.app import create_app, load_engine
+from gateway.calibration import UNCALIBRATED
 from tests.helpers import QUICKSTART, SSE, STATE, fake_vllm
 
 NOUL = {"state": "s", "questions": {"q": {"type": "noul", "instructions": "ok?"}}}
@@ -239,3 +241,30 @@ def test_startup_refuses_a_decision_cap_above_the_model_limit(qwen_settings):
     bad = dataclasses.replace(qwen_settings, systemone_max_len=qwen_settings.max_model_len + 1)
     with pytest.raises(ValueError, match="SYSTEMONE_MAX_LEN"):
         load_engine(bad, None)
+
+
+OLD_STAMP = {"tokenizer_sha256": "t", "layout_sha256": "l", "hf_revision": "old", "prefix_pad": "off",
+             "prefix_block": 0}
+
+
+def write_calibration(s, **fit):
+    """A v2 file stamped OLD_STAMP: stale for the real tokenizer and revision."""
+    types = {"choice": {"T": 1.5}, "score": {"T": 1.5}, "noul": {"T": 1.5, "b": 0.0}}
+    path = s.data_dir("decider_chat") / "calibration.json"
+    path.write_text(json.dumps({"format": 2, "stamp": OLD_STAMP, "types": types, "fit": fit}))
+
+
+def test_stale_calibration_refuses_the_gateway_but_not_collect(qwen_settings):
+    write_calibration(qwen_settings)
+    with pytest.raises(RuntimeError, match="changed .* move the stale file aside"):
+        load_engine(qwen_settings, None)
+    engine = load_engine(qwen_settings, None, calibrated=False)
+    assert all(c == UNCALIBRATED for c in engine.calibration.values())
+
+
+def test_startup_warns_when_a_fit_was_made_under_other_orders(qwen_settings, caplog, monkeypatch):
+    monkeypatch.setattr(gateway.app, "stamp_for", lambda tok, layout, s: OLD_STAMP)  # the file is current
+    write_calibration(qwen_settings, orders="identity")
+    engine = load_engine(dataclasses.replace(qwen_settings, option_orders="identity+reversed"), None)
+    assert engine.calibration["decider_chat"].T["choice"] == 1.5
+    assert "fitted under option orders 'identity', used here with 'identity+reversed'" in caplog.text

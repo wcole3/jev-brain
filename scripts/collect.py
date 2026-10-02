@@ -18,9 +18,9 @@ import httpx
 from pydantic import ValidationError
 
 from gateway.app import load_engine, vllm_client
+from gateway.calibration import stamp_for
 from gateway.config import ROOT, Settings
 from gateway.decide import read_rows
-from gateway.labels import tokenizer_sha256
 from gateway.orders import option_orders
 from gateway.schema import RequestError, SystemOneRequest
 from scripts.splits import rows_for
@@ -40,14 +40,10 @@ def all_orders(n: int) -> list[list[int]]:
 
 
 def stamp(engine, layout: str) -> dict:
+    """The calibration stamp (what a fit depends on) plus the settings that shape a collected read."""
     s = engine.settings
-    return {
+    return stamp_for(engine.tokenizer, engine.layouts[layout], s) | {
         "profile": s.profile,
-        "hf_revision": s.hf_revision,
-        "layout_sha256": engine.layouts[layout].sha256,
-        "tokenizer_sha256": tokenizer_sha256(engine.tokenizer),
-        "prefix_pad": s.prefix_pad,
-        "prefix_block": s.prefix_block,
         "prefix_pad_always": s.prefix_pad_always,
         "warm_up": s.warm_up,
         "systemone_max_len": s.systemone_max_len,
@@ -148,7 +144,7 @@ async def main(args) -> None:
         served = [m["id"] for m in (await client.get("/v1/models")).json()["data"]]
         if s.served_model not in served:
             raise SystemExit(f"vLLM serves {served}, not {s.served_model}: start the {args.profile} profile first")
-        engine = load_engine(s, client)
+        engine = load_engine(s, client, calibrated=False)  # collect never applies calibration
         rows = rows_for(args.split)[: args.limit]
         layouts = args.layouts.split(",") if args.layouts else sorted(engine.layouts)
         suffix = f"-len{args.max_len}" if args.max_len else ""

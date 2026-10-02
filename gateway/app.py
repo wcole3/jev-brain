@@ -14,7 +14,7 @@ from starlette.exceptions import HTTPException
 from transformers import AutoTokenizer
 
 from gateway import chat
-from gateway.calibration import load_calibration, stamp_for
+from gateway.calibration import UNCALIBRATED, load_calibration, orders_warning, stamp_for
 from gateway.config import Settings
 from gateway.decide import Engine, decide
 from gateway.disconnect import unless_disconnected
@@ -37,7 +37,18 @@ def vllm_client(s: Settings, transport: httpx.AsyncBaseTransport | None) -> http
     return httpx.AsyncClient(base_url=s.vllm_url, headers=auth, timeout=600, transport=transport)
 
 
-def load_engine(s: Settings, client: httpx.AsyncClient) -> Engine:
+def load_calibrations(s: Settings, tok, layouts: dict) -> dict:
+    """Each layout's stamped calibration; a fit made under other option orders is used, with a warning."""
+    out = {}
+    for name, layout in layouts.items():
+        out[name] = load_calibration(s.data_dir(name) / "calibration.json", stamp_for(tok, layout, s))
+        if warning := orders_warning(out[name], s.option_orders):
+            log.warning("%s", warning)
+    return out
+
+
+def load_engine(s: Settings, client: httpx.AsyncClient, calibrated: bool = True) -> Engine:
+    """calibrated=False skips calibration files (T = 1): collect must run even when a file is stale."""
     if s.systemone_max_len > s.max_model_len:
         raise ValueError(f"SYSTEMONE_MAX_LEN {s.systemone_max_len} exceeds MAX_MODEL_LEN {s.max_model_len}")
     tok = AutoTokenizer.from_pretrained(s.hf_model, revision=s.hf_revision)
@@ -48,10 +59,7 @@ def load_engine(s: Settings, client: httpx.AsyncClient) -> Engine:
         layouts=layouts,
         frames={name: chat_frame(tok, layout) for name, layout in layouts.items()},
         labels={name: load_labels(s.data_dir(name) / "labels.json", tok, layout) for name, layout in layouts.items()},
-        calibration={
-            name: load_calibration(s.data_dir(name) / "calibration.json", stamp_for(tok, layout, s))
-            for name, layout in layouts.items()
-        },
+        calibration=load_calibrations(s, tok, layouts) if calibrated else dict.fromkeys(layouts, UNCALIBRATED),
         readout=Readout(client, s.served_model, s.warm_min_prefix_tokens, s.warm_up),
         padding=load_padding(s, tok),
     )

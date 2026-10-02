@@ -11,6 +11,7 @@ from gateway.labels import tokenizer_sha256
 log = logging.getLogger(__name__)
 TYPES = ("choice", "score", "noul")
 STAMP_KEYS = ("tokenizer_sha256", "layout_sha256", "hf_revision", "prefix_pad", "prefix_block")
+STALE = "move the stale file aside (T = 1 meanwhile), recollect calib and eval, then rerun scripts/calibrate.py"
 
 
 @dataclass(frozen=True)
@@ -18,9 +19,10 @@ class Calibration:
     T: dict[str, float]
     b: float = 0.0  # noul: added to the "yes" logit after dividing by T
     source: str = "uncalibrated"
+    orders: str | None = None  # the option orders it was fitted under; None when not fitted
 
     def as_dict(self) -> dict:
-        return {"T": dict(self.T), "b": self.b, "source": self.source}
+        return {"T": dict(self.T), "b": self.b, "source": self.source, "orders": self.orders}
 
 
 UNCALIBRATED = Calibration({t: 1.0 for t in TYPES})
@@ -44,19 +46,35 @@ def stamp_for(tok, layout, settings) -> dict:
     }
 
 
+def orders_warning(cal: Calibration, orders: str) -> str | None:
+    """A fit holds for one option-order setting; say so when another one will use it."""
+    if cal.orders is None or cal.orders == orders:
+        return None
+    return f"{cal.source} was fitted under option orders {cal.orders!r}, used here with {orders!r}"
+
+
+def finite_number(path: Path, name: str, value, positive: bool = False) -> float:
+    x = float(value) if isinstance(value, int | float) else math.nan
+    if not math.isfinite(x) or (positive and x <= 0):
+        raise RuntimeError(f"{path}: {name} must be a finite number{' > 0' if positive else ''}, got {value!r}")
+    return x
+
+
 def load_calibration(path: Path, expect: dict | None) -> Calibration:
-    """Refuse v1, unstamped or stale files; with no file, run uncalibrated."""
+    """Refuse v1, unstamped, stale or malformed files; with no file, run uncalibrated."""
     if not path.exists():
         log.warning("%s missing: uncalibrated (T = 1, no yes-offset)", path)
         return UNCALIBRATED
     data = json.loads(path.read_text())
-    if data.get("format") != 2 or "stamp" not in data:  # version/date/comments are informational only
+    if data.get("format") != 2 or not isinstance(data.get("stamp"), dict):  # version/date/comments: informational
         raise RuntimeError(f"{path}: not a v2 calibration file; rerun scripts/calibrate.py")
     for key in STAMP_KEYS if expect is not None else ():
         file = data["stamp"].get(key)
         if file != expect[key]:
-            raise RuntimeError(f"{path}: {key} changed ({file} != {expect[key]}); rerun scripts/calibrate.py")
+            raise RuntimeError(f"{path}: {key} changed ({file} != {expect[key]}); {STALE}")
     types = data["types"]
+    T = {t: finite_number(path, f"types.{t}.T", types[t]["T"], positive=True) for t in TYPES}
+    b = finite_number(path, "types.noul.b", types["noul"].get("b", 0.0))
     # source is relative to the data root (<profile>/<layout>/calibration.json), so host and container agree
-    return Calibration({t: float(types[t]["T"]) for t in TYPES}, float(types["noul"].get("b", 0.0)),
-                       path.relative_to(path.parents[2]).as_posix())
+    source = path.relative_to(path.parents[2]).as_posix()
+    return Calibration(T, b, source, data.get("fit", {}).get("orders"))

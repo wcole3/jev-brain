@@ -57,4 +57,6 @@ def load_calibration(path: Path, expect: dict | None) -> Calibration:
         if file != expect[key]:
             raise RuntimeError(f"{path}: {key} changed ({file} != {expect[key]}); rerun scripts/calibrate.py")
     types = data["types"]
-    return Calibration({t: float(types[t]["T"]) for t in TYPES}, float(types["noul"].get("b", 0.0)), str(path))
+    # source is relative to the data root (<profile>/<layout>/calibration.json), so host and container agree
+    return Calibration({t: float(types[t]["T"]) for t in TYPES}, float(types["noul"].get("b", 0.0)),
+                       path.relative_to(path.parents[2]).as_posix())

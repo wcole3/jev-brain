@@ -119,3 +119,4 @@ def test_offset_is_ignored_for_choice_and_zero_keeps_old_math():
     reads = [([0.0, -1.0, -2.0], [0, 1, 2])]
     cal = Calibration({"choice": 1.0, "score": 1.0, "noul": 1.0}, b=3.0)
     assert probabilities(reads, "choice", cal) == pytest.approx(softmax([0.0, -1.0, -2.0], 1.0))
+    assert probabilities(reads, "noul", Calibration(cal.T, b=0.0)) == pytest.approx(blend(reads, 1.0))

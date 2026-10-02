@@ -228,6 +228,13 @@ def test_unexpected_error_is_500_with_request_id(qwen_settings, caplog):
     assert r.json()["error"]["request_id"] in caplog.text
 
 
+def test_startup_refuses_a_v1_calibration_file(qwen_settings):
+    path = qwen_settings.data_dir("decider_chat") / "calibration.json"
+    path.write_text(json.dumps({"choice": 1.943, "score": 1.943, "noul": 1.943}))
+    with pytest.raises(RuntimeError, match="not a v2"):
+        load_engine(qwen_settings, None)
+
+
 def test_startup_refuses_a_decision_cap_above_the_model_limit(qwen_settings):
     bad = dataclasses.replace(qwen_settings, systemone_max_len=qwen_settings.max_model_len + 1)
     with pytest.raises(ValueError, match="SYSTEMONE_MAX_LEN"):

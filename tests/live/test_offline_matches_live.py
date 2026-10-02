@@ -45,7 +45,8 @@ def spread(rows: list[dict], n: int) -> list[dict]:
 
 def drift(engine, health: dict) -> list[str]:
     """Settings where the test's engine differs from the running gateway's."""
-    ours = {k: getattr(engine.settings, k) for k in SETTINGS} | {"calibration": {k: c.as_dict() for k, c in engine.calibration.items()}}
+    calibration = {k: c.as_dict() for k, c in engine.calibration.items()}
+    ours = {k: getattr(engine.settings, k) for k in SETTINGS} | {"calibration": calibration}
     return [f"{k}: test {v!r}, gateway {health.get(k)!r}" for k, v in ours.items() if v != health.get(k)]
 
 

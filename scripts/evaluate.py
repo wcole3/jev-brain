@@ -72,7 +72,7 @@ def cmd_offline(args) -> None:
     collected = COLLECT / args.profile / f"{args.split}.jsonl.gz"
     recs = list(records(collected))
     seen = next((r["stamp"] for r in recs if r["layout"] == args.layout), None)
-    expect = {k: seen[k] for k in STAMP_KEYS} if seen else None
+    expect = {k: seen.get(k) for k in STAMP_KEYS} if seen else None
     cal = UNCALIBRATED if args.uncalibrated else load_calibration(s.data_dir(args.layout) / "calibration.json", expect)
     arm = Arm(args.layout, args.orders, cal)
     got, want = coverage(recs, set(rows), args.layout)

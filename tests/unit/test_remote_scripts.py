@@ -142,7 +142,6 @@ def test_start_leaves_a_running_session_alone(tmp_path):
 PROFILE = "qwen3.8-27b"
 IMAGE = "vllm/vllm-openai:v0.30.0@sha256:8a69ffad015f138d7170c4ddc429e230a3bc1c1719f67e14324749df200a4b90"
 URL, HOST, PORT = "ssh://root@203.0.113.7:41022", "root@203.0.113.7", "41022"
-SSH = ["ssh", "-p", PORT, "-o", "StrictHostKeyChecking=accept-new", "-o", "ServerAliveInterval=30"]
 BOX = "/workspace/jev-brain"
 # Stand-ins for the local side's network tools: refuse by default; FAKE_RSYNC (below) records calls.
 REFUSE = "#!/usr/bin/env bash\necho \"$0 must not run in unit tests\" >&2\nexit 99\n"
@@ -170,6 +169,12 @@ def local(repo: Path, name: str, *args: str, env: dict | None = None) -> subproc
     return subprocess.run(command, cwd=repo, env=env, capture_output=True, text=True, check=False)
 
 
+def ssh_options(repo: Path) -> list[str]:
+    known_hosts = repo / ".cache" / "remote-boxes" / PROFILE / "known_hosts"
+    return ["ssh", "-p", PORT, "-o", "StrictHostKeyChecking=accept-new", "-o", f"UserKnownHostsFile={known_hosts}",
+            "-o", "ServerAliveInterval=30"]
+
+
 def commands(stdout: str) -> list[list[str]]:
     return [shlex.split(line) for line in stdout.splitlines() if line.startswith(("ssh ", "rsync "))]
 
@@ -189,6 +194,26 @@ def test_rent_takes_a_disk_size(tmp_path):
     assert "--disk 400 " in out.stdout
 
 
+def fake_vastai(repo: Path, script: str) -> None:
+    (repo.parent / "bin" / "vastai").write_text(f"#!/usr/bin/env bash\n{script}\n")
+
+
+def test_rent_prints_the_new_instance_id(tmp_path):
+    repo = scratch_repo(tmp_path)
+    fake_vastai(repo, """echo '{"success": true, "new_contract": 4242}'""")
+    out = local(repo, "rent.sh", "12345", PROFILE)
+    assert out.returncode == 0, out.stderr
+    assert "rented instance 4242" in out.stdout and "vastai ssh-url 4242" in out.stdout
+
+
+@pytest.mark.parametrize("script", ["echo 'error: offer gone' >&2; exit 1", "echo nope", "echo '{\"success\": false}'"])
+def test_rent_reports_a_failed_rent_without_a_traceback(tmp_path, script):
+    repo = scratch_repo(tmp_path)
+    fake_vastai(repo, script)
+    out = local(repo, "rent.sh", "12345", PROFILE)
+    assert out.returncode != 0 and "Traceback" not in out.stderr and "rented" not in out.stdout
+
+
 @pytest.mark.parametrize("args", [["x", PROFILE], ["1", "nope"], ["1", PROFILE, "--disk"], ["1", PROFILE, "-x"]])
 def test_rent_rejects_bad_arguments(tmp_path, args):
     out = local(scratch_repo(tmp_path), "rent.sh", *args, "--dry-run")
@@ -203,18 +228,19 @@ def test_push_dry_run_prints_every_step(tmp_path):
     assert head.stdout.strip() in out.stdout
     install, code, data, profile, start = commands(out.stdout)
     for step in (install, profile, start):
-        assert step[:-1] == [*SSH, HOST]
+        assert step[:-1] == [*ssh_options(repo), HOST]
     assert "apt-get install -y -qq rsync tmux git" in install[-1]
     assert profile[-1] == f"mkdir -p {BOX}/.cache/remote && echo {PROFILE} > {BOX}/.cache/remote/profile"
-    assert start[-1] == f"cd {BOX} && setsid nohup bash scripts/remote/start.sh > /dev/null 2>&1 < /dev/null &"
+    assert start[-1] == f"cd {BOX} && setsid -f bash scripts/remote/start.sh > /dev/null 2>&1 < /dev/null"
     for step in (code, data):
-        assert step[step.index("-e") + 1] == shlex.join(SSH) and "--delete" not in step
+        assert step[step.index("-e") + 1] == shlex.join(ssh_options(repo)) and "--delete" not in step
     excludes = {arg.removeprefix("--exclude=") for arg in code if arg.startswith("--exclude=")}
     hidden = {".cache", ".venv", ".firecrawl", "secrets", ".superpowers", ".env", ".vscode"}
     assert hidden <= excludes and ".git" not in excludes
     assert code[-2:] == ["./", f"{HOST}:{BOX}/"]
     suite = [".cache/decision-index/rows-0.2.1.jsonl.gz", ".cache/decision-index/suite-0.2", ".cache/jevbench"]
     assert "--relative" in data and data[-4:] == [*suite, f"{HOST}:{BOX}/"]
+    assert (repo / ".cache" / "remote-boxes" / PROFILE).is_dir()
 
 
 def test_push_refuses_a_dirty_tree(tmp_path):
@@ -242,19 +268,19 @@ printf '%q ' "$@" >> "$FAKE_RSYNC"
 echo >> "$FAKE_RSYNC"
 (( $(wc -l < "$FAKE_RSYNC") == 1 )) && [[ -n ${FAIL_FIRST:-} ]] && exit 255
 dest=${!#}
-[[ $dest == *remote-boxes* ]] || exit 0
+[[ $dest == *remote-boxes* ]] || exit "${FAKE_EXIT:-0}"
 mkdir -p "$dest/logs" "$dest/state/qwen3.8-27b"
 printf 'one\ntwo\nthree\nfour\n' > "$dest/logs/queue.log"
-(( $(grep -c remote-boxes "$FAKE_RSYNC") >= 2 )) && touch "$dest/state/qwen3.8-27b/QUEUE_DONE"
-exit 0
+(( $(grep -c 'remote-boxes/qwen3.8-27b/ $' "$FAKE_RSYNC") >= 2 )) && touch "$dest/state/qwen3.8-27b/QUEUE_DONE"
+exit "${FAKE_EXIT:-0}"
 """
 
 
-def pull(tmp_path, *args: str, fail_first: bool = False) -> tuple[subprocess.CompletedProcess, list[list[str]], Path]:
+def pull(tmp_path, *args: str, fail_first: bool = False, exit_code: int = 0) -> tuple[subprocess.CompletedProcess, list[list[str]], Path]:
     repo = scratch_repo(tmp_path)
     (tmp_path / "bin" / "rsync").write_text(FAKE_RSYNC)
     calls = tmp_path / "rsync-calls"
-    env = {"FAKE_RSYNC": str(calls)} | ({"FAIL_FIRST": "1"} if fail_first else {})
+    env = {"FAKE_RSYNC": str(calls), "FAKE_EXIT": str(exit_code)} | ({"FAIL_FIRST": "1"} if fail_first else {})
     out = local(repo, "pull.sh", URL, PROFILE, *args, env=env)
     return out, [shlex.split(line) for line in calls.read_text().splitlines()], repo
 
@@ -272,9 +298,16 @@ def test_pull_copies_results_runs_and_box_state_without_deleting(tmp_path):
     assert calls[3][-5:] == [*(f"{remote}/{name}" for name in names), f".cache/remote-boxes/{PROFILE}/"]
     assert len(calls) == 4
     for call in calls:
-        assert call[call.index("-e") + 1] == shlex.join(SSH) and "--delete" not in call
+        assert call[call.index("-e") + 1] == shlex.join(ssh_options(repo)) and "--delete" not in call
+    assert all("--update" in call for call in calls[:3]) and "--update" not in calls[3]
     assert out.stdout.splitlines()[-3:] == ["two", "three", "four"]
     assert (repo / "docs" / "results" / PROFILE).is_dir()
+
+
+@pytest.mark.parametrize("code, ok", [(24, True), (23, False)])
+def test_pull_tolerates_only_vanished_files(tmp_path, code, ok):
+    out, calls, _ = pull(tmp_path, exit_code=code)
+    assert (out.returncode == 0) == ok and len(calls) == (4 if ok else 1)
 
 
 def test_pull_loop_survives_a_down_box_and_stops_after_a_pass_past_queue_done(tmp_path):

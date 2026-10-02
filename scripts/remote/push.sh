@@ -14,7 +14,10 @@ esac
 [[ $1 =~ ^ssh://root@([^:/]+):([0-9]+)/?$ ]] || usage
 box=root@${BASH_REMATCH[1]} port=${BASH_REMATCH[2]} profile=$2
 [[ -f scripts/remote/jobs/$profile.txt ]] || { echo "unknown profile $profile" >&2; usage; }
-ssh=(ssh -p "$port" -o StrictHostKeyChecking=accept-new -o ServerAliveInterval=30)
+# vast reuses HOST:PORT across boxes, so each profile keeps its own known_hosts.
+mkdir -p ".cache/remote-boxes/$profile"
+ssh=(ssh -p "$port" -o StrictHostKeyChecking=accept-new
+  -o "UserKnownHostsFile=$PWD/.cache/remote-boxes/$profile/known_hosts" -o ServerAliveInterval=30)
 rsync=(rsync -az --no-owner --no-group -e "${ssh[*]}")
 run() { if (( dry )); then printf '%q ' "$@"; echo; else "$@"; fi; }
 
@@ -33,8 +36,8 @@ run "${rsync[@]}" --exclude={.cache,.venv,.firecrawl,secrets,.superpowers,.env,.
 run "${rsync[@]}" --relative .cache/decision-index/rows-0.2.1.jsonl.gz .cache/decision-index/suite-0.2 \
   .cache/jevbench "$box:$box_repo/"
 run "${ssh[@]}" "$box" "mkdir -p $box_repo/.cache/remote && echo $profile > $box_repo/.cache/remote/profile"
-# Detached: start.sh holds a lock and may bootstrap for a long time.
-run "${ssh[@]}" "$box" "cd $box_repo && setsid nohup bash scripts/remote/start.sh > /dev/null 2>&1 < /dev/null &"
+# Detached (setsid -f) so ssh returns: start.sh holds a lock and may bootstrap for a long time.
+run "${ssh[@]}" "$box" "cd $box_repo && setsid -f bash scripts/remote/start.sh > /dev/null 2>&1 < /dev/null"
 (( dry )) && exit 0
 
 echo "started. follow: ${ssh[*]} $box tail -f $box_repo/.cache/remote/logs/start.log"

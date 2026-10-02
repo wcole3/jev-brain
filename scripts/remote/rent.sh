@@ -26,11 +26,15 @@ if (( dry )); then
   echo
   exit 0
 fi
-id=$("${command[@]}" | python3 -c '
+reply=$("${command[@]}") || { echo "vastai create instance failed (exit $?): $reply" >&2; exit 1; }
+id=$(python3 -c '
 import json, sys
-reply = json.load(sys.stdin)
-if not reply.get("success"):
-    sys.exit(f"vastai refused: {reply}")
-print(reply["new_contract"])')
+try:
+    reply = json.loads(sys.argv[1])
+except ValueError:
+    reply = None
+if not (isinstance(reply, dict) and reply.get("success")):
+    sys.exit(f"vastai did not rent: {sys.argv[1]}")
+print(reply["new_contract"])' "$reply")
 echo "rented instance $id for $profile"
 echo "when it is running: vastai ssh-url $id, then scripts/remote/push.sh SSH_URL $profile"

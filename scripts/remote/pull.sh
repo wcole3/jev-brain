@@ -16,17 +16,22 @@ box=root@${BASH_REMATCH[1]} port=${BASH_REMATCH[2]} profile=$2
 [[ -f scripts/remote/jobs/$profile.txt ]] || { echo "unknown profile $profile" >&2; usage; }
 mirror=.cache/remote-boxes/$profile
 queue_done=$mirror/state/$profile/QUEUE_DONE
-rsync=(rsync -az --ignore-missing-args -e "ssh -p $port -o StrictHostKeyChecking=accept-new -o ServerAliveInterval=30")
+ssh=(ssh -p "$port" -o StrictHostKeyChecking=accept-new -o "UserKnownHostsFile=$PWD/$mirror/known_hosts"
+  -o ServerAliveInterval=30)
+
+# fetch RSYNC_ARGS...: exit 24 (files vanished mid-copy while jobs write) is fine; the next pass gets them.
+fetch() { rsync -az --ignore-missing-args -e "${ssh[*]}" "$@" || (( $? == 24 )); }
 
 # Box state comes last, so the pass after the one that brings QUEUE_DONE has every result.
 pull_once() {
   local dir
   mkdir -p {docs/results,.cache/collect,.cache/index-runs}/"$profile" "$mirror"
+  # --update: a local file newer than the box's copy (an edit here) is kept.
   for dir in docs/results .cache/collect .cache/index-runs; do
-    "${rsync[@]}" "$box:$box_repo/$dir/$profile" "$dir/" || return
+    fetch --update "$box:$box_repo/$dir/$profile" "$dir/" || return
   done
   rm -f "$queue_done"  # the box removes it when its queue restarts
-  "${rsync[@]}" "$box:$box_repo/.cache/remote/"{logs,state,telemetry.csv,run_tag} "$mirror/" || return
+  fetch "$box:$box_repo/.cache/remote/"{logs,state,telemetry.csv,run_tag} "$mirror/" || return
   echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) pulled $profile; queue.log ends:"
   tail -n 3 "$mirror/logs/queue.log" 2> /dev/null || true
 }

@@ -274,9 +274,10 @@ uv run python scripts/build_labels.py --profile qwen3.6-27b   # repeat per profi
 ```
 
 A layout change also invalidates its calibration
-(`data/<profile>/<layout>/calibration.json`; the gateway refuses the stale file):
-rerun `uv run python scripts/calibrate.py --profile <profile>` (needs a fresh collect of the
-calib and eval splits).
+(`data/<profile>/<layout>/calibration.json`); the gateway refuses the stale file and names
+the changed field. Move the stale file aside (the gateway then runs that layout at T = 1),
+recollect the calib and eval splits (`collect.py` ignores calibration files), then rerun
+`uv run python scripts/calibrate.py --profile <profile>`.
 
 ## Repository map
 
@@ -286,7 +287,7 @@ calib and eval splits).
 | `prompts/` | Prompt layouts (`decider_chat` default, `header`, `question_first`) |
 | `profiles/` | One env file per model |
 | `data/` | Label tables and calibration per profile/layout; benchmark corpus |
-| `scripts/` | `fetch_model.py`, `build_labels.py`, `bench.py` (+ `bench_data.py`, `bench_report.py`), `decider_fixtures.py`; phase 2: `index_suite.py`, `splits.py`, `collect.py`, `calibrate.py` (+ `fit.py`), `evaluate.py`, `latency.py` (+ helpers) |
+| `scripts/` | `fetch_model.py`, `build_labels.py`, `bench.py` (+ `bench_data.py`, `bench_report.py`), `decider_fixtures.py`; phase 2: `index_suite.py`, `splits.py`, `collect.py`, `calibrate.py` (+ `fit.py`, `calibrate_report.py`), `evaluate.py`, `latency.py` (+ helpers) |
 | `data/splits/` | Committed calibration, evaluation, index-dev and latency-v1 row ids |
 | `tests/` | `unit/`, `parity/`, `live/` |
 | `docker/`, `compose.yaml` | vLLM entrypoint, gateway image, stack definition |

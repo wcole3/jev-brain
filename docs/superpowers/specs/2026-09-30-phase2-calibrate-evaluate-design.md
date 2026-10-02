@@ -146,16 +146,27 @@ and calls `read_rows()` for each row.
 - **Shipping b:** b ≠ 0 ships only if a paired bootstrap (95% CI, 2,000 resamples) on the
   **eval** split shows an accuracy or ECE gain, without a loss in the other beyond its CI.
   Otherwise b = 0.
-- **File (v2):**
+- **Shipping T (owner's per-type gate, 2026-10-02):** per type, the fitted T ships if the
+  eval split's paired bootstrap of the ECE change vs T = 1 has CI low ≤ 0. Else the pooled T
+  (one T fitted on all types, b = 0) ships under the same test, else T = 1.0. A T can ship
+  with a worse point ECE when the CI includes 0 (qwen3.6 `decider_chat` score).
+- **File (v2):** `format` is the schema marker the gateway checks (v1 has none and is
+  refused). `version`, `date` and `comments` are informational only: refit count, UTC time
+  of the latest fit, and one history entry per fit.
 
   ```json
-  {"version": 2,
+  {"format": 2,
+   "version": 3,
+   "date": "2026-10-02T15:10:00Z",
+   "comments": [{"version": 1, "date": "…", "text": "…"}],
    "stamp": {"tokenizer_sha256": "…", "layout_sha256": "…", "hf_revision": "…",
              "prefix_pad": "front", "prefix_block": 784},
    "types": {"choice": {"T": 1.31}, "score": {"T": 1.62}, "noul": {"T": 0.94, "b": 0.0}},
    "fit": {"split": "data/splits/calib.json", "split_sha256": "…", "orders": "identity",
            "n": {"choice": 0, "score": 0, "noul": 0},
-           "nll": {"before": {}, "after": {}}, "ece": {"before": {}, "after": {}}}}
+           "calib": {"nll": {"before": {}, "after": {}}, "ece": {"before": {}, "after": {}}},
+           "eval": {"nll": {"before": {}, "after": {}}, "ece": {"before": {}, "after": {}}},
+           "b_decision": {}, "t_decision": {}}}
   ```
 
 - **Gateway:**
@@ -247,7 +258,7 @@ tables and refitting.
 | Milestone | Deliverables | Gate |
 |---|---|---|
 | **M1 evaluate** | `index_suite`, `datasets`, `splits`, `metrics`, the `read_rows`/`finish` seam, `collect`, `evaluate`, `latency`; a baseline full Index and latency run per profile; the decision length-cap comparison | parity gate passes; offline matches live on the spot check |
-| **M2 calibrate** | `calibrate.py`, the v2 `calibration.json` with the gateway stamp check and noul offset, fits for 3 profiles × 3 layouts | eval-split ECE no worse than T = 1 for every type; Index ECE reported as a transfer result |
+| **M2 calibrate** | `calibrate.py`, the v2 `calibration.json` with the gateway stamp check and noul offset, fits for 3 profiles × 3 layouts | owner's per-type gate (fitted T ships if its eval ECE-change CI low ≤ 0 vs T = 1, else pooled T on the same test, else 1.0; a T may ship with worse point ECE when the CI includes 0); Index ECE reported as a transfer result |
 | **M3 experiments** | order and layout reports with recommendations, a final full Index per profile, `phase2_report.py`, the README table | DS-002's verify criteria |
 
 ### Long runs (each needs the owner's explicit ok)

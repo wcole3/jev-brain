@@ -1,0 +1,11 @@
+{
+"meta": {
+"profile": "qwen3.8-27b",
+"cap": 32768,
+"max_model_len": 32768,
+"near": 0.5,
+"baseline": null
+},
+"ids": [],
+"longest": {}
+}

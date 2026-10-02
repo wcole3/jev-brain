@@ -531,6 +531,7 @@ def pull(tmp_path, *args: str, fail_first: bool = False, exit_code: int = 0,
     """pull.sh against a stub rsync; `box` maps paths under the box's .cache/remote to their text."""
     repo = scratch_repo(tmp_path)
     (tmp_path / "bin" / "rsync").write_text(FAKE_RSYNC)
+    (tmp_path / "bin" / "ssh").write_text("#!/usr/bin/env bash\necho \"$@\" >> \"$FAKE_RSYNC.ssh\"\n")
     remote = tmp_path / "box-remote"
     for path, text in ({"logs/queue.log": QUEUE_LOG} | (box or {})).items():
         (remote / path).parent.mkdir(parents=True, exist_ok=True)
@@ -622,3 +623,9 @@ def test_push_offers_the_vast_key_when_present(tmp_path):
     out = local(repo, "push.sh", URL, PROFILE, "--dry-run", env={"JEV_SSH_KEY": str(key)})
     assert out.returncode == 0, out.stderr
     assert all(f"-i {key} -o IdentitiesOnly=yes" in " ".join(c) for c in commands(out.stdout))
+
+
+def test_pull_makes_the_box_dirs_before_fetching(tmp_path):
+    out, _, _ = pull(tmp_path)
+    ssh_calls = (tmp_path / "rsync-calls.ssh").read_text()
+    assert out.returncode == 0 and "mkdir -p" in ssh_calls and f"{BOX}/.cache/collect/{PROFILE}" in ssh_calls

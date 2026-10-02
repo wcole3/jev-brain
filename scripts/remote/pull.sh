@@ -30,6 +30,8 @@ fetch() { rsync -az --ignore-missing-args -e "${ssh[*]}" "$@" || (( $? == 24 ));
 pull_once() {
   local dir
   mkdir -p {docs/results,.cache/collect,.cache/index-runs}/"$profile" "$mirror"
+  # rsync fails on a missing parent dir (collect/ appears only when collect starts), so make them first.
+  "${ssh[@]}" "$box" "mkdir -p $box_repo/docs/results/$profile $box_repo/.cache/collect/$profile $box_repo/.cache/index-runs/$profile" || return
   # --update: a local file newer than the box's copy (an edit here) is kept.
   for dir in docs/results .cache/collect .cache/index-runs; do
     fetch --update "$box:$box_repo/$dir/$profile" "$dir/" || return

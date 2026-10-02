@@ -9,6 +9,7 @@ profile=$(basename "$jobfile" .txt)
 state=$root/state/$profile
 logs=$root/logs/$profile
 mkdir -p "$state" "$logs"
+rm -f "$state/QUEUE_DONE"  # a rerun (e.g. after a reboot) must not look finished to pull.sh --loop
 
 note() { echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) == $*" | tee -a "$root/logs/queue.log"; }
 

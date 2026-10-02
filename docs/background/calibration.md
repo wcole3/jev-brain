@@ -115,9 +115,10 @@ Eval split, before (T = 1, b = 0) → after, from the report (each file's `fit.e
   DecisionBench), `identity` order. The eval split judges; Index rows are never used.
   Calib metrics sit in each file's `fit.calib`, eval metrics in `fit.eval`.
 - **Per-type ECE gate:** a fitted T ships only if eval ECE is no worse than at T = 1 beyond
-  its bootstrap CI. Else one pooled T (fitted on all types together) is tried, then T = 1.
+  its bootstrap CI. Else, for noul with b shipping, its b = 0 T is tried (then b is dropped),
+  then one pooled T (fitted on all types together), then T = 1.
   Each file's `fit.t_decision` records, per type, the fitted and pooled T with both ECE
-  changes and the outcome. Pooled T: 1.927 `decider_chat`, 1.958 `header`, 1.903
+  changes (plus the b = 0 one, when tried) and the outcome. Pooled T: 1.927 `decider_chat`, 1.958 `header`, 1.903
   `question_first`.
 - **NLL falls for every type and layout.** Accuracy is unchanged except `question_first`
   noul, where b ships (+1.65 points, 95% CI +0.30 to +3.00).

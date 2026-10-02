@@ -90,14 +90,23 @@ def ece_change(questions, q_type: str, T: float, b: float = 0.0) -> list[float]:
 
 
 def gate_temperatures(fit: dict, held: dict) -> dict:
-    """Per type: ship the fitted T unless eval ECE worsens beyond its CI; else the pooled T; else 1.0."""
+    """Per type: ship the fitted T unless eval ECE worsens beyond its CI; else pooled T, else 1.0.
+
+    Noul with b != 0 tries its b = 0 T ("b0") before the pooled T. Any source but "fitted" drops b.
+    """
     gate, pooled = {}, fit["pooled"]["T"]
     for t in TYPES:
         fitted, b = fit[t]["T"], fit["noul"]["b"] if t == "noul" else 0.0
         d = {"fitted_T": fitted, "pooled_T": pooled, "shipped_T": fitted, "source": "fitted",
              "ece": ece_change(held[t], t, fitted, b), "ece_pooled": ece_change(held[t], t, pooled)}
         if d["ece"][1] > 0:
-            d["shipped_T"], d["source"] = (pooled, "pooled") if d["ece_pooled"][1] <= 0 else (1.0, "none")
+            candidates = [("pooled", pooled, d["ece_pooled"])]
+            if b != 0:
+                b0 = fit["noul_b0"]["T"]
+                d["ece_b0"] = ece_change(held[t], t, b0)
+                candidates.insert(0, ("b0", b0, d["ece_b0"]))
+            passing = [(source, T) for source, T, ece in candidates if ece[1] <= 0]
+            d["source"], d["shipped_T"] = passing[0] if passing else ("none", 1.0)
         gate[t] = d
     return gate
 

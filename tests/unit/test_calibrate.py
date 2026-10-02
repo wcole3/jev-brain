@@ -207,3 +207,34 @@ def test_dry_run_writes_nothing_and_prints_the_report(tmp_path, monkeypatch, cap
     monkeypatch.setattr(calibrate, "calibrate_layout", lambda args, s, layout, recs, rows: [f"## {layout}"])
     calibrate.main(["--profile", "qwen3.6-27b", "--layouts", LAYOUT, "--dry-run"])
     assert list(tmp_path.iterdir()) == [] and f"## {LAYOUT}" in capsys.readouterr().out
+
+
+def noul_gate(b0_T, pooled_T):
+    held = {"choice": [], "score": [], "noul": calibrated_choice()}
+    return calibrate.gate_temperatures(gate_fit(1.0, pooled_T, (20.0, 0.5)) | {"noul_b0": {"T": b0_T}}, held)
+
+
+def test_gate_noul_tries_the_b0_temperature_before_pooled():
+    g = noul_gate(1.05, 1.05)["noul"]
+    assert g["source"] == "b0" and g["shipped_T"] == 1.05 and g["ece"][1] > 0 and len(g["ece_b0"]) == 3
+
+
+def test_gate_noul_falls_to_pooled_when_b0_fails_too():
+    g = noul_gate(20.0, 1.05)["noul"]
+    assert g["source"] == "pooled" and g["shipped_T"] == 1.05 and g["ece_b0"][1] > 0
+
+
+def test_gate_noul_without_b_makes_no_b0_attempt():
+    held = {"choice": [], "score": [], "noul": calibrated_choice()}
+    g = calibrate.gate_temperatures(gate_fit(1.0, 1.05, (20.0, 0.0)), held)["noul"]
+    assert g["source"] == "pooled" and "ece_b0" not in g
+
+
+def test_b0_source_writes_b_as_zero(monkeypatch):
+    held = {"choice": [], "score": [], "noul": calibrated_choice()}
+    fit = gate_fit(1.0, 15.0, (20.0, 0.5)) | {"noul_b0": {"T": 1.05}}
+    monkeypatch.setattr(calibrate, "fit_layout", lambda calib: fit)
+    monkeypatch.setattr(calibrate, "ship_offset", lambda *a: (True, {"acc": (0, 0, 0), "ece": (0, 0, 0)}))
+    r = calibrate.fit_and_judge(LAYOUT, held, held)
+    assert r.gate["noul"]["source"] == "b0" and r.fit["noul"] == {"T": 1.05, "b": 0.0} and r.ship is False
+    assert "b = 0 " in calibrate_report.gate_text(r.gate["noul"])

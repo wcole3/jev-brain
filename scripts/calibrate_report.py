@@ -36,7 +36,8 @@ def ci(x: list[float]) -> str:
 
 
 def gate_text(g: dict) -> str:
-    return f"fitted {ci(g['ece'])}; pooled {ci(g['ece_pooled'])} → {g['source']}"
+    b0 = f"; b = 0 {ci(g['ece_b0'])}" if "ece_b0" in g else ""
+    return f"fitted {ci(g['ece'])}{b0}; pooled {ci(g['ece_pooled'])} → {g['source']}"
 
 
 def type_row(r: LayoutResult, t: str) -> str:

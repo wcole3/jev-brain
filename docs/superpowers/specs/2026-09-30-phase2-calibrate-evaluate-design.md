@@ -147,8 +147,8 @@ and calls `read_rows()` for each row.
   **eval** split shows an accuracy or ECE gain, without a loss in the other beyond its CI.
   Otherwise b = 0.
 - **Shipping T (owner's per-type gate, 2026-10-02):** per type, the fitted T ships if the
-  eval split's paired bootstrap of the ECE change vs T = 1 has CI low ≤ 0. Else the pooled T
-  (one T fitted on all types, b = 0) ships under the same test, else T = 1.0. A T can ship
+  eval split's paired bootstrap of the ECE change vs T = 1 has CI low ≤ 0. Else, for noul with b shipping, the noul T fitted with b = 0 (b dropped) ships under the same
+  test; else the pooled T (one T fitted on all types, b = 0); else T = 1.0. A T can ship
   with a worse point ECE when the CI includes 0 (qwen3.6 `decider_chat` score).
 - **File (v2):** `format` is the schema marker the gateway checks (v1 has none and is
   refused). `version`, `date` and `comments` are informational only: refit count, UTC time
@@ -258,7 +258,7 @@ tables and refitting.
 | Milestone | Deliverables | Gate |
 |---|---|---|
 | **M1 evaluate** | `index_suite`, `datasets`, `splits`, `metrics`, the `read_rows`/`finish` seam, `collect`, `evaluate`, `latency`; a baseline full Index and latency run per profile; the decision length-cap comparison | parity gate passes; offline matches live on the spot check |
-| **M2 calibrate** | `calibrate.py`, the v2 `calibration.json` with the gateway stamp check and noul offset, fits for 3 profiles × 3 layouts | owner's per-type gate (fitted T ships if its eval ECE-change CI low ≤ 0 vs T = 1, else pooled T on the same test, else 1.0; a T may ship with worse point ECE when the CI includes 0); Index ECE reported as a transfer result |
+| **M2 calibrate** | `calibrate.py`, the v2 `calibration.json` with the gateway stamp check and noul offset, fits for 3 profiles × 3 layouts | owner's per-type gate (fitted T ships if its eval ECE-change CI low ≤ 0 vs T = 1, else (noul with b only) its b = 0 T, else pooled T, each on the same test, else 1.0; a T may ship with worse point ECE when the CI includes 0); Index ECE reported as a transfer result |
 | **M3 experiments** | order and layout reports with recommendations, a final full Index per profile, `phase2_report.py`, the README table | DS-002's verify criteria |
 
 ### Long runs (each needs the owner's explicit ok)

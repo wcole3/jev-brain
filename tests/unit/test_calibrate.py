@@ -55,8 +55,8 @@ FIT = {"choice": {"T": 1.2}, "score": {"T": 1.4}, "noul": {"T": 0.9, "b": 0.0}}
 
 
 def write(path, previous, comment, date):
-    data = calibrate.calibration_file(FIT, STAMP, "identity", {"choice": 1}, {"nll": {}, "ece": {}}, {"ship": False},
-                                      previous, comment, date)
+    data = calibrate.calibration_file(FIT, STAMP, "identity", {"choice": 1}, {"nll": {}, "ece": {}},
+                                      {"b_decision": {"ship": False}, "t_decision": {}}, previous, comment, date)
     path.write_text(json.dumps(data))
     return data
 
@@ -125,9 +125,46 @@ def test_offset_ships_when_it_fixes_a_bias_and_not_when_reversed():
 def test_unshipped_offset_falls_back_to_the_b0_temperature_and_before_is_raw(monkeypatch):
     qs = biased_noul()
     monkeypatch.setattr(calibrate, "ship_offset", lambda *a: (False, {"acc": (0, 0, 0), "ece": (0, 0, 0)}))
+    monkeypatch.setattr(calibrate, "gate_temperatures", lambda fit, held: {t: {"source": "fitted"} for t in calibrate.TYPES})
     calib = {"choice": [], "score": [], "noul": qs}
     r = calibrate.fit_and_judge(LAYOUT, calib, calib)
     b0 = calibrate.fit_layout(calib)["noul_b0"]["T"]
     assert r.fit["noul"] == {"T": b0, "b": 0.0} and r.b_fitted > 0.3
     raw = calibrate.summarize(qs, "noul", Calibration({"choice": 1, "score": 1, "noul": 1.0}))
     assert r.before["eval"]["noul"]["nll"] == raw["nll"] and r.after["eval"]["noul"]["nll"] != raw["nll"]
+
+
+def calibrated_choice(n=200):
+    """Two options, logit gap 1 (p = 0.73 at T = 1), right 73% of the time: T = 1 is already calibrated."""
+    return [([([0.0, -1.0], [0, 1])], 0 if i % 100 < 73 else 1) for i in range(n)]
+
+
+def gate_fit(choice_T, pooled_T, noul=(1.0, 0.0)):
+    return {"choice": {"T": choice_T}, "score": {"T": 1.0}, "noul": {"T": noul[0], "b": noul[1]},
+            "pooled": {"T": pooled_T}}
+
+
+def test_gate_falls_back_to_pooled_when_the_fitted_T_worsens_eval_ece():
+    held = {"choice": calibrated_choice(), "score": [], "noul": []}
+    gate = calibrate.gate_temperatures(gate_fit(20.0, 1.05), held)
+    assert gate["choice"]["source"] == "pooled" and gate["choice"]["shipped_T"] == 1.05
+    assert gate["choice"]["fitted_T"] == 20.0 and gate["choice"]["ece"][1] > 0
+    assert gate["score"] == {"fitted_T": 1.0, "shipped_T": 1.0, "source": "fitted", "ece": [0.0, 0.0, 0.0]}
+
+
+def test_gate_uses_temperature_one_when_pooled_fails_too():
+    held = {"choice": calibrated_choice(), "score": [], "noul": []}
+    gate = calibrate.gate_temperatures(gate_fit(20.0, 15.0), held)
+    assert gate["choice"]["source"] == "none" and gate["choice"]["shipped_T"] == 1.0
+    assert gate["choice"]["ece_pooled"][1] > 0
+
+
+def test_gated_noul_drops_its_offset_and_the_decision_is_recorded(monkeypatch):
+    noul = [([([0.0, -1.0], [0, 1])], 0 if i % 100 < 73 else 1) for i in range(200)]
+    held = {"choice": [], "score": [], "noul": noul}
+    monkeypatch.setattr(calibrate, "fit_layout", lambda calib: gate_fit(1.0, 15.0, (20.0, 0.5)) | {"noul_b0": {"T": 20.0}})
+    monkeypatch.setattr(calibrate, "ship_offset", lambda *a: (True, {"acc": (0, 0, 0), "ece": (0, 0, 0)}))
+    r = calibrate.fit_and_judge(LAYOUT, held, held)
+    assert r.fit["noul"] == {"T": 1.0, "b": 0.0} and r.ship is False
+    assert r.gate["noul"]["source"] == "none" and r.gate["noul"]["fitted_T"] == 20.0
+    assert r.after["eval"]["noul"]["nll"] == r.before["eval"]["noul"]["nll"]

@@ -4,6 +4,7 @@ usage:
   uv run python scripts/evaluate.py offline --profile P --split S [--layout L] [--orders O] [--uncalibrated]
       [--allow-partial]
   uv run python scripts/evaluate.py index --profile P [--gateway URL] [--shards 8] [--ids FILE] [--chat-probe]
+      [--run-dir DIR] [--strict]
   uv run python scripts/evaluate.py lengths --profile P [--near 0.5] [--baseline RUN_DIR]
   uv run python scripts/evaluate.py replace --profile P --base RUN_DIR --override RUN_DIR
 Index runs and collect are long runs: get the owner's ok first.
@@ -152,6 +153,15 @@ def unjudged_reason(counts: dict, scores: dict, reason: str | None = None) -> st
     return "; ".join(reasons) or None
 
 
+def strict_failure(results: list[dict], scores: dict, subset: bool) -> str | None:
+    """Why --strict fails a run, or None: error rows, or a full-suite run the harness calls incomplete."""
+    errors = sum(r["status"] == "error" for r in results)
+    reasons = [f"{errors} error rows"] if errors else []
+    if not subset and not scores["complete"]:
+        reasons.append(f"run incomplete: {scores['completed']} rows")
+    return "; ".join(reasons) or None
+
+
 def index_summary(profile: str, scores: dict, merged: Path, extra: list[str], unjudged: str | None = None) -> str:
     """Subset, partial and error-holed runs get no parity verdict: their Index is not comparable to the board."""
     results = load(merged)
@@ -217,6 +227,8 @@ async def cmd_index(args) -> None:
     body = index_summary(args.profile, scores, run / "merged", run_notes(outcome), "subset run" if args.ids else None)
     (out / "summary.md").write_text(f"# {args.profile} Decision Index {EDITION}\n\n{provenance(meta)}\n{body}")
     print(out / "summary.md")
+    if args.strict and (failure := strict_failure(load(run / "merged"), scores, bool(args.ids))):
+        raise SystemExit(f"--strict: {failure}; summary written, resume with --run-dir {run}")
 
 
 def context_refusals(run: Path) -> set[str]:
@@ -293,6 +305,7 @@ def parse_args(argv=None) -> argparse.Namespace:
     i.add_argument("--ids", help="JSON file with an 'ids' list: run only those rows")
     i.add_argument("--run-dir", help="resume this run directory")
     i.add_argument("--chat-probe", action="store_true")
+    i.add_argument("--strict", action="store_true", help="exit non-zero on error rows or an incomplete full run")
     n = sub.add_parser("lengths")
     n.add_argument("--profile", required=True)
     n.add_argument("--near", type=float, default=0.5, help="measure real tokens for rows with proxy >= near * cap")

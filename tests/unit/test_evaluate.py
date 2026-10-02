@@ -60,3 +60,51 @@ def test_offline_refuses_short_coverage_unless_allowed():
     evaluate.check_coverage(1, 2, "header", allow_partial=True)
     evaluate.check_coverage(2, 2, "header", allow_partial=False)
     assert evaluate.parse_args(["offline", "--profile", "p", "--split", "eval", "--allow-partial"]).allow_partial
+
+
+def test_strict_fails_on_error_rows_and_on_an_incomplete_full_run():
+    ok, error = {"status": "ok"}, {"status": "error"}
+    assert evaluate.strict_failure([ok], COMPLETE, subset=False) is None
+    assert evaluate.strict_failure([ok, error, error], COMPLETE, subset=False) == "2 error rows"
+    incomplete = {"complete": False, "completed": 9}
+    assert evaluate.strict_failure([ok], incomplete, subset=False) == "run incomplete: 9 rows"
+    assert evaluate.strict_failure([ok], incomplete, subset=True) is None
+
+
+@pytest.fixture
+def index_run_here(tmp_path, monkeypatch):
+    """cmd_index with the gateway, shards, merge and harness scoring stubbed; rows go in run/merged/results.jsonl."""
+    real_client = httpx.AsyncClient
+    health = {"profile": "p", "served_model": "m"}
+    monkeypatch.setattr(evaluate.httpx, "AsyncClient", lambda **kw: real_client(
+        transport=httpx.MockTransport(lambda r: httpx.Response(200, json=health)), **kw))
+
+    async def run_index(args, run, health):
+        return {"codes": [0], "seconds": 60, "vllm": [], "idle": [], "busy": []}
+
+    monkeypatch.setattr(evaluate, "ROOT", tmp_path)
+    monkeypatch.setattr(evaluate, "run_index", run_index)
+    monkeypatch.setattr(evaluate.index_run, "merge", lambda shards, out: None)
+    monkeypatch.setattr(evaluate, "score", lambda merged: {"complete": True, "completed": 2})
+    monkeypatch.setattr(evaluate, "index_summary", lambda *a: "body\n")
+    monkeypatch.setattr(evaluate, "git_revision", lambda: "abc")
+    monkeypatch.setattr(evaluate.host_info, "summary", lambda: "host")
+    run = tmp_path / "run"
+    (run / "merged").mkdir(parents=True)
+    return run
+
+
+@pytest.mark.parametrize("statuses, strict, fails", [
+    (["ok", "ok"], True, False), (["ok", "error"], True, True), (["ok", "error"], False, False)])
+async def test_index_strict_exits_nonzero_after_writing_the_summary(index_run_here, statuses, strict, fails):
+    rows = "".join(f'{{"status": "{s}"}}\n' for s in statuses)
+    (index_run_here / "merged" / "results.jsonl").write_text(rows)
+    argv = ["index", "--profile", "p", "--run-dir", str(index_run_here), *(["--strict"] if strict else [])]
+    if fails:
+        with pytest.raises(SystemExit, match="1 error rows") as exit_:
+            await evaluate.cmd_index(evaluate.parse_args(argv))
+        assert exit_.value.code != 0
+    else:
+        await evaluate.cmd_index(evaluate.parse_args(argv))
+    summary = index_run_here.parent / "docs" / "results" / "p" / "run-index" / "summary.md"
+    assert summary.read_text().endswith("body\n")

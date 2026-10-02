@@ -11,7 +11,7 @@ scripts/remote/rent.sh OFFER_ID qwen3.6-27b                 # prints the instanc
 vastai ssh-url ID                                           # once it is running
 scripts/remote/push.sh ssh://root@HOST:PORT qwen3.6-27b     # code, data, start the queue
 scripts/remote/pull.sh ssh://root@HOST:PORT qwen3.6-27b --loop 1800   # until the queue is done
-git add docs/results/qwen3.6-27b ...                        # commit results (explicit paths)
+git add docs/results/qwen3.6-27b/<complete dirs>            # commit results (explicit paths)
 vastai destroy instance ID                                  # owner only, after the final pull
 ```
 
@@ -99,28 +99,43 @@ vastai ssh-url ID     # ssh://root@HOST:PORT
 ### 4. Push
 
 ```bash
-scripts/remote/push.sh ssh://root@HOST:PORT PROFILE [--dry-run]
+scripts/remote/push.sh ssh://root@HOST:PORT PROFILE [--restore] [--dry-run]
 ```
 
 - **Refuses a dirty tree**, so box and local run the same commit.
 - Installs rsync/tmux/git if missing, then rsyncs the repo to `/workspace/jev-brain`
-  (excluding `.cache .venv .firecrawl secrets .superpowers .env .vscode` and caches).
+  (excluding `.cache .venv .firecrawl .superpowers .env .vscode`, caches, and `secrets/`
+  except its tracked, empty `.gitkeep`).
+- **Checks the box tree**: `git status --porcelain` there must be empty, or push prints the
+  differences and stops before the queue starts. A difference would stamp every result
+  `-dirty`. It also adds the repo to root's git `safe.directory`.
 - Also pushes the suite export, so nothing is rebuilt on the box:
   `.cache/decision-index/rows-0.2.1.jsonl.gz`, `.cache/decision-index/suite-0.2`,
   `.cache/jevbench`.
+- `--restore` (a replacement box): see Recovery.
 - Writes `.cache/remote/profile`, then starts `start.sh` detached.
 - Needs the pushed files to exist locally. `--dry-run` prints every command.
 - Each profile keeps its own `known_hosts` in `.cache/remote-boxes/PROFILE/` (vast reuses
   HOST:PORT across boxes).
+- Re-pushing to a running box updates its files, but running jobs keep the code they started
+  with. Only later jobs run the new commit, so that box's results can mix commits.
 
 On the box, `start.sh` (safe to rerun and run at every boot):
 
-1. takes a lock and logs to `.cache/remote/logs/start.log`;
-2. writes the run tag `<UTC timestamp>-vast` once to `.cache/remote/run_tag`;
-3. runs `bootstrap.sh PROFILE` once (marker `.cache/remote/state/bootstrap.done`): apt tools,
+1. imports variables missing from its environment from `/proc/1/environ` (the image's Docker
+   ENV: CUDA paths, `VLLM_*`, `CONTAINER_ID`), so a start over ssh sees what onstart sees.
+   Variables already set are kept, `PATH` among them;
+2. takes a lock and logs to `.cache/remote/logs/start.log`;
+3. writes the run tag `<UTC timestamp>-vast` once to `.cache/remote/run_tag`;
+4. runs `bootstrap.sh PROFILE` once (marker `.cache/remote/state/bootstrap.done`): apt tools,
    `uv sync --frozen`, harness venv, `suite verify` (hash must match), `fetch_model.py`
-   (models are ungated; no token), `uv run pytest -q`;
-4. opens tmux session `jev` with window `telemetry` (`gpu_telemetry.py sample`, every 5 s, to
+   (models are ungated; no token), `uv run pytest -q`.
+   - The harness setup is redone from scratch when its venv cannot `import decision_index`
+     (an earlier setup was cut off).
+   - `fetch_model.py` and `pytest` get 3 tries, 60 s apart (transient HF errors; the download
+     resumes).
+   - A failed bootstrap writes `state/bootstrap.failed`; the next `start.sh` clears it;
+5. opens tmux session `jev` with window `telemetry` (`gpu_telemetry.py sample`, every 5 s, to
    `.cache/remote/telemetry.csv`) and window `queue` (`queue.sh jobs/PROFILE.txt`). It reopens
    whichever window is missing.
 
@@ -142,11 +157,23 @@ ssh -p PORT -L 9000:127.0.0.1:9000 root@HOST
 
 `push.sh` prints these commands with the right options.
 
+Each pull pass ends with one status line, for example
+`bootstrap: done; job: index; failed: none`:
+
+- `bootstrap`: `done`, `running` or `FAILED`. On `FAILED` the last 5 lines of `start.log` follow.
+- `job`: the job running now (the last one started in `queue.log` without a `done` or
+  `FAILED` line after it).
+- `failed`: jobs with a `NAME.failed` marker.
+
+Pull drops its local copies of `*.failed` and `bootstrap.done`/`bootstrap.failed` before
+each fetch, so a failure the box has since retried away stops showing.
+
 ### 6. Final pull
 
 `pull.sh ... --loop SECONDS` repeats until `QUEUE_DONE` appears in the pulled state, then
-does one more pass and exits. A failed pass (box down, rebooting) warns and retries. Without
-`--loop` it pulls once.
+does one more pass and exits. A failed pass (box down, rebooting) warns and retries. With a
+failure on the box it keeps looping and shows the failure every pass. Without `--loop` it
+pulls once and exits 3 when bootstrap or a job failed.
 
 What it copies (rsync, never deletes local files; `--update` keeps a newer local copy):
 
@@ -157,10 +184,13 @@ What it copies (rsync, never deletes local files; `--update` keeps a newer local
 | `.cache/index-runs/PROFILE` | same path |
 | `.cache/remote/{logs,state,telemetry.csv,run_tag}` | `.cache/remote-boxes/PROFILE/` |
 
+`logs/` holds `start.log` and `state/` holds `bootstrap.done`/`bootstrap.failed`.
+
 ### 7. Commit results
 
 Check `.cache/remote-boxes/PROFILE/logs/queue.log` ends with `PROFILE queue done` and no
 `FAILED`. Then commit `docs/results/PROFILE/...` by explicit path (never `git add -A`).
+Commit only complete result dirs: a `*-host` dir without `host.json` is a cut-off run.
 Results carry the repo commit and a host fingerprint. Jev's own per-row answers are not
 involved: nothing here trains on Jev API outputs.
 
@@ -184,67 +214,97 @@ vastai destroy instance ID
 - Collect runs with `--concurrency 4`.
 - Index runs use `--run-dir .cache/index-runs/PROFILE/$(cat .cache/remote/run_tag)`, so a
   restart resumes the same run.
-- Per job: log `.cache/remote/logs/PROFILE/NAME.log`, marker `.cache/remote/state/PROFILE/NAME.done`.
-  Done jobs are skipped on a rerun. A failure writes `NAME.failed` (exit code, time) and stops
-  the queue. All done: `QUEUE_DONE`. Overall log: `.cache/remote/logs/queue.log`.
+- Index runs use `--strict`: after writing the summary, the job fails if any row is an
+  `error` or the harness calls the run incomplete. So `index` is never marked done with
+  holes, and its retry (same run dir) reruns only those rows.
 - The `stack` job is `stack.sh up PROFILE`: vLLM (`docker/vllm-entrypoint.sh`, 1800 s to
   healthy) then the gateway, both on `127.0.0.1`, logs `logs/vllm.log` and `logs/gateway.log`.
   `stack.sh status` and `stack.sh down` also exist. A no-op when already healthy.
-- Retry after a failure: fix the cause on the box, then `bash scripts/remote/start.sh`; the
-  queue resumes at that job.
+- Every GPU job (host-compare, index, collect) starts with `stack.sh up PROFILE &&`. A vLLM
+  crash fails the job, and its retry brings the stack back.
+- Per job: log `.cache/remote/logs/PROFILE/NAME.log`, marker `.cache/remote/state/PROFILE/NAME.done`.
+  Done jobs are skipped on a rerun. Overall log: `.cache/remote/logs/queue.log`. All done:
+  `QUEUE_DONE`.
+- A failed job is retried once (`NAME retry (exit N)` in `queue.log`). Each try is appended
+  to the job log under a `== <UTC> attempt N` header. A second failure writes `NAME.failed`
+  (exit code, time) and stops the queue.
+- Retry after that: fix the cause on the box, then `bash scripts/remote/start.sh`; the queue
+  resumes at that job. start.sh prints nothing to the terminal, so follow it with
+  `tail -f .cache/remote/logs/start.log`.
 - The long-row study is not queued: commit `df845b6` found 0 Index rows reach the 32k decision
   cap.
 
 ## Recovery: a box dies
 
-Pulled data is the backup. Pull often (`--loop 1800`).
+Pulled data is the backup. Pull often (`--loop 1800`). If the box rebooted rather than
+died, it needs nothing: onstart reruns `start.sh`.
 
-1. Rent a new box (steps 1-3) and `push.sh` it. Bootstrap starts at once.
-2. While bootstrap runs, put the old run tag and runs back, using the same ssh options as
-   `push.sh`:
+1. Pull the old box once more if it still answers.
+2. Rent a new box (steps 1-3). If it comes back on the old HOST:PORT with a new host key, ssh
+   refuses it: delete `.cache/remote-boxes/PROFILE/known_hosts` first.
+3. Push with `--restore`:
 
    ```bash
-   P=PROFILE
-   S="ssh -p PORT -o UserKnownHostsFile=$PWD/.cache/remote-boxes/$P/known_hosts"
-   rsync -az --relative -e "$S" .cache/collect/$P .cache/index-runs/$P root@HOST:/workspace/jev-brain/
-   $S root@HOST "cp /dev/stdin /workspace/jev-brain/.cache/remote/run_tag" < .cache/remote-boxes/$P/run_tag
+   scripts/remote/push.sh ssh://root@HOST:PORT PROFILE --restore
    ```
 
-   Do this before the queue reaches `index` (after `stack` and `host-compare`), which reads
-   `run_tag` when it starts.
-3. Nothing else: the queue starts fresh on the new box (new host fingerprint, so
-   host-compare reruns there on purpose), and `index` and `collect` continue from the pushed
-   runs instead of starting over.
+   Before it writes the profile and starts the queue, it copies the pulled state back:
 
-Do not copy `state/*.done` markers back; they would skip jobs this box has not done. If the
-box rebooted rather than died, it needs nothing: onstart reruns `start.sh`.
+   | From here | To the box |
+   |---|---|
+   | `.cache/index-runs/PROFILE/` | same path |
+   | `.cache/collect/PROFILE/` | same path |
+   | `.cache/remote-boxes/PROFILE/run_tag` | `.cache/remote/run_tag` |
+   | `.cache/remote-boxes/PROFILE/state/PROFILE/{index,collect-*}.done` | `.cache/remote/state/PROFILE/` |
+
+   It refuses to start without a pulled `run_tag`.
+
+Then the queue runs on the new box:
+
+- `stack` and `host-compare` run again: their markers are never copied back, and the new host
+  has a new fingerprint.
+- A finished `index` stays done. Rerunning it would be a no-op resume that overwrites its good
+  `-index` summary.
+- An unfinished `index` or `collect` continues from the pushed runs.
+- An Index run spread over two boxes reports only the last session's wall time and host in
+  its summary.
 
 ## Security
 
 - No secrets on the box: no HF token (models are ungated, the suite export is pushed, not
   rebuilt), no vast API key, no GitHub credentials (code goes over rsync).
 - vLLM and the gateway bind `127.0.0.1`. Use `ssh -L`. Never pass `-p` to vast.
-- `push.sh` excludes `secrets/` and `.env`.
+- `push.sh` excludes `secrets/` (except its empty, tracked `.gitkeep`) and `.env`.
+- Optional check once the stack is up: `ssh -p PORT root@HOST ss -ltn` shows 8000 and 9000
+  on `127.0.0.1` only (`apt-get install -y iproute2` if `ss` is missing).
 - Destroying a box is an owner action, only after the final pull.
 
 ## Rehearse locally first
 
-Test harness changes before paying: run the exact image locally, mount a `git archive` copy
-of the repo at `/workspace/jev-brain` and the HF cache, write
-`.cache/remote/profile`, and run `start.sh`:
+Test harness changes before paying: run the exact image locally (compose stack down: they
+share the GPU), mount a clone of this commit at `/workspace/jev-brain` and the HF cache,
+write `.cache/remote/profile`, and run `start.sh`:
 
 ```bash
-mkdir -p /tmp/jev-box && git archive HEAD | tar -x -C /tmp/jev-box
+IMAGE=vllm/vllm-openai:v0.30.0@sha256:8a69ffad015f138d7170c4ddc429e230a3bc1c1719f67e14324749df200a4b90
+git clone -q . /tmp/jev-box && mkdir -p /tmp/jev-box/.cache/decision-index   # .git: results need the commit
+cp -r .cache/decision-index/{rows-0.2.1.jsonl.gz,suite-0.2} /tmp/jev-box/.cache/decision-index/
+cp -r .cache/jevbench /tmp/jev-box/.cache/                                    # the suite export, as push.sh sends it
 docker run --rm -it --gpus all \
   -v /tmp/jev-box:/workspace/jev-brain -v ~/.cache/huggingface:/root/.cache/huggingface \
-  --entrypoint bash vllm/vllm-openai:v0.30.0@sha256:8a69ffad015f138d7170c4ddc429e230a3bc1c1719f67e14324749df200a4b90
+  --entrypoint bash "$IMAGE"
 # inside:
+apt-get update -qq && apt-get install -y -qq git rsync tmux
+git config --global --add safe.directory /workspace/jev-brain                # files are yours, git runs as root
 cd /workspace/jev-brain && mkdir -p .cache/remote && echo qwen3.6-27b > .cache/remote/profile
-bash scripts/remote/start.sh
+bash scripts/remote/start.sh; tail -f .cache/remote/logs/start.log
+# afterwards, here: the container wrote as root into the HF cache and the clone
+for d in ~/.cache/huggingface /tmp/jev-box; do
+  docker run --rm -v "$d":/d --entrypoint chown "$IMAGE" -R "$(id -u):$(id -g)" /d
+done
 ```
 
-This is the same process that showed the default 64 MB `/dev/shm` is enough. Copy the suite
-export in too (`.cache/decision-index/...`, `.cache/jevbench`), as `push.sh` would.
+This is the same process that showed the default 64 MB `/dev/shm` is enough.
 
 ## Reading the host comparison
 
@@ -281,5 +341,16 @@ Fields that explain a difference (fingerprint in `host.json`, from `host_info.py
 | `vast_instance` | Set on vast boxes. |
 
 Compare only runs from the same repo commit and profile; `host.json` records the commit.
+
+Make the local reference the way the box makes its run, or the comparison measures the setup
+rather than the host:
+
+- Use the rehearsal container above at the same commit, but instead of `start.sh` run
+  `bash scripts/remote/bootstrap.sh PROFILE`, then
+  `bash scripts/remote/stack.sh up PROFILE && uv run python scripts/host_compare.py run PROFILE`.
+  This gives a fresh `stack.sh up` in the pinned image.
+- Not the compose stack: it runs warm (caches, compiled graphs), and a new box never does.
+- `host_compare.py` always uses the same `compare-2k` ids and 4 shards. Copy the
+  `docs/results/PROFILE/<UTC>-host/` dir out of `/tmp/jev-box` after the chown.
 Accuracy should not change between hosts. Speed will, and bf16 noise (~0.03 in decision
 probabilities under load) is expected.

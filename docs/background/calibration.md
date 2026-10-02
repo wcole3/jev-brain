@@ -11,8 +11,7 @@ and the papers under Sources.
   of many answers together, not of one answer.
 - **The gateway calibrates with a temperature T per question type:**
   `p = softmax(logprobs / T)`, plus a yes-offset `b` for noul: `p(yes) = σ(Δ/T + b)`.
-  qwen3.6-27b has our own fit for all three layouts (2026-10-02, §2). qwen3.8 and gemma
-  run at T = 1, b = 0 until fitted.
+  All three profiles have our own fit for all three layouts (2026-10-02, §2).
 - **T never changes which answer wins,** so accuracy and the side of 0.5 a `noul` lands on
   are unchanged. T only changes how sure the answers sound. `b` can flip a noul answer, so
   it ships only when it helps on held-out rows.
@@ -87,15 +86,20 @@ vLLM letter logprobs  →  softmax(logprobs / T)  →  average over option order
   `log Z / T` term is the same for every letter and cancels, so scaling logprobs equals
   scaling logits.
 
-Fitted 2026-10-02 by [`scripts/calibrate.py`](../../scripts/calibrate.py)
-([report](../results/qwen3.6-27b/2026-10-02T174528Z-calibrate/summary.md); file version 4):
+Refit 2026-10-02 (T = 1 a gate candidate) by [`scripts/calibrate.py`](../../scripts/calibrate.py)
+([report](../results/qwen3.6-27b/2026-10-02T202448Z-calibrate/summary.md); file version 5):
 
 | Profile | Layout | T choice | T score | T noul | noul b |
 |---|---|---|---|---|---|
 | qwen3.6-27b | `decider_chat` (default) | 1.648 | 1.927 (pooled; fitted 6.323) | 1.386 | 0 |
-| qwen3.6-27b | `header` | 1.627 | 1.958 (pooled; fitted 7.195) | 1.284 | 0 |
+| qwen3.6-27b | `header` | 1.627 | 1.000 (none; fitted 7.195) | 1.284 | 0 |
 | qwen3.6-27b | `question_first` | 1.484 | 8.055 | 1.145 | +0.253 |
-| qwen3.8-27b, gemma-4-31b | all | no file: 1.0 | 1.0 | 1.0 | 0 |
+| gemma-4-31b ([report](../results/gemma-4-31b/2026-10-02T202724Z-calibrate/summary.md)) | `decider_chat` | 4.123 | 5.378 (pooled; fitted 18.187) | 7.528 | −0.636 |
+| | `header` | 4.263 | 5.603 (pooled; fitted 19.999, edge) | 7.609 | 0 |
+| | `question_first` | 3.839 | 5.278 (pooled; fitted 19.999, edge) | 7.266 | −0.460 |
+| qwen3.8-27b ([report](../results/qwen3.8-27b/2026-10-02T202958Z-calibrate/summary.md)) | `decider_chat` | 1.496 | 1.000 (none; fitted 4.420) | 0.970 | 0 |
+| | `header` | 1.000 (none; fitted 1.536) | 1.000 (none; fitted 5.308) | 0.963 | 0 |
+| | `question_first` | 1.000 (none; fitted 1.352) | 6.264 | 0.825 | 0 |
 
 Eval split, before (T = 1, b = 0) → after, from the report (each file's `fit.eval`):
 
@@ -105,7 +109,7 @@ Eval split, before (T = 1, b = 0) → after, from the report (each file's `fit.e
 | | score | 554 | 1.602 → 1.162 | 0.197 → 0.122 | 0.616, same |
 | | noul | 666 | 0.296 → 0.286 | 0.045 → 0.038 | 0.880, same |
 | `header` | choice | 1607 | 0.553 → 0.496 | 0.079 → 0.029 | 0.817, same |
-| | score | 554 | 1.703 → 1.180 | 0.178 → 0.208 | 0.664, same |
+| | score | 554 | 1.703, same | 0.178, same | 0.664, same |
 | | noul | 666 | 0.278 → 0.266 | 0.040 → 0.023 | 0.895, same |
 | `question_first` | choice | 1607 | 0.576 → 0.529 | 0.068 → 0.025 | 0.811, same |
 | | score | 554 | 2.181 → 1.318 | 0.253 → 0.167 | 0.448, same |
@@ -122,14 +126,15 @@ Eval split, before (T = 1, b = 0) → after, from the report (each file's `fit.e
   worse than no calibration. A noul b that passes with its fitted T ships as is. Each file's `fit.t_decision` records, per type, the fitted, pooled and (when tried)
   b = 0 T with their ECE changes and the outcome. Pooled T: 1.927 `decider_chat`, 1.958
   `header`, 1.903 `question_first`.
-- **NLL falls for every type and layout.** Accuracy is unchanged except `question_first`
+- **NLL falls for every type and layout, except `header` score (T = 1).** Accuracy is unchanged except `question_first`
   noul, where b ships (+1.65 points, 95% CI +0.30 to +3.00).
 - **b ships only by the eval bootstrap rule.** `decider_chat` (+0.17) and `header` (+0.30)
   fitted a b that showed no gain on eval, so they run with b = 0.
 - **Score is the weak spot.** Its fitted T is large (6–8). Calib's score rows are far more
   overconfident than eval's (NLL 2.7 vs 1.6 at T = 1), so one T can't suit both.
-  - `header`: fitted 7.195 raised eval ECE by +0.127 (CI +0.050 to +0.178), so the
-    pooled 1.958 ships.
+  - `header`: fitted 7.195 raised eval ECE by +0.127 (CI +0.050 to +0.178) and the pooled
+    1.958 by +0.031 (CI −0.023 to +0.059): both pass the CI test but are worse than no
+    calibration, so T = 1 ships.
   - `decider_chat`: fitted 6.323 passes (+0.039, CI −0.036 to +0.104) but the pooled 1.927
     has the lower eval ECE change (−0.075, CI −0.114 to −0.019), so it ships.
   - `question_first`: fitted 8.055 passes (−0.086) and beats pooled (−0.050), so it ships.
@@ -155,7 +160,7 @@ Eval split, before (T = 1, b = 0) → after, from the report (each file's `fit.e
   | | pooled 1.927 | 0.025 | 0.710 | 0.761 | [index-dev](../results/qwen3.6-27b/2026-10-02T163632Z-offline-index-dev-decider_chat-identity-T1.927/summary.md) |
   | | decider's 1.943 | 0.025 | 0.710 | 0.761 | [index-dev](../results/qwen3.6-27b/2026-10-02T163641Z-offline-index-dev-decider_chat-identity-T1.943/summary.md) |
   | `header` | T = 1 | 0.105 | 0.829 | 0.780 | [index-dev](../results/qwen3.6-27b/2026-10-02T163722Z-offline-index-dev-header-identity-uncalibrated/summary.md) |
-  | | ours | 0.045 | 0.672 | 0.780 | [index-dev](../results/qwen3.6-27b/2026-10-02T174839Z-offline-index-dev-header-identity/summary.md) |
+  | | ours | 0.045 | 0.672 | 0.780 | [index-dev](../results/qwen3.6-27b/2026-10-02T203243Z-offline-index-dev-header-identity/summary.md) |
   | `question_first` | T = 1 | 0.103 | 0.881 | 0.751 | [index-dev](../results/qwen3.6-27b/2026-10-02T163733Z-offline-index-dev-question_first-identity-uncalibrated/summary.md) |
   | | ours | 0.046 | 0.752 | 0.751 | [index-dev](../results/qwen3.6-27b/2026-10-02T174851Z-offline-index-dev-question_first-identity/summary.md) |
 
@@ -317,7 +322,7 @@ can trade false "no" for false "yes", so judge it on held-out rows, never on its
 ## 7. The phase-2 plan (DS-002)
 
 Spec: [phase-2 design](../superpowers/specs/2026-09-30-phase2-calibrate-evaluate-design.md).
-Items 2, 3 and 5 are done ([report](../results/qwen3.6-27b/2026-10-02T174528Z-calibrate/summary.md)):
+Items 2, 3 and 5 are done ([report](../results/qwen3.6-27b/2026-10-02T202448Z-calibrate/summary.md)):
 
 1. **Labelled data only:** JevBench gold plus Decision Index, DecisionBench and
    typed-decisions, with a **calibration split** kept apart from the evaluation rows.
@@ -341,8 +346,8 @@ DS-008's prompt padding would each need their own fit.
 
 ## Caveats
 
-- **Fits so far are qwen3.6 only.** qwen3.8 and gemma get the same run once their collects
-  are pulled. JevBench runs before 2026-10-02 used decider's T = 1.943 (qwen3.6) or T = 1.
+- **Offline reruns and transfer checks (§2) cover qwen3.6 only.** JevBench runs before
+  2026-10-02 used decider's T = 1.943 (qwen3.6) or T = 1.
 - **Eval is now a selection set.** The b rule and the T gate both chose on eval, so the
   eval "after" numbers in §2 are mildly optimistic. M3 must not treat eval as untouched;
   index-dev is the cleaner held-out check.

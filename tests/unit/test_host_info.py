@@ -19,6 +19,7 @@ def test_collect_without_nvidia_smi(monkeypatch):
         raise FileNotFoundError
 
     monkeypatch.setattr(host_info.subprocess, "run", boom)
+    monkeypatch.delenv("CONTAINER_ID", raising=False)  # set on vast boxes, where it wins over the label
     monkeypatch.setenv("VAST_CONTAINERLABEL", "C.123")
     d = host_info.collect()
     assert d["gpu_name"] is None and d["vast_instance"] == "C.123" and d["hostname"]

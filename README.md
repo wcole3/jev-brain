@@ -13,8 +13,8 @@ Background research is in [docs/README.md](docs/README.md), the design in
 
 ## Where it stands
 
-JevBench, all 1682 gold rows, 2026-09-30. Stock models, bf16, no temperatures of our own
-fitted yet. Accuracy in %; ECE is calibration error (lower is better):
+JevBench, all 1682 gold rows, 2026-09-30. Stock models, bf16, before our own fit (qwen3.6 at
+decider's T = 1.943). Accuracy in %; ECE is calibration error (lower is better):
 
 | Model | Overall | Choice | Noul | ECE | p50 latency |
 |---|---|---|---|---|---|

@@ -88,11 +88,11 @@ vLLM letter logprobs  →  softmax(logprobs / T)  →  average over option order
   scaling logits.
 
 Fitted 2026-10-02 by [`scripts/calibrate.py`](../../scripts/calibrate.py)
-([report](../results/qwen3.6-27b/2026-10-02T163301Z-calibrate/summary.md); file version 3, same values as v2):
+([report](../results/qwen3.6-27b/2026-10-02T174528Z-calibrate/summary.md); file version 4):
 
 | Profile | Layout | T choice | T score | T noul | noul b |
 |---|---|---|---|---|---|
-| qwen3.6-27b | `decider_chat` (default) | 1.648 | 6.323 | 1.386 | 0 |
+| qwen3.6-27b | `decider_chat` (default) | 1.648 | 1.927 (pooled; fitted 6.323) | 1.386 | 0 |
 | qwen3.6-27b | `header` | 1.627 | 1.958 (pooled; fitted 7.195) | 1.284 | 0 |
 | qwen3.6-27b | `question_first` | 1.484 | 8.055 | 1.145 | +0.253 |
 | qwen3.8-27b, gemma-4-31b | all | no file: 1.0 | 1.0 | 1.0 | 0 |
@@ -102,7 +102,7 @@ Eval split, before (T = 1, b = 0) → after, from the report (each file's `fit.e
 | Layout | Type | n | NLL | ECE | Accuracy |
 |---|---|---|---|---|---|
 | `decider_chat` | choice | 1607 | 0.545 → 0.501 | 0.067 → 0.041 | 0.811, same |
-| | score | 554 | 1.602 → 1.179 | 0.197 → 0.236 | 0.616, same |
+| | score | 554 | 1.602 → 1.162 | 0.197 → 0.122 | 0.616, same |
 | | noul | 666 | 0.296 → 0.286 | 0.045 → 0.038 | 0.880, same |
 | `header` | choice | 1607 | 0.553 → 0.496 | 0.079 → 0.029 | 0.817, same |
 | | score | 554 | 1.703 → 1.180 | 0.178 → 0.208 | 0.664, same |
@@ -114,12 +114,13 @@ Eval split, before (T = 1, b = 0) → after, from the report (each file's `fit.e
 - **How it is fitted:** minimise NLL on the calib split (JevBench gold + filtered
   DecisionBench), `identity` order. The eval split judges; Index rows are never used.
   Calib metrics sit in each file's `fit.calib`, eval metrics in `fit.eval`.
-- **Per-type ECE gate:** a fitted T ships only if eval ECE is no worse than at T = 1 beyond
-  its bootstrap CI. Else, for noul with b shipping, its b = 0 T is tried (then b is dropped),
-  then one pooled T (fitted on all types together), then T = 1.
-  Each file's `fit.t_decision` records, per type, the fitted and pooled T with both ECE
-  changes (plus the b = 0 one, when tried) and the outcome. Pooled T: 1.927 `decider_chat`, 1.958 `header`, 1.903
-  `question_first`.
+- **Per-type ECE gate:** the candidates are the fitted T, the pooled T (one T fitted on all
+  types together) and, for noul with b shipping, the noul T refit at b = 0. One passes when
+  eval ECE is no worse than at T = 1 beyond its bootstrap CI. The passing candidate with the
+  lowest eval ECE change ships, else T = 1. A noul b that passes with its fitted T ships as
+  is. Each file's `fit.t_decision` records, per type, the fitted, pooled and (when tried)
+  b = 0 T with their ECE changes and the outcome. Pooled T: 1.927 `decider_chat`, 1.958
+  `header`, 1.903 `question_first`.
 - **NLL falls for every type and layout.** Accuracy is unchanged except `question_first`
   noul, where b ships (+1.65 points, 95% CI +0.30 to +3.00).
 - **b ships only by the eval bootstrap rule.** `decider_chat` (+0.17) and `header` (+0.30)
@@ -128,16 +129,17 @@ Eval split, before (T = 1, b = 0) → after, from the report (each file's `fit.e
   overconfident than eval's (NLL 2.7 vs 1.6 at T = 1), so one T can't suit both.
   - `header`: fitted 7.195 raised eval ECE by +0.127 (CI +0.050 to +0.178), so the
     pooled 1.958 ships.
-  - `decider_chat`: 6.323 raises eval ECE by +0.039, but its CI (−0.036 to +0.104)
-    includes 0, so it ships.
+  - `decider_chat`: fitted 6.323 passes (+0.039, CI −0.036 to +0.104) but the pooled 1.927
+    has the lower eval ECE change (−0.075, CI −0.114 to −0.019), so it ships.
+  - `question_first`: fitted 8.055 passes (−0.086) and beats pooled (−0.050), so it ships.
 - **One T for every type vs ours, `decider_chat`.** The pooled T (1.927) is close to
-  decider's borrowed 1.943, and both beat our per-type file on all-types ECE. Ours has
-  the lowest eval NLL (offline runs, all 2,827 eval questions):
+  decider's borrowed 1.943. Our per-type file (now with the pooled T for score) has the
+  lowest eval ECE and NLL (offline runs, all 2,827 eval questions):
 
   | Calibration | ECE | NLL | Run |
   |---|---|---|---|
   | T = 1 | 0.085 | 0.694 | [eval](../results/qwen3.6-27b/2026-10-02T163545Z-offline-eval-decider_chat-identity-uncalibrated/summary.md) |
-  | ours (1.648 / 6.323 / 1.386) | 0.067 | 0.583 | [eval](../results/qwen3.6-27b/2026-10-02T163552Z-offline-eval-decider_chat-identity/summary.md) |
+  | ours (1.648 / 1.927 / 1.386) | 0.022 | 0.580 | [eval](../results/qwen3.6-27b/2026-10-02T174816Z-offline-eval-decider_chat-identity/summary.md) |
   | pooled 1.927, every type | 0.038 | 0.597 | [eval](../results/qwen3.6-27b/2026-10-02T163557Z-offline-eval-decider_chat-identity-T1.927/summary.md) |
   | decider's 1.943, every type | 0.041 | 0.598 | [eval](../results/qwen3.6-27b/2026-10-02T163601Z-offline-eval-decider_chat-identity-T1.943/summary.md) |
 
@@ -148,13 +150,13 @@ Eval split, before (T = 1, b = 0) → after, from the report (each file's `fit.e
   | Layout | Calibration | ECE | NLL | Accuracy | Run |
   |---|---|---|---|---|---|
   | `decider_chat` | T = 1 | 0.108 | 0.887 | 0.761 | [index-dev](../results/qwen3.6-27b/2026-10-02T163611Z-offline-index-dev-decider_chat-identity-uncalibrated/summary.md) |
-  | | ours | 0.040 | 0.723 | 0.761 | [index-dev](../results/qwen3.6-27b/2026-10-02T163620Z-offline-index-dev-decider_chat-identity/summary.md) |
+  | | ours | 0.040 | 0.723 | 0.761 | [index-dev](../results/qwen3.6-27b/2026-10-02T174829Z-offline-index-dev-decider_chat-identity/summary.md) |
   | | pooled 1.927 | 0.025 | 0.710 | 0.761 | [index-dev](../results/qwen3.6-27b/2026-10-02T163632Z-offline-index-dev-decider_chat-identity-T1.927/summary.md) |
   | | decider's 1.943 | 0.025 | 0.710 | 0.761 | [index-dev](../results/qwen3.6-27b/2026-10-02T163641Z-offline-index-dev-decider_chat-identity-T1.943/summary.md) |
   | `header` | T = 1 | 0.105 | 0.829 | 0.780 | [index-dev](../results/qwen3.6-27b/2026-10-02T163722Z-offline-index-dev-header-identity-uncalibrated/summary.md) |
-  | | ours | 0.045 | 0.672 | 0.780 | [index-dev](../results/qwen3.6-27b/2026-10-02T163651Z-offline-index-dev-header-identity/summary.md) |
+  | | ours | 0.045 | 0.672 | 0.780 | [index-dev](../results/qwen3.6-27b/2026-10-02T174839Z-offline-index-dev-header-identity/summary.md) |
   | `question_first` | T = 1 | 0.103 | 0.881 | 0.751 | [index-dev](../results/qwen3.6-27b/2026-10-02T163733Z-offline-index-dev-question_first-identity-uncalibrated/summary.md) |
-  | | ours | 0.046 | 0.752 | 0.751 | [index-dev](../results/qwen3.6-27b/2026-10-02T163703Z-offline-index-dev-question_first-identity/summary.md) |
+  | | ours | 0.046 | 0.752 | 0.751 | [index-dev](../results/qwen3.6-27b/2026-10-02T174851Z-offline-index-dev-question_first-identity/summary.md) |
 
 - **Replaces decider's 1.943**, one T for every type (decider SERVING.md §8); the old value
   sits in the file's first comment.
@@ -314,7 +316,7 @@ can trade false "no" for false "yes", so judge it on held-out rows, never on its
 ## 7. The phase-2 plan (DS-002)
 
 Spec: [phase-2 design](../superpowers/specs/2026-09-30-phase2-calibrate-evaluate-design.md).
-Items 2, 3 and 5 are done ([report](../results/qwen3.6-27b/2026-10-02T163301Z-calibrate/summary.md)):
+Items 2, 3 and 5 are done ([report](../results/qwen3.6-27b/2026-10-02T174528Z-calibrate/summary.md)):
 
 1. **Labelled data only:** JevBench gold plus Decision Index, DecisionBench and
    typed-decisions, with a **calibration split** kept apart from the evaluation rows.

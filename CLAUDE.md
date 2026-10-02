@@ -37,11 +37,12 @@ decision endpoint from the same model, behind a small FastAPI gateway.
   2. `orders.option_orders`
   3. `prompts.build_rows` (token ids built piecewise, like decider)
   4. `readout.Readout` (vLLM `/v1/completions`, `max_tokens=1`, `logprob_token_ids`)
-  5. `calibration.softmax`
+  5. `decide.probabilities` (per-type T, noul offset b, from `calibration.json`)
   6. `orders.average_back`
   7. `answers.answer`
 - **Prompt wording** lives only in `prompts/<layout>.toml`. Editing it means rebuilding
-  label tables (the gateway refuses stale hashes) and refitting temperatures.
+  label tables and rerunning `scripts/calibrate.py` (the gateway refuses stale hashes and
+  stale calibration stamps).
 - **Other gateway pieces:**
   - `chat.route()` is the phase-3 hook where systemone answers will steer chat;
   - `disconnect.py` cancels abandoned work so vLLM aborts it.
@@ -51,8 +52,13 @@ decision endpoint from the same model, behind a small FastAPI gateway.
 - **Never train, calibrate or tune on Jev API outputs** (TypeSafe's terms forbid it).
   - Use JevBench gold labels or our own data.
   - Jev's per-row answers stay in `.cache/jev-results/`.
-- **Temperatures:** a fitted temperature is valid for one model + precision + layout.
-  Accuracy doesn't depend on it, and it can't fix a yes/no bias.
+- **Calibration** (`data/<profile>/<layout>/calibration.json`) is valid for one model +
+  precision + layout + option-order setting.
+  - With one option order T keeps the top answer, but it moves `score` values (expected
+    level). Averaged orders can flip a close top answer.
+  - T can't fix a yes/no bias; the noul offset b can.
+  - Fits use the calib split; eval picks what ships, so eval is not untouched.
+  - A stale stamp stops the gateway, not collect: move the file aside, recollect, recalibrate.
 - **Label letters** must be single tokens *in context*. `scripts/build_labels.py` checks
   this; gateway startup only checks hashes.
 - **vLLM limits and bugs:**

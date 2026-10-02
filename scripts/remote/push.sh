@@ -45,10 +45,10 @@ run "${ssh[@]}" "$box" "mkdir -p $box_repo && { command -v rsync && command -v t
 run "${rsync[@]}" --include=/secrets/.gitkeep '--exclude=/secrets/*' \
   --exclude={.cache,.venv,.firecrawl,.superpowers,.env,.vscode,.pytest_cache,.ruff_cache,__pycache__} \
   ./ "$box:$box_repo/"
-# Results are stamped "-dirty" when the box tree differs from the commit, so stop before the queue starts.
+# Results are stamped "-dirty" when the box code differs from the commit (bench.git_revision's rule), so stop here.
 check="git config --global --get-all safe.directory | grep -qxF $box_repo"
 check+=" || git config --global --add safe.directory $box_repo;"
-check+=" dirty=\$(git -C $box_repo status --porcelain) && [ -z \"\$dirty\" ]"
+check+=" dirty=\$(git -C $box_repo status --porcelain -- . ':(exclude)docs/results') && [ -z \"\$dirty\" ]"
 check+=" || { echo 'box tree differs from the pushed commit; not starting:' >&2; echo \"\$dirty\" >&2; exit 1; }"
 run "${ssh[@]}" "$box" "$check"
 run "${rsync[@]}" --relative .cache/decision-index/rows-0.2.1.jsonl.gz .cache/decision-index/suite-0.2 \

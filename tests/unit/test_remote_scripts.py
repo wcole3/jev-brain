@@ -120,7 +120,7 @@ case $1 in
   list-windows) [[ -s $FAKE_TMUX ]] && cat "$FAKE_TMUX" ;;
   has-session) [[ -s $FAKE_TMUX ]] ;;
   new-session|new-window) while [[ $1 != -n ]]; do shift; done; echo "$2" >> "$FAKE_TMUX"
-    echo "${FROM_IMAGE:-unset} ${KEPT:-unset}" > "$FAKE_TMUX.env" ;;
+    printf '%s %s\n%s\n' "${FROM_IMAGE:-unset}" "${KEPT:-unset}" "$PATH" > "$FAKE_TMUX.env" ;;
 esac
 """
 
@@ -167,14 +167,18 @@ def test_start_leaves_a_running_session_alone(tmp_path):
 def test_start_takes_missing_variables_from_the_image_environment(tmp_path):
     """Over ssh, start.sh lacks the image's Docker ENV; PID 1 has it. Variables already set win."""
     environ = tmp_path / "environ"
-    environ.write_bytes(b"FROM_IMAGE=cuda=1\0KEPT=image\0bad.name=x\0")
+    image_path = f"/image/cuda/bin:{tmp_path / 'bin'}:/image/cuda/bin"
+    environ.write_bytes(f"FROM_IMAGE=cuda=1\0KEPT=image\0bad.name=x\0PATH={image_path}\0".encode())
     start(tmp_path, "", {"JEV_PID1_ENVIRON": str(environ), "KEPT": "ours"})
-    assert (tmp_path / "windows.env").read_text() == "cuda=1 ours\n"
+    values, path = (tmp_path / "windows.env").read_text().splitlines()
+    assert values == "cuda=1 ours"
+    # PATH is set over ssh too, so the image's missing dirs are appended once, after ours.
+    assert path == f"{tmp_path / 'bin'}:{os.environ['PATH']}:/image/cuda/bin"
 
 
 def test_start_runs_without_a_readable_image_environment(tmp_path):
     windows, _ = start(tmp_path, "", {"KEPT": "ours"})
-    assert windows == ["telemetry", "queue"] and (tmp_path / "windows.env").read_text() == "unset ours\n"
+    assert windows == ["telemetry", "queue"] and (tmp_path / "windows.env").read_text().splitlines()[0] == "unset ours"
 
 
 def test_start_marks_a_failed_bootstrap_until_one_succeeds(tmp_path):
@@ -396,7 +400,7 @@ exec "$REAL_RSYNC" "${@/#root@203.0.113.7:\/workspace\/jev-brain/$FAKE_BOX}"
 MIRROR_STATE = ["stack", "host-compare", "index", "collect-calib"]
 
 
-def push_to_fake_box(tmp_path, *args: str, stray: bool = False) -> tuple[subprocess.CompletedProcess, Path, str]:
+def push_to_fake_box(tmp_path, *args: str, stray: str | None = None) -> tuple[subprocess.CompletedProcess, Path, str]:
     """push.sh for real, but ssh runs here and rsync copies into a local dir standing in for the box."""
     repo = scratch_repo(tmp_path, git=True)
     (repo / ".gitignore").write_text(".cache/\nsecrets/*\n!secrets/.gitkeep\n")
@@ -413,8 +417,8 @@ def push_to_fake_box(tmp_path, *args: str, stray: bool = False) -> tuple[subproc
         (repo / ".cache" / path).write_text("x\n")
     box = tmp_path / "box"
     if stray:
-        box.mkdir()
-        (box / "stray.txt").write_text("left by an earlier push")
+        (box / stray).parent.mkdir(parents=True)
+        (box / stray).write_text("left on the box")
     (tmp_path / "bin" / "ssh").write_text(FAKE_BOX_SSH)
     (tmp_path / "bin" / "rsync").write_text(FAKE_BOX_RSYNC)
     out = local(repo, "push.sh", URL, PROFILE, *args, env={"FAKE_BOX": str(box), "REAL_RSYNC": shutil.which("rsync")})
@@ -438,9 +442,17 @@ def test_push_leaves_the_box_tree_clean_and_secrets_here(tmp_path):
 
 @needs_rsync
 def test_push_stops_before_the_queue_when_the_box_tree_differs(tmp_path):
-    out, box, ssh_log = push_to_fake_box(tmp_path, stray=True)
+    out, box, ssh_log = push_to_fake_box(tmp_path, stray="stray.txt")
     assert out.returncode != 0 and "stray.txt" in out.stderr
     assert not (box / ".cache" / "remote" / "profile").exists() and "start.sh" not in ssh_log
+
+
+@needs_rsync
+def test_push_to_a_running_box_ignores_results_it_wrote(tmp_path):
+    """Same rule as bench.git_revision: results written on the box don't make its code dirty."""
+    out, _, ssh_log = push_to_fake_box(tmp_path, stray=f"docs/results/{PROFILE}/run/summary.md")
+    assert out.returncode == 0, out.stderr
+    assert "start.sh" in ssh_log
 
 
 @needs_rsync

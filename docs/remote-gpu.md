@@ -106,9 +106,10 @@ scripts/remote/push.sh ssh://root@HOST:PORT PROFILE [--restore] [--dry-run]
 - Installs rsync/tmux/git if missing, then rsyncs the repo to `/workspace/jev-brain`
   (excluding `.cache .venv .firecrawl .superpowers .env .vscode`, caches, and `secrets/`
   except its tracked, empty `.gitkeep`).
-- **Checks the box tree**: `git status --porcelain` there must be empty, or push prints the
-  differences and stops before the queue starts. A difference would stamp every result
-  `-dirty`. It also adds the repo to root's git `safe.directory`.
+- **Checks the box tree**: `git status --porcelain` there must be empty outside
+  `docs/results` (the rule results use to stamp a commit `-dirty`), or push prints the
+  differences and stops before the queue starts. Results the box wrote don't count, so a
+  re-push mid-run works. It also adds the repo to root's git `safe.directory`.
 - Also pushes the suite export, so nothing is rebuilt on the box:
   `.cache/decision-index/rows-0.2.1.jsonl.gz`, `.cache/decision-index/suite-0.2`,
   `.cache/jevbench`.
@@ -124,7 +125,8 @@ On the box, `start.sh` (safe to rerun and run at every boot):
 
 1. imports variables missing from its environment from `/proc/1/environ` (the image's Docker
    ENV: CUDA paths, `VLLM_*`, `CONTAINER_ID`), so a start over ssh sees what onstart sees.
-   Variables already set are kept, `PATH` among them;
+   Variables already set are kept; `PATH` keeps its order and gets the image's missing dirs
+   appended;
 2. takes a lock and logs to `.cache/remote/logs/start.log`;
 3. writes the run tag `<UTC timestamp>-vast` once to `.cache/remote/run_tag`;
 4. runs `bootstrap.sh PROFILE` once (marker `.cache/remote/state/bootstrap.done`): apt tools,
@@ -282,11 +284,13 @@ Then the queue runs on the new box:
 ## Rehearse locally first
 
 Test harness changes before paying: run the exact image locally (compose stack down: they
-share the GPU), mount a clone of this commit at `/workspace/jev-brain` and the HF cache,
-write `.cache/remote/profile`, and run `start.sh`:
+share the GPU), mount a fresh clone of this commit at `/workspace/jev-brain` and the HF
+cache, write `.cache/remote/profile`, and run `start.sh`. The snippet removes an earlier
+`/tmp/jev-box` first (the chown at its end makes that possible):
 
 ```bash
 IMAGE=vllm/vllm-openai:v0.30.0@sha256:8a69ffad015f138d7170c4ddc429e230a3bc1c1719f67e14324749df200a4b90
+rm -rf /tmp/jev-box                                                           # a fresh clone of this commit
 git clone -q . /tmp/jev-box && mkdir -p /tmp/jev-box/.cache/decision-index   # .git: results need the commit
 cp -r .cache/decision-index/{rows-0.2.1.jsonl.gz,suite-0.2} /tmp/jev-box/.cache/decision-index/
 cp -r .cache/jevbench /tmp/jev-box/.cache/                                    # the suite export, as push.sh sends it

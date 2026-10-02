@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
-# Copy a box's results, collect and index runs, and remote logs/state here; never deletes local files.
-# usage: pull.sh SSH_URL PROFILE [--loop SECONDS]   (--loop: repeat until the queue is done, then pull once more)
-# Each pass prints a status line; one pass exits 3 when bootstrap or a job failed, --loop keeps going.
+# Copy a box's results, runs and remote logs/state here (never deleting local files); print a status line per pass.
+# usage: pull.sh SSH_URL PROFILE [--loop SECONDS]  (loop until the queue is done, +1 pass; one pass: exit 3 on a failure)
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 box_repo=/workspace/jev-brain

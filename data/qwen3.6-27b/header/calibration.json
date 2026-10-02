@@ -1,7 +1,7 @@
 {
  "format": 2,
- "version": 3,
- "date": "2026-10-02T16:34:34Z",
+ "version": 4,
+ "date": "2026-10-02T17:47:08Z",
  "comments": [
   {
    "version": 1,
@@ -17,6 +17,11 @@
    "version": 3,
    "date": "2026-10-02T16:34:34Z",
    "text": "final review fixes: fit.calib/fit.eval metrics, pooled T in t_decision; choice: fitted T 1.627, score: pooled T 1.958, noul: fitted T 1.284, b not shipped"
+  },
+  {
+   "version": 4,
+   "date": "2026-10-02T17:47:08Z",
+   "text": "gate ships lowest eval ECE among passing T candidates (owner 3b); choice: fitted T 1.627, score: pooled T 1.958, noul: fitted T 1.284, b not shipped"
   }
  ],
  "stamp": {

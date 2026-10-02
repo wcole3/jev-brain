@@ -1,7 +1,7 @@
 {
  "format": 2,
- "version": 3,
- "date": "2026-10-02T16:33:49Z",
+ "version": 4,
+ "date": "2026-10-02T17:46:18Z",
  "comments": [
   {
    "version": 1,
@@ -17,6 +17,11 @@
    "version": 3,
    "date": "2026-10-02T16:33:49Z",
    "text": "final review fixes: fit.calib/fit.eval metrics, pooled T in t_decision; choice: fitted T 1.648, score: fitted T 6.323, noul: fitted T 1.386, b not shipped"
+  },
+  {
+   "version": 4,
+   "date": "2026-10-02T17:46:18Z",
+   "text": "gate ships lowest eval ECE among passing T candidates (owner 3b); choice: fitted T 1.648, score: pooled T 1.927, noul: fitted T 1.386, b not shipped"
   }
  ],
  "stamp": {
@@ -31,7 +36,7 @@
    "T": 1.6479149611375679
   },
   "score": {
-   "T": 6.323441128895665
+   "T": 1.9271133600869372
   },
   "noul": {
    "T": 1.38614000084428,
@@ -56,7 +61,7 @@
     },
     "after": {
      "choice": 0.5430340925394767,
-     "score": 1.2924433807935178,
+     "score": 1.6779348542212464,
      "noul": 0.29936006531342524
     }
    },
@@ -68,7 +73,7 @@
     },
     "after": {
      "choice": 0.02699625433823936,
-     "score": 0.07992439827918814,
+     "score": 0.30398769970034595,
      "noul": 0.032167875345834616
     }
    }
@@ -82,7 +87,7 @@
     },
     "after": {
      "choice": 0.5007381418065562,
-     "score": 1.1788708184735852,
+     "score": 1.1619425442686981,
      "noul": 0.2862852573642713
     }
    },
@@ -94,7 +99,7 @@
     },
     "after": {
      "choice": 0.0407815184464011,
-     "score": 0.23641709809381417,
+     "score": 0.12168870961240606,
      "noul": 0.03751118742340725
     }
    }
@@ -133,8 +138,8 @@
    "score": {
     "fitted_T": 6.323441128895665,
     "pooled_T": 1.9271133600869372,
-    "shipped_T": 6.323441128895665,
-    "source": "fitted",
+    "shipped_T": 1.9271133600869372,
+    "source": "pooled",
     "ece": [
      0.03923390408238092,
      -0.0361213157760375,

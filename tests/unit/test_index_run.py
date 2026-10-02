@@ -2,6 +2,8 @@ import gzip
 import json
 from pathlib import Path
 
+import pytest
+
 from scripts import index_run
 from scripts.evaluate import parse_args
 from scripts.metrics import Scored
@@ -40,6 +42,34 @@ def test_merge_keeps_the_last_attempt(tmp_path):
     counts = index_run.merge([a, b], tmp_path / "m")
     assert counts == {"ok": 1, "unsupported": 1}
     assert len((tmp_path / "m" / "results.jsonl").read_text().splitlines()) == 2
+
+
+GOOD = [{"run_id": "r1", "status": "ok"}, {"run_id": "r2", "status": "ok"}]
+CRASH_TAILS = [b"\x00" * 300, b'{"run_id": "r3", "sta']
+
+
+def crashed_shard(path, tail):
+    path.mkdir()
+    (path / "results.jsonl").write_bytes("".join(json.dumps(r) + "\n" for r in GOOD).encode() + tail)
+    return path
+
+
+@pytest.mark.parametrize("tail", CRASH_TAILS, ids=["nul-bytes", "cut-json"])
+def test_last_attempts_skips_a_crash_tail(tmp_path, tail):
+    shard = crashed_shard(tmp_path / "a", tail)
+    assert list(index_run.last_attempts([shard / "results.jsonl"]).values()) == GOOD
+
+
+@pytest.mark.parametrize("tail", CRASH_TAILS, ids=["nul-bytes", "cut-json"])
+def test_merge_survives_a_crash_tail(tmp_path, tail):
+    shard = crashed_shard(tmp_path / "a", tail)
+    assert index_run.merge([shard], tmp_path / "m") == {"ok": 2}
+
+
+def test_a_corrupt_complete_line_still_fails(tmp_path):
+    (tmp_path / "results.jsonl").write_text('{"run_id": "r1"\n')
+    with pytest.raises(json.JSONDecodeError):
+        index_run.last_attempts([tmp_path / "results.jsonl"])
 
 
 def test_replace_overrides_by_run_id(tmp_path):

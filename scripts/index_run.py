@@ -43,10 +43,13 @@ def last_attempts(paths: list[Path]) -> dict[str, dict]:
     """The harness appends a retry after an error, so the last line per run_id is the answer."""
     latest: dict[str, dict] = {}
     for path in paths:
-        for line in path.read_text(encoding="utf-8").splitlines():
-            if line.strip():
-                r = json.loads(line)
-                latest[r["run_id"]] = r
+        with path.open(encoding="utf-8") as f:
+            for line in f:
+                if not line.endswith("\n"):  # unflushed tail after a host crash, like the harness reader
+                    break
+                if line.strip():
+                    r = json.loads(line)
+                    latest[r["run_id"]] = r
     return latest
 
 

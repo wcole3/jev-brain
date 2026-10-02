@@ -1,23 +1,29 @@
 #!/usr/bin/env bash
 # Put this commit and the pushed-not-rebuilt data on a rented box, set its profile, and start its queue.
-# usage: push.sh SSH_URL PROFILE [--dry-run]   (SSH_URL as `vastai ssh-url ID` prints it: ssh://root@HOST:PORT)
+# usage: push.sh SSH_URL PROFILE [--restore] [--dry-run]   (SSH_URL as `vastai ssh-url ID` prints it: ssh://root@HOST:PORT)
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 box_repo=/workspace/jev-brain
-usage() { echo "usage: push.sh ssh://root@HOST:PORT PROFILE [--dry-run]" >&2; exit 2; }
+usage() { echo "usage: push.sh ssh://root@HOST:PORT PROFILE [--restore] [--dry-run]" >&2; exit 2; }
 
-case $# in
-  2) dry=0 ;;
-  3) [[ $3 == --dry-run ]] || usage; dry=1 ;;
-  *) usage ;;
-esac
-[[ $1 =~ ^ssh://root@([^:/]+):([0-9]+)/?$ ]] || usage
-box=root@${BASH_REMATCH[1]} port=${BASH_REMATCH[2]} profile=$2
+(( $# >= 2 )) || usage
+url=$1 profile=$2 dry=0 restore=0
+shift 2
+for arg; do
+  case $arg in
+    --dry-run) dry=1 ;;
+    --restore) restore=1 ;;
+    *) usage ;;
+  esac
+done
+[[ $url =~ ^ssh://root@([^:/]+):([0-9]+)/?$ ]] || usage
+box=root@${BASH_REMATCH[1]} port=${BASH_REMATCH[2]}
 [[ -f scripts/remote/jobs/$profile.txt ]] || { echo "unknown profile $profile" >&2; usage; }
 # vast reuses HOST:PORT across boxes, so each profile keeps its own known_hosts.
-mkdir -p ".cache/remote-boxes/$profile"
+mirror=.cache/remote-boxes/$profile
+mkdir -p "$mirror"
 ssh=(ssh -p "$port" -o StrictHostKeyChecking=accept-new
-  -o "UserKnownHostsFile=$PWD/.cache/remote-boxes/$profile/known_hosts" -o ServerAliveInterval=30)
+  -o "UserKnownHostsFile=$PWD/$mirror/known_hosts" -o ServerAliveInterval=30)
 rsync=(rsync -az --no-owner --no-group -e "${ssh[*]}")
 run() { if (( dry )); then printf '%q ' "$@"; echo; else "$@"; fi; }
 
@@ -26,19 +32,49 @@ if [[ -n $(git status --porcelain) ]]; then
   git status --short >&2
   exit 1
 fi
+if (( restore )) && [[ ! -f $mirror/run_tag ]]; then
+  echo "--restore needs the old box's pulled state ($mirror/run_tag); pull it first" >&2
+  exit 1
+fi
 echo "pushing $(git log -1 --format='%h %s') to $box port $port as $profile"
 
 # The image has no rsync, tmux or git.
 run "${ssh[@]}" "$box" "mkdir -p $box_repo && { command -v rsync && command -v tmux && command -v git; } > /dev/null \
 || { apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq rsync tmux git; }"
-run "${rsync[@]}" --exclude={.cache,.venv,.firecrawl,secrets,.superpowers,.env,.vscode} \
-  --exclude={.pytest_cache,.ruff_cache,__pycache__} ./ "$box:$box_repo/"
+# secrets/ stays here except its tracked .gitkeep, so the box tree matches the commit.
+run "${rsync[@]}" --include=/secrets/.gitkeep '--exclude=/secrets/*' \
+  --exclude={.cache,.venv,.firecrawl,.superpowers,.env,.vscode,.pytest_cache,.ruff_cache,__pycache__} \
+  ./ "$box:$box_repo/"
+# Results are stamped "-dirty" when the box tree differs from the commit, so stop before the queue starts.
+check="git config --global --get-all safe.directory | grep -qxF $box_repo"
+check+=" || git config --global --add safe.directory $box_repo;"
+check+=" dirty=\$(git -C $box_repo status --porcelain) && [ -z \"\$dirty\" ]"
+check+=" || { echo 'box tree differs from the pushed commit; not starting:' >&2; echo \"\$dirty\" >&2; exit 1; }"
+run "${ssh[@]}" "$box" "$check"
 run "${rsync[@]}" --relative .cache/decision-index/rows-0.2.1.jsonl.gz .cache/decision-index/suite-0.2 \
   .cache/jevbench "$box:$box_repo/"
+
+# restore: a replacement box gets the pulled runs, run tag and index/collect markers before its queue starts.
+# A finished index must stay done (a rerun would overwrite its summary); stack and host-compare rerun here.
+restore() {
+  local marker markers=()
+  for marker in "$mirror/state/$profile"/{index,collect-*}.done; do
+    [[ -f $marker ]] && markers+=("$marker")
+  done
+  run "${ssh[@]}" "$box" "mkdir -p $box_repo/.cache/remote/state/$profile"
+  run "${rsync[@]}" --relative --ignore-missing-args .cache/index-runs/"$profile" .cache/collect/"$profile" \
+    "$box:$box_repo/"
+  run "${rsync[@]}" "$mirror/run_tag" "$box:$box_repo/.cache/remote/run_tag"
+  if (( ${#markers[@]} )); then
+    run "${rsync[@]}" "${markers[@]}" "$box:$box_repo/.cache/remote/state/$profile/"
+  fi
+}
+(( restore )) && restore
+
 run "${ssh[@]}" "$box" "mkdir -p $box_repo/.cache/remote && echo $profile > $box_repo/.cache/remote/profile"
 # Detached (setsid -f) so ssh returns: start.sh holds a lock and may bootstrap for a long time.
 run "${ssh[@]}" "$box" "cd $box_repo && setsid -f bash scripts/remote/start.sh > /dev/null 2>&1 < /dev/null"
 (( dry )) && exit 0
 
 echo "started. follow: ${ssh[*]} $box tail -f $box_repo/.cache/remote/logs/start.log"
-echo "attach: ${ssh[*]} -t $box tmux attach -t jev    pull: scripts/remote/pull.sh $1 $profile --loop 1800"
+echo "attach: ${ssh[*]} -t $box tmux attach -t jev    pull: scripts/remote/pull.sh $url $profile --loop 1800"

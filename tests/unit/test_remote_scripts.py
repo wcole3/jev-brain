@@ -1,5 +1,6 @@
 import os
 import shlex
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -226,17 +227,20 @@ def test_push_dry_run_prints_every_step(tmp_path):
     assert out.returncode == 0, out.stderr
     head = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=repo, capture_output=True, text=True, check=True)
     assert head.stdout.strip() in out.stdout
-    install, code, data, profile, start = commands(out.stdout)
-    for step in (install, profile, start):
+    install, code, check, data, profile, start = commands(out.stdout)
+    for step in (install, check, profile, start):
         assert step[:-1] == [*ssh_options(repo), HOST]
     assert "apt-get install -y -qq rsync tmux git" in install[-1]
+    assert f"safe.directory {BOX}" in check[-1] and f"git -C {BOX} status --porcelain" in check[-1]
     assert profile[-1] == f"mkdir -p {BOX}/.cache/remote && echo {PROFILE} > {BOX}/.cache/remote/profile"
     assert start[-1] == f"cd {BOX} && setsid -f bash scripts/remote/start.sh > /dev/null 2>&1 < /dev/null"
     for step in (code, data):
         assert step[step.index("-e") + 1] == shlex.join(ssh_options(repo)) and "--delete" not in step
     excludes = {arg.removeprefix("--exclude=") for arg in code if arg.startswith("--exclude=")}
-    hidden = {".cache", ".venv", ".firecrawl", "secrets", ".superpowers", ".env", ".vscode"}
-    assert hidden <= excludes and ".git" not in excludes
+    hidden = {".cache", ".venv", ".firecrawl", "/secrets/*", ".superpowers", ".env", ".vscode"}
+    assert hidden <= excludes and ".git" not in excludes and "secrets" not in excludes
+    # rsync takes the first matching rule: the tracked .gitkeep goes, the rest of secrets/ stays here.
+    assert code.index("--include=/secrets/.gitkeep") < code.index("--exclude=/secrets/*")
     assert code[-2:] == ["./", f"{HOST}:{BOX}/"]
     suite = [".cache/decision-index/rows-0.2.1.jsonl.gz", ".cache/decision-index/suite-0.2", ".cache/jevbench"]
     assert "--relative" in data and data[-4:] == [*suite, f"{HOST}:{BOX}/"]
@@ -248,6 +252,110 @@ def test_push_refuses_a_dirty_tree(tmp_path):
     (repo / "untracked").write_text("x")
     out = local(repo, "push.sh", URL, PROFILE, "--dry-run")
     assert out.returncode == 1 and "dirty" in out.stderr and not commands(out.stdout)
+
+
+FAKE_BOX_SSH = r"""#!/usr/bin/env bash
+# Run the remote command here with the box repo at $FAKE_BOX (git config kept beside it); never start the queue.
+command=${!#}
+echo "$command" >> "$FAKE_BOX.ssh-log"
+[[ $command == *start.sh* ]] && exit 0
+export GIT_CONFIG_GLOBAL=$FAKE_BOX.gitconfig
+bash -c "${command//\/workspace\/jev-brain/$FAKE_BOX}"
+"""
+FAKE_BOX_RSYNC = r"""#!/usr/bin/env bash
+exec "$REAL_RSYNC" "${@/#root@203.0.113.7:\/workspace\/jev-brain/$FAKE_BOX}"
+"""
+MIRROR_STATE = ["stack", "host-compare", "index", "collect-calib"]
+
+
+def push_to_fake_box(tmp_path, *args: str, stray: bool = False) -> tuple[subprocess.CompletedProcess, Path, str]:
+    """push.sh for real, but ssh runs here and rsync copies into a local dir standing in for the box."""
+    repo = scratch_repo(tmp_path, git=True)
+    (repo / ".gitignore").write_text(".cache/\nsecrets/*\n!secrets/.gitkeep\n")
+    (repo / "secrets").mkdir()
+    (repo / "secrets" / ".gitkeep").touch()
+    (repo / "secrets" / "token").write_text("hf_secret")
+    commit = ["-c", "user.name=t", "-c", "user.email=t@t", "-c", "commit.gpgsign=false", "commit", "-qm", "secrets"]
+    for git_args in (["add", ".gitignore", "secrets/.gitkeep"], commit):
+        subprocess.run(["git", *git_args], cwd=repo, check=True)
+    for path in ("decision-index/rows-0.2.1.jsonl.gz", "decision-index/suite-0.2/s", "jevbench/j",
+                 f"index-runs/{PROFILE}/tag/shard-0/r", f"collect/{PROFILE}/c.jsonl", f"remote-boxes/{PROFILE}/run_tag",
+                 *(f"remote-boxes/{PROFILE}/state/{PROFILE}/{name}.done" for name in MIRROR_STATE)):
+        (repo / ".cache" / path).parent.mkdir(parents=True, exist_ok=True)
+        (repo / ".cache" / path).write_text("x\n")
+    box = tmp_path / "box"
+    if stray:
+        box.mkdir()
+        (box / "stray.txt").write_text("left by an earlier push")
+    (tmp_path / "bin" / "ssh").write_text(FAKE_BOX_SSH)
+    (tmp_path / "bin" / "rsync").write_text(FAKE_BOX_RSYNC)
+    out = local(repo, "push.sh", URL, PROFILE, *args, env={"FAKE_BOX": str(box), "REAL_RSYNC": shutil.which("rsync")})
+    log = Path(f"{box}.ssh-log")
+    return out, box, log.read_text() if log.exists() else ""
+
+
+needs_rsync = pytest.mark.skipif(shutil.which("rsync") is None, reason="needs a local rsync")
+
+
+@needs_rsync
+def test_push_leaves_the_box_tree_clean_and_secrets_here(tmp_path):
+    out, box, ssh_log = push_to_fake_box(tmp_path)
+    assert out.returncode == 0, out.stderr
+    assert (box / "secrets" / ".gitkeep").exists() and not (box / "secrets" / "token").exists()
+    assert (box / ".cache" / "jevbench" / "j").exists() and not (box / ".cache" / "index-runs").exists()
+    assert (box / ".cache" / "remote" / "profile").read_text() == f"{PROFILE}\n" and "start.sh" in ssh_log
+    status = subprocess.run(["git", "-C", str(box), "status", "--porcelain"], capture_output=True, text=True, check=True)
+    assert status.stdout == ""
+
+
+@needs_rsync
+def test_push_stops_before_the_queue_when_the_box_tree_differs(tmp_path):
+    out, box, ssh_log = push_to_fake_box(tmp_path, stray=True)
+    assert out.returncode != 0 and "stray.txt" in out.stderr
+    assert not (box / ".cache" / "remote" / "profile").exists() and "start.sh" not in ssh_log
+
+
+@needs_rsync
+def test_push_restore_puts_back_runs_run_tag_and_index_collect_markers(tmp_path):
+    out, box, _ = push_to_fake_box(tmp_path, "--restore")
+    assert out.returncode == 0, out.stderr
+    assert (box / ".cache" / "index-runs" / PROFILE / "tag" / "shard-0" / "r").exists()
+    assert (box / ".cache" / "collect" / PROFILE / "c.jsonl").exists()
+    assert (box / ".cache" / "remote" / "run_tag").read_text() == "x\n"
+    markers = sorted(p.name for p in (box / ".cache" / "remote" / "state" / PROFILE).iterdir())
+    assert markers == ["collect-calib.done", "index.done"]
+    assert (box / ".cache" / "remote" / "profile").exists()
+
+
+@pytest.mark.parametrize("flags", [["--restore", "--dry-run"], ["--dry-run", "--restore"]])
+def test_push_restores_before_it_sets_the_profile(tmp_path, flags):
+    repo = scratch_repo(tmp_path, git=True)
+    (repo / ".git" / "info" / "exclude").write_text(".cache/\n")
+    mirror = repo / ".cache" / "remote-boxes" / PROFILE
+    (mirror / "state" / PROFILE).mkdir(parents=True)
+    (mirror / "run_tag").write_text("t\n")
+    for name in MIRROR_STATE:
+        (mirror / "state" / PROFILE / f"{name}.done").touch()
+    out = local(repo, "push.sh", URL, PROFILE, *flags)
+    assert out.returncode == 0, out.stderr
+    steps = commands(out.stdout)
+    assert len(steps) == 10
+    mkdir, runs, tag, markers, profile = steps[4:9]
+    assert mkdir[-1] == f"mkdir -p {BOX}/.cache/remote/state/{PROFILE}"
+    assert runs[-3:] == [f".cache/index-runs/{PROFILE}", f".cache/collect/{PROFILE}", f"{HOST}:{BOX}/"]
+    assert tag[-2:] == [f".cache/remote-boxes/{PROFILE}/run_tag", f"{HOST}:{BOX}/.cache/remote/run_tag"]
+    state = f".cache/remote-boxes/{PROFILE}/state/{PROFILE}"
+    assert markers[-3:] == [f"{state}/index.done", f"{state}/collect-calib.done", f"{HOST}:{BOX}/.cache/remote/state/{PROFILE}/"]
+    assert profile[-1].endswith("/.cache/remote/profile")
+
+
+def test_push_restore_needs_the_old_box_pulled(tmp_path):
+    out = local(scratch_repo(tmp_path, git=True), "push.sh", URL, PROFILE, "--restore", "--dry-run")
+    assert out.returncode == 1 and "run_tag" in out.stderr and not commands(out.stdout)
+
+
+def test_push_rejects_an_unknown_flag(tmp_path):
+    assert local(scratch_repo(tmp_path, git=True), "push.sh", URL, PROFILE, "--resume").returncode == 2
 
 
 @pytest.mark.parametrize("url", ["root@h:22", "ssh://h:22", "ssh://root@h", "ssh://root@h:22x", "ssh://root@h:22/x"])

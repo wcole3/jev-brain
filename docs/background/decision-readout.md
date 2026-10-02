@@ -219,7 +219,7 @@ Illustrative logprobs `[-0.2, -2.1, -4.0]` for three options:
 `T > 1` flattens an overconfident model. The temperatures live in
 `data/<profile>/<layout>/calibration.json`, one per question type plus a noul yes-offset `b`,
 and are valid only for that model, precision and layout (the file is stamped; stale ones are
-refused). For qwen3.6 and `decider_chat` our fit is T = 1.648 / 6.323 / 1.386 for choice /
+refused). For qwen3.6 and `decider_chat` our fit is T = 1.648 / 1.927 / 1.386 for choice /
 score / noul, b = 0. A missing file means `T = 1.0` and a warning. Fits and their
 numbers: [calibration.md](calibration.md).
 

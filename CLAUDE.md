@@ -69,8 +69,8 @@ decision endpoint from the same model, behind a small FastAPI gateway.
   - `--max-num-seqs 256` is required for hybrid Qwen (Mamba cache blocks);
   - vLLM 0.30 streams thinking in the delta key `reasoning`.
 - **SGLang:** don't use it for mixed chat + decision traffic (#34719).
-- **bf16 noise:** decision probabilities move ~0.03 under load. The stability test allows
-  0.05 and needs the top answer to hold when the top-two gap > 0.10.
+- **bf16 noise:** decision probabilities move ~0.03/T under load. The stability test warns
+  above 0.05 and fails only if the top answer flips when the top-two gap > 0.10.
 - **Chat contention:** decision prefill starves chat decode (DS-007).
 - **Prefix cache:** hybrid Qwen prefix caching is 784-token granular (DS-008).
 - **Tokenizer calls:** encode many short texts in one call (`prompts.encode_each`); the

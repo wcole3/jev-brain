@@ -3,7 +3,7 @@
 set -euo pipefail
 args=(
   "$HF_MODEL" --revision "$HF_REVISION" --tokenizer-revision "$HF_REVISION"
-  --served-model-name "$SERVED_MODEL" --host 0.0.0.0 --port 8000
+  --served-model-name "$SERVED_MODEL" --host "${VLLM_HOST:-0.0.0.0}" --port 8000
   --enable-prefix-caching --gpu-memory-utilization "${GPU_MEMORY_UTILIZATION:-0.90}"
   --max-model-len "$MAX_MODEL_LEN"
   --max-num-seqs "${MAX_NUM_SEQS:-256}"

@@ -1,0 +1,7 @@
+# qwen3.8-27b box queue: one `name: command` per line, run in order from the repo root by queue.sh.
+stack: bash scripts/remote/stack.sh up qwen3.8-27b
+host-compare: uv run python scripts/host_compare.py run qwen3.8-27b
+index: uv run python scripts/evaluate.py index --profile qwen3.8-27b --shards 4 --run-dir .cache/index-runs/qwen3.8-27b/$(cat .cache/remote/run_tag)
+collect-calib: uv run python scripts/collect.py --profile qwen3.8-27b --split calib --concurrency 4
+collect-eval: uv run python scripts/collect.py --profile qwen3.8-27b --split eval --concurrency 4
+collect-index-dev: uv run python scripts/collect.py --profile qwen3.8-27b --split index-dev --concurrency 4

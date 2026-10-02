@@ -1,0 +1,7 @@
+# gemma-4-31b box queue: one `name: command` per line, run in order from the repo root by queue.sh.
+stack: bash scripts/remote/stack.sh up gemma-4-31b
+host-compare: uv run python scripts/host_compare.py run gemma-4-31b
+index: uv run python scripts/evaluate.py index --profile gemma-4-31b --shards 4 --run-dir .cache/index-runs/gemma-4-31b/$(cat .cache/remote/run_tag)
+collect-calib: uv run python scripts/collect.py --profile gemma-4-31b --split calib --concurrency 4
+collect-eval: uv run python scripts/collect.py --profile gemma-4-31b --split eval --concurrency 4
+collect-index-dev: uv run python scripts/collect.py --profile gemma-4-31b --split index-dev --concurrency 4

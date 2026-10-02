@@ -30,3 +30,11 @@ def test_extra_args_are_word_split_onto_the_command(tmp_path):
 
 def test_empty_extra_args_add_nothing(tmp_path):
     assert "mamba" not in served_args(tmp_path, EXTRA_ARGS="")
+
+
+def test_host_defaults_to_all_interfaces(tmp_path):
+    assert "--host 0.0.0.0 " in served_args(tmp_path)
+
+
+def test_vllm_host_overrides_the_bind_address(tmp_path):
+    assert "--host 127.0.0.1 " in served_args(tmp_path, VLLM_HOST="127.0.0.1")

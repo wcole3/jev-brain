@@ -95,8 +95,8 @@ flip only on rows where the model was nearly undecided.
 | Stability test: 1 idle read vs 5 reads under 4 chat streams | Max drift 0.028–0.032. The test allows 0.05 and requires the same top answer when the idle top-two gap > 0.10 | [test_stability.py](../../tests/live/test_stability.py) |
 | qwen3.6 JevBench, 2026-09-28 vs 2026-09-29 | 84.2 → 84.4: 3 of 1,682 rows changed correctness, all wrong → right. The gateway's prompt code was the same | [09-28](../results/qwen3.6-27b/2026-09-28T000000Z/summary.md), [09-29](../results/qwen3.6-27b/2026-09-29T130343Z-jevbench/summary.md) |
 | qwen3.6 JevBench, third rerun | 84.3 | not committed |
-| qwen3.6 quick run (first 50 rows) vs the 09-29 full run | 0 of 50 predictions differ | [quick raw.jsonl](../results/qwen3.6-27b/2026-09-29T210957Z-quick/raw.jsonl) |
-| Jev, two full passes | 18 rows differ: 17 near-ties that change when re-asked, plus 1 HTTP error | [jevbench-vs-jev.md](../results/jevbench-vs-jev.md#why-we-trust-the-comparison) |
+| qwen3.6 quick run (first 50 rows) vs the 09-29 full run | 0 of 50 predictions differ | [quick raw.jsonl](../results/archive/qwen3.6-27b/2026-09-29T210957Z-quick/raw.jsonl) |
+| Jev, two full passes | 18 rows differ: 17 near-ties that change when re-asked, plus 1 HTTP error | [jevbench-vs-jev.md](../results/archive/jevbench-vs-jev.md#why-we-trust-the-comparison) |
 | Other projects | Prefix caching flipped 59 of 13,500 near-tie answers (mini-jev); bf16 fast paths changed 5–6 of 777 (SemIf) | [ordering-and-layout.md](../appendix/ordering-and-layout.md), [inference-other-projects.md](../appendix/inference-other-projects.md) |
 
 Notes:
@@ -117,7 +117,7 @@ Notes:
 **Gemma is the least stable of our models.** On a few near-saturated rows its answer can swing
 between two identical asks on an idle server (invoice 1168: `yes` 0.50, then `no` 0.73), and
 flips of rows with a large top-two gap happen between runs without any setting change
-([DS-015](../results/experiments/ds-015/README.md)). A large-gap flip on Gemma is therefore
+([DS-015](../results/archive/experiments/ds-015/README.md)). A large-gap flip on Gemma is therefore
 weaker evidence of a bug than on Qwen.
 
 ## 4. Deterministic modes, and what they cost
@@ -187,7 +187,7 @@ About vLLM's mode:
 
 - **What gets fitted:** the plan fits `T` per profile and question type by NLL on a
   calibration split ([design spec](../superpowers/specs/2026-09-28-systemone-server-design.md)),
-  and possibly a noul bias (DS-002, [jevbench-vs-jev.md](../results/jevbench-vs-jev.md)).
+  and possibly a noul bias (DS-002, [jevbench-vs-jev.md](../results/archive/jevbench-vs-jev.md)).
 - **Each read is one noisy draw,** so averaging matters:
   - the noise is largest on near-ties, which is exactly where a bias shift changes answers;
   - a fit on one pass partly fits that pass's batch layout;

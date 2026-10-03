@@ -80,7 +80,7 @@ The formula for one attention layer is 2 (K and V) × KV heads × head dim × 2 
 | Gemma full attention, per token | 2 × 4 × 512 × 2 B = 8 KiB × 10 layers | **80 KiB**, for every token |
 
 For one of our systemone rows (2,541 tokens, the largest row in the
-[quick run](../results/qwen3.6-27b/2026-09-29T210957Z-quick/summary.md)):
+[quick run](../results/archive/qwen3.6-27b/2026-09-29T210957Z-quick/summary.md)):
 - **Qwen:** 2,541 × 64 KiB + 147 MiB ≈ **306 MiB**.
 - **Gemma:** the whole row is inside the window while it prefills, so 2,541 × 880 KiB
   ≈ **2.1 GiB**, about 7× Qwen.
@@ -131,7 +131,7 @@ blocks in the pool ÷ blocks one maximum-length request would need × `max_model
 
 **Qwen3.6**: the startup log of 2026-09-28 (partly quoted in
 [ds007-scheduling.md §0](../appendix/ds007-scheduling.md)) and `cache_config_info` in the
-[quick run](../results/qwen3.6-27b/2026-09-29T210957Z-quick/summary.md). Qwen3.8 has the
+[quick run](../results/archive/qwen3.6-27b/2026-09-29T210957Z-quick/summary.md). Qwen3.8 has the
 identical config, so we expect the same, but haven't read its log.
 
 ```
@@ -240,7 +240,7 @@ isn't short of memory, so this only hurts, unless the state dtype shrinks too.
   [Qwen3.8](https://huggingface.co/Qwen/Qwen3.8-27B/blob/1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0/config.json),
   [Gemma 4](https://huggingface.co/google/gemma-4-31B-it/blob/842da3794eaa0b77d5f08bae87a17459d91ff475/config.json).
 - **Our results and research:** the
-  [quick run](../results/qwen3.6-27b/2026-09-29T210957Z-quick/summary.md); full runs for
+  [quick run](../results/archive/qwen3.6-27b/2026-09-29T210957Z-quick/summary.md); full runs for
   [qwen3.6](../results/qwen3.6-27b/2026-09-28T000000Z/summary.md),
   [qwen3.8](../results/qwen3.8-27b/2026-09-28T000000Z/summary.md) and
   [gemma](../results/gemma-4-31b/2026-09-28T000000Z/summary.md);

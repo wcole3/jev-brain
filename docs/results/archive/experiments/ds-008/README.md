@@ -1,8 +1,8 @@
 # DS-008: making hybrid Qwen reuse the whole shared prefix
 
 qwen3.6-27b, bf16 weights, vLLM 0.30.0, 2026-09-30. Background:
-[prompt-sharing.md](../../../background/prompt-sharing.md) and
-[model-architectures.md](../../../background/model-architectures.md).
+[prompt-sharing.md](../../../../background/prompt-sharing.md) and
+[model-architectures.md](../../../../background/model-architectures.md).
 
 ## Outcome
 
@@ -53,7 +53,7 @@ question, so this is a worst case: in real use a single-question request is neve
 
 Chat fidelity could not separate bf16 from noise: greedy chat matched on 9 of 20 prompts vs
 the fp32 baseline, while the baseline matched itself on only 10 of 20
-([determinism.md](../../../background/determinism.md)).
+([determinism.md](../../../../background/determinism.md)).
 
 ## Findings
 

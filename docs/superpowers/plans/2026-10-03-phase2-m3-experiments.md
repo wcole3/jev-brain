@@ -690,7 +690,7 @@ folder by explicit path.
 
 1. **Orders:** `uv run python scripts/m3.py orders --profile P --layout L` for every profile P in qwen3.6-27b, qwen3.8-27b and gemma-4-31b, and L in decider_chat and header.
 2. **Layouts:** `uv run python scripts/m3.py layouts --profile P` for each profile.
-3. **Recommendations:** write `docs/results/m3-recommendations.md`, with one line per profile:
+3. **Recommendations:** write `docs/results/archive/m3-recommendations.md`, with one line per profile:
    - the layout and orders to ship, with the CIs and the read cost;
    - any auto-switch flags.
 

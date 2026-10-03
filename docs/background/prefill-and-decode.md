@@ -133,9 +133,9 @@ include chat.
 
 ### 4b. Prefill saturates the GPU
 
-From the `--quick` run's per-phase table ([summary](../results/qwen3.6-27b/2026-09-29T210957Z-quick/summary.md));
+From the `--quick` run's per-phase table ([summary](../results/archive/qwen3.6-27b/2026-09-29T210957Z-quick/summary.md));
 computed tokens/s = computed tokens ÷ phase wall time in
-[raw.jsonl](../results/qwen3.6-27b/2026-09-29T210957Z-quick/raw.jsonl), as in
+[raw.jsonl](../results/archive/qwen3.6-27b/2026-09-29T210957Z-quick/raw.jsonl), as in
 [prompt-sharing.md §5](prompt-sharing.md):
 
 | Phase | Requests/s | Computed tokens/s | Waiting peak | KV peak | Preemptions |

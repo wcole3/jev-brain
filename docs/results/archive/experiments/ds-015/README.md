@@ -1,8 +1,8 @@
 # DS-015: Gemma reused its shared prefix only partly
 
 gemma-4-31b, bf16, vLLM 0.30.0, 2026-09-30. Background:
-[prompt-sharing.md §7](../../../background/prompt-sharing.md) and
-[model-architectures.md](../../../background/model-architectures.md).
+[prompt-sharing.md §7](../../../../background/prompt-sharing.md) and
+[model-architectures.md](../../../../background/model-architectures.md).
 
 ## Outcome
 
@@ -16,7 +16,7 @@ profile) and **no warm-up call** (`WARM_UP=off`). Padding stays off for Gemma.
 | Cold p50, 2,048-token state × 16 questions × 26 options | 1,660 ms | **1,377 ms** (full run) |
 | JevBench | 87.2% | 87.0% (9 of 1,682 answers changed, within noise; see below) |
 
-Full run: [gemma-4-31b/2026-09-30T143638Z](../../gemma-4-31b/2026-09-30T143638Z/summary.md).
+Full run: [gemma-4-31b/2026-09-30T143638Z](../../../gemma-4-31b/2026-09-30T143638Z/summary.md).
 
 ## Why Gemma missed
 
@@ -66,4 +66,4 @@ normally a bug signal. Tested directly:
   moved between two identical asks (invoice 1168: `yes` 0.50, then `no` 0.73).
 
 So the flips come from Gemma being very unstable on a handful of near-saturated rows, not from
-the retention flag. See [determinism.md](../../../background/determinism.md).
+the retention flag. See [determinism.md](../../../../background/determinism.md).

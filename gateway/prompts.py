@@ -94,7 +94,7 @@ def pad_site(
 ) -> tuple[list[int], list[int]] | None:
     """The shared prefix cut where the pad goes: after the chat head (front), after the last shared part (end)
     or between the context label and the state (middle). None when the layout has no such place."""
-    # Spreading pads through the state was tried and dropped: 8.6% answer flips (docs/results/experiments/ds-008).
+    # Spreading pads through the state was tried and dropped: 8.6% answer flips (docs/results/archive/experiments/ds-008).
     shared = shared_parts(layout)
     if mode == "front":
         return frame.head, joined(parts, shared)

@@ -80,7 +80,7 @@ TypeSafe. We pin it to upstream commit `fcec62f`
 | banking77 | intent classification, human labels (CC-BY-SA) | 300 choice |
 | typed_decisions | operational topics (support, security, invoices, agent traces) | 50 choice, 225 noul, 207 score |
 
-Counts are from our cached data and the results table in [../results/jevbench-vs-jev.md](../results/jevbench-vs-jev.md).
+Counts are from our cached data and the results table in [../results/archive/jevbench-vs-jev.md](../results/archive/jevbench-vs-jev.md).
 
 **Gold vs silver.** Every row has a `reliability` tier. Gold is human, objective or
 computed labels. Silver is labelled by a panel of models. The board reports gold only, so a
@@ -143,7 +143,7 @@ phase. Two token counts matter:
 sit at 2.67, so the GPU does 2.7 times the necessary work. The jevbench phase is exactly
 1.00 because one-question requests share nothing. The full explanation is in
 [prompt-sharing.md](prompt-sharing.md); the numbers are in
-[../results/qwen3.6-27b/2026-09-29T210957Z-quick/summary.md](../results/qwen3.6-27b/2026-09-29T210957Z-quick/summary.md).
+[../results/archive/qwen3.6-27b/2026-09-29T210957Z-quick/summary.md](../results/archive/qwen3.6-27b/2026-09-29T210957Z-quick/summary.md).
 
 **Provenance.** Every `summary.md` starts with a list: timestamp, repo commit (`-dirty` if
 code changed), target, JevBench SHA `fcec62f13ce9...`, rows available and run, profile, HF
@@ -165,7 +165,7 @@ each answer's probabilities, which runs recorded before 2026-09-30 lack. See [ca
 
 ## 4. Why the numbers differ
 
-Running example: [../results/jevbench-vs-jev.md](../results/jevbench-vs-jev.md).
+Running example: [../results/archive/jevbench-vs-jev.md](../results/archive/jevbench-vs-jev.md).
 
 | Reason | Effect |
 |---|---|
@@ -209,6 +209,6 @@ bench are the most reliable comparison, because we control the data, the harness
 - Decision Index kit README (scoring, weights, rules, latency): https://github.com/apolinario/decision-index
 - Decision Index board and method note: https://huggingface.co/spaces/multimodalart/jev-decision-index
 - JevBench (README, LEADERBOARD.md, `bench_eval.py`, `data/README.md`) at `fcec62f`: https://github.com/model-collapse/jev-bench
-- Ours: [../3-leaderboard.md](../3-leaderboard.md), [../results/jevbench-vs-jev.md](../results/jevbench-vs-jev.md),
+- Ours: [../3-leaderboard.md](../3-leaderboard.md), [../results/archive/jevbench-vs-jev.md](../results/archive/jevbench-vs-jev.md),
   [../appendix/](../appendix/), [`scripts/bench.py`](../../scripts/bench.py)
 - Raw scrapes: `.firecrawl/background/benchmarks/` (git-ignored)

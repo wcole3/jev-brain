@@ -1,7 +1,7 @@
 # Prompt sharing on qwen3.6-27b
 
 Based on the `--quick` bench run of 2026-09-29
-([summary](../results/qwen3.6-27b/2026-09-29T210957Z-quick/summary.md)), plus a replay of the same requests
+([summary](../results/archive/qwen3.6-27b/2026-09-29T210957Z-quick/summary.md)), plus a replay of the same requests
 to check the explanation.
 
 ## Short answer
@@ -176,7 +176,7 @@ Notes:
 **Outcome (DS-008, 2026-09-30):** front padding is adopted on both Qwen profiles. Measured:
 computed ÷ usage 2.67 → 1.05, 0.5 → 1.1 req/s, cold p50 2,389 → 982 ms, with 1.4% of JevBench
 answers changed in a worst-case test. `--mamba-block-size` was confirmed to be ignored. Full results:
-[experiments/ds-008](../results/experiments/ds-008/README.md).
+[experiments/ds-008](../results/archive/experiments/ds-008/README.md).
 
 ### What front, middle and end padding look like
 
@@ -279,7 +279,7 @@ the shared prefix is at least `WARM_MIN_PREFIX_TOKENS` long.
 less than one block), so its last boundary is exactly the end of the padded prefix: every later
 row resumes from there. Rows sent together without a warm-up can't reuse each other, because
 no one has saved that checkpoint yet. Warming with the *prefix alone* was tried and did worse
-(1.47× instead of 1.05×; [DS-008](../results/experiments/ds-008/README.md)).
+(1.47× instead of 1.05×; [DS-008](../results/archive/experiments/ds-008/README.md)).
 
 **Gemma (sliding-window layers).** 50 of its 60 layers only look back 1,024 tokens, and by
 default vLLM 0.30 hashes (makes reusable) their cache blocks only at the end of each prompt.
@@ -299,7 +299,7 @@ call can already share the prefix. The extra serial warm-up call then only adds 
 **Rule of thumb for a new model:** measure, don't guess. Send one multi-question request
 straight to vLLM and read `vllm:prompt_tokens_cached_total` around each call: does row 2 reuse
 the prefix after the warm-up call, and do rows sent together reuse each other? Details and the
-vLLM source references: [DS-015](../results/experiments/ds-015/README.md).
+vLLM source references: [DS-015](../results/archive/experiments/ds-015/README.md).
 
 ## Caveats
 

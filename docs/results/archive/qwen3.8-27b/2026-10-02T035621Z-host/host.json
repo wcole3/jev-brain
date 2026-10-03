@@ -23,7 +23,7 @@
       "start": "2026-10-02T03:56:21",
       "end": "2026-10-02T03:59:39",
       "wall_s": 198.04388063773513,
-      "dir": "docs/results/qwen3.8-27b/2026-10-02T035939Z-latency",
+      "dir": "docs/results/archive/qwen3.8-27b/2026-10-02T035939Z-latency",
       "telemetry": {
         "samples": 40,
         "median_sm_clock": 1867.0,
@@ -37,7 +37,7 @@
       "start": "2026-10-02T03:59:39",
       "end": "2026-10-02T04:00:52",
       "wall_s": 73.42745578521863,
-      "dir": "docs/results/qwen3.8-27b/2026-10-02T035940Z-quick",
+      "dir": "docs/results/archive/qwen3.8-27b/2026-10-02T035940Z-quick",
       "telemetry": {
         "samples": 15,
         "median_sm_clock": 1582.0,
@@ -51,7 +51,7 @@
       "start": "2026-10-02T04:00:52",
       "end": "2026-10-02T04:08:53",
       "wall_s": 480.72752856789157,
-      "dir": "docs/results/qwen3.8-27b/2026-10-02T040054Z-index-subset",
+      "dir": "docs/results/archive/qwen3.8-27b/2026-10-02T040054Z-index-subset",
       "telemetry": {
         "samples": 94,
         "median_sm_clock": 1545.0,

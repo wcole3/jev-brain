@@ -4,7 +4,6 @@ usage: uv run python scripts/ties.py --profile P --run MERGED_DIR [--dry-run]
 """
 
 import argparse
-import json
 from collections import Counter, defaultdict
 from collections.abc import Iterable
 from pathlib import Path
@@ -12,17 +11,14 @@ from pathlib import Path
 from scripts.bench import git_revision
 from scripts.bench_report import provenance
 from scripts.evaluate import now, results_dir
+from scripts.index_run import last_attempts
 
 DATASETS = ("ToolRet", "BRIGHT")
 
 
 def read_rows(path: Path) -> Iterable[dict]:
-    """Rows of a results.jsonl; lines that are not JSON (a crash tail) are skipped."""
-    for line in path.read_text().splitlines():
-        try:
-            yield json.loads(line)
-        except json.JSONDecodeError:
-            continue
+    """The last attempt per run_id of a results.jsonl, without an unflushed crash tail (the harness's rule)."""
+    return last_attempts([path]).values()
 
 
 def tie_stats(results: Iterable[dict], datasets=DATASETS) -> dict[str, dict]:

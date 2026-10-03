@@ -2,8 +2,8 @@
 
 ## Provenance
 
-- timestamp: 2026-10-02T202448Z
-- repo commit: 2c08cb2
+- timestamp: 2026-10-03T003833Z
+- repo commit: 7e5652e
 - profile: qwen3.6-27b
 - orders: identity
 - calib split sha256: a4e492db25b2be6fb34f65689bbb715031e938a3d449e12c2677f8aa4d0e6ca8
@@ -26,7 +26,7 @@ noul offset: fitted b = +0.170; eval accuracy change +0.0000 [-0.0045, +0.0045],
 | type | n calib/eval | T | T gate (eval ECE change vs T = 1) | b | NLL before → after (calib) | NLL before → after (eval) | ECE before → after (calib) | ECE before → after (eval) | eval acc |
 |---|---|---|---|---|---|---|---|---|---|
 | choice | 898/1607 | 1.627 | fitted -0.050 [-0.065, -0.025]; pooled -0.019 [-0.044, +0.012] → fitted |  | 0.664 → 0.542 | 0.553 → 0.496 | 0.068 → 0.034 | 0.079 → 0.029 | 0.817 |
-| score | 259/554 | 1.000 (none; fitted 7.195) | fitted +0.127 [+0.050, +0.178]; pooled +0.031 [-0.023, +0.059] → none |  | 3.085 → 3.085 | 1.703 → 1.703 | 0.412 → 0.412 | 0.178 → 0.178 | 0.664 |
+| score | 259/554 | 1.958 (pooled; fitted 7.195) | fitted +0.127 [+0.050, +0.178]; pooled +0.031 [-0.023, +0.059] → pooled |  | 3.085 → 1.805 | 1.703 → 1.180 | 0.412 → 0.293 | 0.178 → 0.208 | 0.664 |
 | noul | 670/666 | 1.284 | fitted -0.017 [-0.029, +0.008]; pooled +0.028 [-0.006, +0.061] → fitted | +0.000 | 0.257 → 0.248 | 0.278 → 0.266 | 0.035 → 0.025 | 0.040 → 0.023 | 0.895 |
 
 pooled T (one T for every type, b = 0; the gate's fallback): 1.958

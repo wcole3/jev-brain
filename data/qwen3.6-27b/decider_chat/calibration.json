@@ -1,7 +1,7 @@
 {
  "format": 2,
- "version": 5,
- "date": "2026-10-02T20:25:37Z",
+ "version": 6,
+ "date": "2026-10-03T00:39:27Z",
  "comments": [
   {
    "version": 1,
@@ -27,6 +27,11 @@
    "version": 5,
    "date": "2026-10-02T20:25:37Z",
    "text": "T = 1 is a gate candidate (owner); choice: fitted T 1.648, score: pooled T 1.927, noul: fitted T 1.386, b not shipped"
+  },
+  {
+   "version": 6,
+   "date": "2026-10-03T00:39:27Z",
+   "text": "T = 1 only when every candidate fails the gate (owner); choice: fitted T 1.648, score: pooled T 1.927, noul: fitted T 1.386, b not shipped"
   }
  ],
  "stamp": {

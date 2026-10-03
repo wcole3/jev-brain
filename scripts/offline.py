@@ -56,9 +56,13 @@ def questions(record: dict, row: dict, layout: str, orders: str, layouts: dict) 
         yield qid, q.type, chosen, gold
 
 
+def scored_one(row: dict, t: str, gold: int, chosen: list, cal: Calibration) -> Scored:
+    return Scored(row["source"], row["family"], t, gold, probabilities(chosen, t, cal))
+
+
 def scored(record: dict, row: dict, arm: Arm, layouts: dict) -> list[Scored]:
     """One Scored per gold-labelled question, as the gateway would answer it under this arm."""
-    return [Scored(row["source"], row["family"], t, gold, probabilities(chosen, t, arm.calibration))
+    return [scored_one(row, t, gold, chosen, arm.calibration)
             for _, t, chosen, gold in questions(record, row, arm.layout, arm.orders, layouts)]
 
 
@@ -69,8 +73,7 @@ def keyed(recs: Iterable[dict], rows_by_id: dict[str, dict], arm: Arm,
     for rec in recs:
         row = rows_by_id[rec["id"]]
         for qid, t, chosen, gold in questions(rec, row, arm.layout, arm.orders, layouts):
-            out[(rec["id"], qid)] = Scored(row["source"], row["family"], t, gold,
-                                           probabilities(chosen, t, arm.calibration))
+            out[(rec["id"], qid)] = scored_one(row, t, gold, chosen, arm.calibration)
     return out
 
 

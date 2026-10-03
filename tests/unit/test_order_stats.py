@@ -1,3 +1,5 @@
+import math
+
 import pytest
 
 from gateway.calibration import UNCALIBRATED
@@ -102,4 +104,4 @@ def test_pride_divides_the_calib_prior_out_of_identity_reads():
 def test_reversed_keyed_maps_the_reversed_read_back_to_caller_order():
     row, rec = two_option_row("r1", {(0, 1): [0.0, -5.0], (1, 0): [0.0, -5.0]})
     out = reversed_keyed([rec], {"r1": row}, "decider_chat", UNCALIBRATED, LAYOUTS)
-    assert out[("r1", "c")].probs[1] > 0.9
+    assert out[("r1", "c")].probs == pytest.approx([1 / (1 + math.exp(5)), 1 / (1 + math.exp(-5))])

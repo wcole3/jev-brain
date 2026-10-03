@@ -10,7 +10,7 @@ from scripts.metrics import Scored
 
 
 def flip_rate(identity: dict, reversed_: dict) -> float:
-    keys = [k for k in identity.keys() & reversed_.keys() if identity[k].type != "noul"]
+    keys = [k for k in sorted(identity.keys() & reversed_.keys()) if identity[k].type != "noul"]
     return sum(identity[k].pred != reversed_[k].pred for k in keys) / len(keys) if keys else 0.0
 
 
@@ -37,7 +37,7 @@ def tvd(p: list[float], q: list[float]) -> float:
 
 def disagreement_auroc(identity: dict, reversed_: dict, averaged: dict) -> float | None:
     """Chance that a wrong answer shows more identity-vs-reversed disagreement than a right one (ties half)."""
-    keys = identity.keys() & reversed_.keys() & averaged.keys()
+    keys = sorted(identity.keys() & reversed_.keys() & averaged.keys())
     gap = {k: tvd(identity[k].probs, reversed_[k].probs) for k in keys}
     wrong = [gap[k] for k in keys if not averaged[k].correct]
     right = [gap[k] for k in keys if averaged[k].correct]
@@ -53,7 +53,7 @@ def mean(values: list[float]) -> float | None:
 
 def noul_lean(identity: dict, reversed_: dict) -> dict:
     """p(yes) moving with the order is a position lean; staying put is a lean to the word."""
-    keys = [k for k in identity.keys() & reversed_.keys() if identity[k].type == "noul"]
+    keys = [k for k in sorted(identity.keys() & reversed_.keys()) if identity[k].type == "noul"]
     return {
         "n": len(keys),
         "p_yes_identity": mean([identity[k].probs[1] for k in keys]),
@@ -98,6 +98,6 @@ def reversed_keyed(recs, rows_by_id, layout: str, cal: Calibration, layouts) -> 
     for rec in recs:
         row = rows_by_id[rec["id"]]
         for qid, t, chosen, gold in offline.questions(rec, row, layout, "identity+reversed", layouts):
-            rev = [c for c in chosen if c[1] != sorted(c[1])] or chosen  # one option: both orders coincide
-            out[(rec["id"], qid)] = Scored(row["source"], row["family"], t, gold, probabilities(rev, t, cal))
+            rev = [c for c in chosen if c[1] != sorted(c[1])]
+            out[(rec["id"], qid)] = offline.scored_one(row, t, gold, rev, cal)
     return out

@@ -8,7 +8,6 @@ import pytest
 
 REMOTE = Path(__file__).parents[2] / "scripts" / "remote"
 JOB_FILES = sorted((REMOTE / "jobs").glob("*.txt"))
-COLLECTS = ["collect-calib", "collect-eval", "collect-index-dev"]
 
 
 def job_names(path: Path) -> list[str]:
@@ -29,13 +28,11 @@ def test_every_profile_has_a_job_file():
 
 @pytest.mark.parametrize("path", JOB_FILES, ids=lambda p: p.name)
 def test_job_files_parse_with_unique_names_starting_at_stack(path):
-    names = job_names(path)
-    index = [] if path.stem == "qwen3.6-27b" else ["index"]
-    assert names == ["stack", "host-compare", *index, *COLLECTS]
+    assert job_names(path) == ["stack", "latency", "index"]  # final phase-2 run
     assert path.stem in path.read_text()
 
 
-@pytest.mark.parametrize("profile", ["qwen3.8-27b", "gemma-4-31b"])
+@pytest.mark.parametrize("profile", ["qwen3.6-27b", "qwen3.8-27b", "gemma-4-31b"])
 def test_index_job_resumes_the_box_run_tag_and_fails_on_holes(profile):
     index = [line for line in (REMOTE / "jobs" / f"{profile}.txt").read_text().splitlines() if line.startswith("index:")]
     assert f"--run-dir .cache/index-runs/{profile}/$(cat .cache/remote/run_tag)" in index[0]

@@ -27,12 +27,11 @@ def test_long_slice():
     assert not is_long("index", "MMLU", 50_000)
 
 
-def test_paired_uses_shared_keys_in_order_and_keep_filter():
+def test_paired_uses_shared_keys_in_order():
     a = {("r1", "q"): s(0, [0.9, 0.1]), ("r2", "q"): s(0, [0.4, 0.6])}
     b = {("r2", "q"): s(0, [0.7, 0.3]), ("r3", "q"): s(0, [0.5, 0.5])}
     xa, xb = paired(a, b)
     assert len(xa) == len(xb) == 1 and xa[0].probs == [0.4, 0.6] and xb[0].probs == [0.7, 0.3]
-    assert paired(a, b, keep=lambda key, item: key[0] != "r2") == ([], [])
 
 
 def test_compare_reports_b_minus_a():

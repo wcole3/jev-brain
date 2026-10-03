@@ -66,6 +66,12 @@ def check_coverage(got: int, want: int, layout: str, allow_partial: bool) -> Non
         raise SystemExit(f"only {got} of {want} rows collected: collect the rest, or pass --allow-partial")
 
 
+def collect_stamp(recs: list[dict], layout: str) -> dict | None:
+    """The stamp the layout's records were collected under, for checking a calibration file against."""
+    seen = next((r["stamp"] for r in recs if r["layout"] == layout), None)
+    return {k: seen.get(k) for k in STAMP_KEYS} if seen else None
+
+
 def offline_calibration(args, s: Settings, expect: dict | None) -> Calibration:
     """The arm's calibration: T = 1, one T for every type (no offset), or the layout's file."""
     if args.uncalibrated:
@@ -84,9 +90,7 @@ def cmd_offline(args) -> None:
     rows = {r["id"]: r for r in rows_for(args.split)}
     collected = COLLECT / args.profile / f"{args.split}.jsonl.gz"
     recs = list(records(collected))
-    seen = next((r["stamp"] for r in recs if r["layout"] == args.layout), None)
-    expect = {k: seen.get(k) for k in STAMP_KEYS} if seen else None
-    cal = offline_calibration(args, s, expect)
+    cal = offline_calibration(args, s, collect_stamp(recs, args.layout))
     if warning := orders_warning(cal, args.orders):
         print(f"warning: {warning}")
     arm = Arm(args.layout, args.orders, cal)

@@ -2,15 +2,15 @@
 
 ## Provenance
 
-- timestamp: 2026-10-03T002155Z
-- repo commit: a4ad243
+- timestamp: 2026-10-03T004736Z
+- repo commit: 49152c6
 - host: RTX PRO 6000 Blackwell, 600/600 W, drv 610.62, PCIe 4x16, AMD Ryzen 7 3800X 8-Core Processor (16 thr), 94 GB, WSL
 - profile: qwen3.8-27b
 - split: index-dev
 - collected: .cache/collect/qwen3.8-27b/index-dev.jsonl.gz
 - coverage: 7990 of 7990 rows
 
-Arm: {'layout': 'decider_chat', 'orders': 'identity', 'calibration': {'T': {'choice': 1.4958925733915396, 'score': 1.0, 'noul': 0.9701214258536706}, 'b': 0.0, 'source': 'qwen3.8-27b/decider_chat/calibration.json', 'orders': 'identity'}}
+Arm: {'layout': 'decider_chat', 'orders': 'identity', 'calibration': {'T': {'choice': 1.4958925733915396, 'score': 1.6641806616549275, 'noul': 0.9701214258536706}, 'b': 0.0, 'source': 'qwen3.8-27b/decider_chat/calibration.json', 'orders': 'identity'}}
 
 Status: ok 7990
 

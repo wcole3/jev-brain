@@ -15,13 +15,17 @@ def flip_rate(identity: dict, reversed_: dict) -> float:
     return sum(identity[k].pred != reversed_[k].pred for k in keys) / len(keys) if keys else 0.0
 
 
+BUCKET_WIDTH = {"2": 2, "3-5": 5, "6-26": 26, "27+": 27}  # positions kept per bucket; 27+ truncates
+
+
 def position_histogram(items: list[Scored]) -> dict[str, dict[str, list[int]]]:
     out = {}
     for i in items:
         if i.type == "noul":
             continue
-        width = min(len(i.probs), 27)
-        h = out.setdefault(option_bucket(len(i.probs)), {"chosen": [0] * width, "gold": [0] * width})
+        bucket = option_bucket(len(i.probs))
+        width = BUCKET_WIDTH[bucket]
+        h = out.setdefault(bucket, {"chosen": [0] * width, "gold": [0] * width})
         for name, pos in (("chosen", i.pred), ("gold", i.gold)):
             if pos < width:
                 h[name][pos] += 1
@@ -35,8 +39,9 @@ def tvd(p: list[float], q: list[float]) -> float:
 def disagreement_auroc(identity: dict, reversed_: dict, averaged: dict) -> float | None:
     """Chance that a wrong answer shows more identity-vs-reversed disagreement than a right one (ties half)."""
     keys = identity.keys() & reversed_.keys() & averaged.keys()
-    wrong = [tvd(identity[k].probs, reversed_[k].probs) for k in keys if not averaged[k].correct]
-    right = [tvd(identity[k].probs, reversed_[k].probs) for k in keys if averaged[k].correct]
+    gap = {k: tvd(identity[k].probs, reversed_[k].probs) for k in keys}
+    wrong = [gap[k] for k in keys if not averaged[k].correct]
+    right = [gap[k] for k in keys if averaged[k].correct]
     if not wrong or not right:
         return None
     wins = sum((w > r) + 0.5 * (w == r) for w in wrong for r in right)

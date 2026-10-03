@@ -31,7 +31,35 @@ def test_flip_rate_counts_changed_top_answers():
 def test_position_histogram_by_bucket():
     h = position_histogram([s(1, [0.7, 0.3]), s(0, [0.8, 0.2]), s(2, [0.1, 0.1, 0.8])])
     assert h["2"] == {"chosen": [2, 0], "gold": [1, 1]}
-    assert h["3-5"]["chosen"] == [0, 0, 1]
+    assert h["3-5"]["chosen"] == [0, 0, 1, 0, 0]
+
+
+def test_position_histogram_width_is_fixed_whatever_the_item_order():
+    k3, k5 = s(0, [0.8, 0.1, 0.1]), s(4, [0.0, 0.0, 0.0, 0.1, 0.9])
+    for items in ([k3, k5], [k5, k3]):
+        h = position_histogram(items)["3-5"]
+        assert h == {"chosen": [1, 0, 0, 0, 1], "gold": [1, 0, 0, 0, 1]}
+
+
+def test_position_histogram_truncates_the_27_plus_bucket():
+    probs = [0.0] * 30
+    probs[28] = 1.0
+    h = position_histogram([s(28, probs), s(1, [0.0, 1.0] + [0.0] * 28)])["27+"]
+    assert len(h["chosen"]) == 27 and h["chosen"][1] == 1 and sum(h["chosen"]) == 1
+    assert h["gold"][1] == 1 and sum(h["gold"]) == 1
+
+
+def test_flip_rate_ignores_noul():
+    ident = {("a", "n"): s(1, [0.2, 0.8], "noul"), ("a", "q"): s(0, [0.6, 0.4])}
+    rev = {("a", "n"): s(1, [0.8, 0.2], "noul"), ("a", "q"): s(0, [0.7, 0.3])}
+    assert flip_rate(ident, rev) == 0.0
+
+
+def test_auroc_counts_equal_disagreement_as_half():
+    ident = {("a", "q"): s(0, [0.9, 0.1]), ("b", "q"): s(0, [0.9, 0.1])}
+    rev = {("a", "q"): s(0, [0.5, 0.5]), ("b", "q"): s(0, [0.5, 0.5])}
+    avg = {("a", "q"): s(0, [0.9, 0.1]), ("b", "q"): s(0, [0.4, 0.6])}
+    assert disagreement_auroc(ident, rev, avg) == 0.5
 
 
 def test_auroc_is_one_when_disagreement_marks_every_error():

@@ -43,3 +43,13 @@ A full Index run takes about 8 h on a rented box with one order. With two orders
 | qwen3.6-27b | header | identity, or cyclic:4 for +0.3/+0.7 points at about 3× reads | none if identity; `--orders cyclic:4` otherwise |
 | qwen3.8-27b | decider_chat | identity | none |
 | gemma-4-31b | decider_chat | identity+reversed, for +0.7/+0.8 points at 2× reads | `--orders identity+reversed` |
+
+## Decision (owner, 2026-10-03)
+
+| Profile | Layout | Orders |
+|---|---|---|
+| qwen3.6-27b | **header** (was decider_chat) | identity |
+| qwen3.8-27b | decider_chat | identity |
+| gemma-4-31b | decider_chat | identity (2 orders not worth 2× reads) |
+
+No calibration refit: every profile keeps identity, and header already has its own fitted file. The final full Index run per profile confirms the change.

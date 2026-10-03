@@ -18,8 +18,8 @@ def qwen_tok():
 
 @pytest.fixture
 def qwen_settings(tmp_path, qwen_tok):
-    """qwen3.6-27b settings whose data dir is a temp folder holding fresh label tables."""
-    s = dataclasses.replace(Settings.from_profile("qwen3.6-27b"), data_root=tmp_path)
+    """qwen3.6-27b settings on decider_chat (pinned, so profile defaults can move) with fresh label tables."""
+    s = dataclasses.replace(Settings.from_profile("qwen3.6-27b"), data_root=tmp_path, prompt_layout="decider_chat")
     for name, layout in load_layouts().items():
         save_labels(s.data_dir(name) / "labels.json", build_labels(qwen_tok, layout))
     return s
@@ -29,7 +29,7 @@ def qwen_settings(tmp_path, qwen_tok):
 def engine(qwen_tok):
     layouts = load_layouts()
     return Engine(
-        settings=Settings.from_profile("qwen3.6-27b"),
+        settings=dataclasses.replace(Settings.from_profile("qwen3.6-27b"), prompt_layout="decider_chat"),
         tokenizer=qwen_tok,
         layouts=layouts,
         frames={n: chat_frame(qwen_tok, l) for n, l in layouts.items()},

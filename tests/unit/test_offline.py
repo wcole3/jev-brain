@@ -4,7 +4,7 @@ from gateway.calibration import Calibration
 from gateway.layouts import load_layouts
 from gateway.questions import render_question
 from gateway.schema import Question
-from scripts.offline import Arm, chosen_reads, evaluate, markdown, scored
+from scripts.offline import Arm, chosen_reads, evaluate, keyed, markdown, scored
 
 LAYOUTS = load_layouts()
 ROW = {
@@ -86,3 +86,15 @@ def test_chosen_reads_picks_the_arm_orders_and_refuses_missing_ones():
     assert len(chosen_reads(q, REC["questions"]["c"], "identity+reversed")) == 2
     with pytest.raises(ValueError, match="arm cyclic:3 needs 3 orders, collected 1"):
         chosen_reads(q, REC["questions"]["c"], "cyclic:3")
+
+
+def test_keyed_maps_row_and_question_to_scored():
+    got = keyed([REC], {"r1": ROW}, Arm(), LAYOUTS)
+    assert set(got) == {("r1", "c"), ("r1", "n")}
+    assert got[("r1", "c")].type == "choice" and got[("r1", "n")].type == "noul"
+
+
+def test_keyed_skips_other_layouts_and_refusals():
+    other = REC | {"layout": "header"}
+    refused = REC | {"id": "r2", "status": "unsupported"}
+    assert keyed([other, refused], {"r1": ROW, "r2": ROW}, Arm(), LAYOUTS) == {}

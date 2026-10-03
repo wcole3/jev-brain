@@ -40,8 +40,8 @@ def chosen_reads(q: Rendered, reads: list[dict], orders: str) -> list[tuple[list
     return chosen
 
 
-def questions(record: dict, row: dict, layout: str, orders: str, layouts: dict) -> Iterator[tuple[str, list, int]]:
-    """(type, chosen reads, gold) for each gold-labelled question of an ok record of this layout."""
+def questions(record: dict, row: dict, layout: str, orders: str, layouts: dict) -> Iterator[tuple[str, str, list, int]]:
+    """(qid, type, chosen reads, gold) for each gold-labelled question of an ok record of this layout."""
     if record["status"] != "ok" or record["layout"] != layout:
         return
     for qid, reads in record["questions"].items():
@@ -53,13 +53,25 @@ def questions(record: dict, row: dict, layout: str, orders: str, layouts: dict) 
             chosen = chosen_reads(q, reads, orders)
         except ValueError as e:
             raise ValueError(f"{record['id']}/{qid}: {e}") from None
-        yield q.type, chosen, gold
+        yield qid, q.type, chosen, gold
 
 
 def scored(record: dict, row: dict, arm: Arm, layouts: dict) -> list[Scored]:
     """One Scored per gold-labelled question, as the gateway would answer it under this arm."""
     return [Scored(row["source"], row["family"], t, gold, probabilities(chosen, t, arm.calibration))
-            for t, chosen, gold in questions(record, row, arm.layout, arm.orders, layouts)]
+            for _, t, chosen, gold in questions(record, row, arm.layout, arm.orders, layouts)]
+
+
+def keyed(recs: Iterable[dict], rows_by_id: dict[str, dict], arm: Arm,
+          layouts: dict) -> dict[tuple[str, str], Scored]:
+    """Scored answers by (row id, question id), so two arms can be paired on the same questions."""
+    out = {}
+    for rec in recs:
+        row = rows_by_id[rec["id"]]
+        for qid, t, chosen, gold in questions(rec, row, arm.layout, arm.orders, layouts):
+            out[(rec["id"], qid)] = Scored(row["source"], row["family"], t, gold,
+                                           probabilities(chosen, t, arm.calibration))
+    return out
 
 
 def grouped(items: list[Scored], key) -> dict[str, dict]:

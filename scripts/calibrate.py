@@ -47,7 +47,7 @@ def questions_by_type(recs, rows, layout: str, orders: str):
         elif this != stamp:
             changed = [k for k in STAMP_KEYS if this[k] != stamp[k]]
             raise SystemExit(f"{layout}: records disagree on {', '.join(changed)}; recollect before fitting")
-        for q_type, chosen, gold in offline.questions(rec, rows[rec["id"]], layout, orders, layouts):
+        for _, q_type, chosen, gold in offline.questions(rec, rows[rec["id"]], layout, orders, layouts):
             by_type[q_type].append((chosen, gold))
     return by_type, stamp
 

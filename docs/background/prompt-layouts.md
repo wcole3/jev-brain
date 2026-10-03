@@ -165,6 +165,9 @@ state at all. `header` keeps sharing and adds only the question list, but its ac
 appendix: keep `decider_chat` as default, use `question_first` only when a request has one question (nothing to
 share, so it is free), and A/B `header` on long, multi-question states.
 
+Update 2026-10-03: M3 measured `header` and the owner made it qwen3.6's default layout; qwen3.8 and gemma keep
+`decider_chat` ([m3-recommendations.md](../results/archive/m3-recommendations.md)).
+
 ## 4. Calibration status per layout
 
 | Model | Layout | `calibration.json` |

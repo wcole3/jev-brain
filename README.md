@@ -23,8 +23,10 @@ decider's T = 1.943). Accuracy in %; ECE is calibration error (lower is better):
 | qwen3.8-27b | 86.4 | 90.4 | 86.2 | 0.033 | 81 ms |
 | qwen3.6-27b | 84.3 | 91.9 | 83.5 | 0.053 | 83 ms |
 
+Since then qwen3.6's default layout is `header` (owner, 2026-10-03; M3 verdict in
+[docs/results/archive/m3-recommendations.md](docs/results/archive/m3-recommendations.md)).
 Choice is level with Jev; most of the gap is in noul and score. Details and caveats:
-[docs/results/jevbench-vs-jev.md](docs/results/jevbench-vs-jev.md).
+[docs/results/archive/jevbench-vs-jev.md](docs/results/archive/jevbench-vs-jev.md).
 
 Phase 2, decision index. Our latest full Index and latency run per profile, next to the
 matching Decision Index 0.2.1 board entries (`scripts/phase2_report.py --readme` rebuilds
@@ -33,7 +35,7 @@ the table). ECE and latency are measured differently from the board's; see the r
 <!-- phase2-table -->
 | entry | Index | ECE | coverage | median ms | p95 ms | run layout / orders | run calibration | shipped now | latency run |
 |---|---|---|---|---|---|---|---|---|---|
-| **qwen3.6-27b** † | 51.61 | 0.022 | 1.000 | 126.7 | 657.4 | decider_chat / identity | T=1.943 | decider_chat / identity / v6 | 2026-10-02T194323Z-latency ‡ |
+| **qwen3.6-27b** † | 51.61 | 0.022 | 1.000 | 126.7 | 657.4 | decider_chat / identity | T=1.943 | header / identity / v6 | 2026-10-02T194323Z-latency ‡ |
 | Decider chat · Qwen3.6-27B | 51.35 | 0.021 | board | 83.6 | n/a | | | | |
 | **gemma-4-31b** † | 56.31 | 0.235 | 1.000 | 88.5 | 614.0 | decider_chat / identity | T=1 (none) | decider_chat / identity / v3 | 2026-10-02T035957Z-latency |
 | Decider chat · Gemma-4-31B | 57.33 | 0.047 | board | 108.5 | n/a | | | | |
@@ -233,8 +235,9 @@ uv run python scripts/bench.py --target jev                           # JevBench
   stack. Gauge samples go to `raw.jsonl` for plots.
 - **`--profile` must match the running gateway**; the bench refuses otherwise. It sends
   `GATEWAY_API_KEY` when set.
-- **Results** go to `docs/results/<profile>/<UTC timestamp>[-quick][-jevbench]/`
-  (e.g. `2026-09-29T210957Z-quick`, so several runs a day never collide):
+- **Results** go to `docs/results/<profile>/<UTC timestamp>[-jevbench]/` (full runs) or
+  `docs/results/archive/<profile>/<UTC timestamp>-quick/` (`--quick`), so several runs a day
+  never collide:
   - `raw.jsonl` with every request;
   - `summary.md` with provenance (commit, model revision, layout, vLLM version, JevBench
     SHA) and the tables.
@@ -280,7 +283,10 @@ uv run python scripts/evaluate.py lengths --profile qwen3.6-27b --baseline RUN_D
   - Jev's outputs are never read.
 - **Offline vs live:** `collect.py` uses the gateway's own code, so offline answers equal
   live ones within bf16 noise (`tests/live/test_offline_matches_live.py`).
-- **Results:** `docs/results/<profile>/<timestamp>-{index,offline-...,calibrate,latency,lengths}/summary.md`.
+- **Results:** top level of `docs/results/<profile>/` holds only benchmark runs: bench full and
+  `-jevbench` runs, and full `<timestamp>-index` runs. Everything else (`offline-...`,
+  `calibrate`, `latency`, `lengths`, `m3-*`, subset Index runs, host compares, experiments,
+  reports) goes to `docs/results/archive/<profile>/<timestamp>-.../summary.md`.
   Large run data stays in `.cache/` (`collect/`, `index-runs/`).
 
 ## When you change prompts or tokenizers
@@ -305,7 +311,7 @@ recollect the calib and eval splits (`collect.py` ignores calibration files), th
 | Path | What |
 |---|---|
 | `gateway/` | FastAPI gateway: `/v1/systemone` flow (`decide.py`), chat proxy (`chat.py`), disconnect cancellation (`disconnect.py`) |
-| `prompts/` | Prompt layouts (`decider_chat` default, `header`, `question_first`) |
+| `prompts/` | Prompt layouts (`decider_chat` default, `header` for qwen3.6, `question_first`) |
 | `profiles/` | One env file per model |
 | `data/` | Label tables and calibration per profile/layout; benchmark corpus |
 | `scripts/` | `fetch_model.py`, `build_labels.py`, `bench.py` (+ `bench_data.py`, `bench_report.py`), `decider_fixtures.py`; phase 2: `index_suite.py`, `splits.py`, `collect.py`, `calibrate.py` (+ `fit.py`, `calibrate_report.py`), `evaluate.py`, `latency.py` (+ helpers) |

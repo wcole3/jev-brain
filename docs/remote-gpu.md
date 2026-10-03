@@ -11,7 +11,7 @@ scripts/remote/rent.sh OFFER_ID qwen3.6-27b                 # prints the instanc
 vastai ssh-url ID                                           # once it is running
 scripts/remote/push.sh ssh://root@HOST:PORT qwen3.6-27b     # code, data, start the queue
 scripts/remote/pull.sh ssh://root@HOST:PORT qwen3.6-27b --loop 1800   # until the queue is done
-git add docs/results/qwen3.6-27b/<complete dirs>            # commit results (explicit paths)
+git add docs/results/qwen3.6-27b/<complete dirs>            # commit results (explicit paths; also archive/)
 vastai destroy instance ID                                  # owner only, after the final pull
 ```
 
@@ -182,6 +182,7 @@ What it copies (rsync, never deletes local files; `--update` keeps a newer local
 | From the box | To here |
 |---|---|
 | `docs/results/PROFILE` | `docs/results/PROFILE` |
+| `docs/results/archive/PROFILE` | same path |
 | `.cache/collect/PROFILE` | same path |
 | `.cache/index-runs/PROFILE` | same path |
 | `.cache/remote/{logs,state,telemetry.csv,run_tag}` | `.cache/remote-boxes/PROFILE/` |
@@ -191,7 +192,7 @@ What it copies (rsync, never deletes local files; `--update` keeps a newer local
 ### 7. Commit results
 
 Check `.cache/remote-boxes/PROFILE/logs/queue.log` ends with `PROFILE queue done` and no
-`FAILED`. Then commit `docs/results/PROFILE/...` by explicit path (never `git add -A`).
+`FAILED`. Then commit `docs/results/PROFILE/...` and `docs/results/archive/PROFILE/...` by explicit path (never `git add -A`).
 Commit only complete result dirs: a `*-host` dir without `host.json` is a cut-off run.
 Results carry the repo commit and a host fingerprint. Jev's own per-row answers are not
 involved: nothing here trains on Jev API outputs.
@@ -315,7 +316,7 @@ This is the same process that showed the default 64 MB `/dev/shm` is enough.
 The `host-compare` job runs `scripts/host_compare.py run PROFILE`: latency, a quick bench
 and an Index subset (`data/splits/compare-2k.json`, ~2000 rows, 4 shards) against the live
 stack, with `gpu_telemetry.py` sampling alongside. It writes
-`docs/results/PROFILE/<UTC>-host/`:
+`docs/results/archive/PROFILE/<UTC>-host/`:
 
 | File | Content |
 |---|---|
@@ -326,7 +327,7 @@ stack, with `gpu_telemetry.py` sampling alongside. It writes
 Put hosts side by side (any number of dirs, local and remote):
 
 ```bash
-uv run python scripts/host_compare.py report docs/results/PROFILE/<local>-host docs/results/PROFILE/<remote>-host
+uv run python scripts/host_compare.py report docs/results/archive/PROFILE/<local>-host docs/results/archive/PROFILE/<remote>-host
 ```
 
 Columns are named by hostname. Rows: GPU, power limit, latency, throughput at x1/x4/x16,
@@ -355,6 +356,6 @@ rather than the host:
   This gives a fresh `stack.sh up` in the pinned image.
 - Not the compose stack: it runs warm (caches, compiled graphs), and a new box never does.
 - `host_compare.py` always uses the same `compare-2k` ids and 4 shards. Copy the
-  `docs/results/PROFILE/<UTC>-host/` dir out of `/tmp/jev-box` after the chown.
+  `docs/results/archive/PROFILE/<UTC>-host/` dir out of `/tmp/jev-box` after the chown.
 Accuracy should not change between hosts. Speed will, and bf16 noise (~0.03 in decision
 probabilities under load) is expected.

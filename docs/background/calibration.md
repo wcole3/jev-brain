@@ -2,7 +2,7 @@
 
 What "calibrated" means, how the gateway calibrates today, how we measure it, what Jev's
 `confidence` field really is, and why our biggest yes/no problem needs more than a
-temperature. Numbers come from our code, [jevbench-vs-jev.md](../results/jevbench-vs-jev.md)
+temperature. Numbers come from our code, [jevbench-vs-jev.md](../results/archive/jevbench-vs-jev.md)
 and the papers under Sources.
 
 ## Short answer
@@ -86,18 +86,21 @@ vLLM letter logprobs  →  softmax(logprobs / T)  →  average over option order
   `log Z / T` term is the same for every letter and cancels, so scaling logprobs equals
   scaling logits.
 
+Since the refit, `header` became qwen3.6's default layout (owner, 2026-10-03; see
+[m3-recommendations.md](../results/archive/m3-recommendations.md)); the other profiles keep `decider_chat`.
+
 Refit 2026-10-03 (T = 1 only when every candidate fails) by [`scripts/calibrate.py`](../../scripts/calibrate.py)
-([report](../results/qwen3.6-27b/2026-10-03T003833Z-calibrate/summary.md); file version 6 for qwen3.6, 3 for gemma and qwen3.8):
+([report](../results/archive/qwen3.6-27b/2026-10-03T003833Z-calibrate/summary.md); file version 6 for qwen3.6, 3 for gemma and qwen3.8):
 
 | Profile | Layout | T choice | T score | T noul | noul b |
 |---|---|---|---|---|---|
 | qwen3.6-27b | `decider_chat` (default) | 1.648 | 1.927 (pooled; fitted 6.323) | 1.386 | 0 |
 | qwen3.6-27b | `header` | 1.627 | 1.958 (pooled; fitted 7.195) | 1.284 | 0 |
 | qwen3.6-27b | `question_first` | 1.484 | 8.055 | 1.145 | +0.253 |
-| gemma-4-31b ([report](../results/gemma-4-31b/2026-10-03T004123Z-calibrate/summary.md)) | `decider_chat` | 4.123 | 5.378 (pooled; fitted 18.187) | 7.528 | −0.636 |
+| gemma-4-31b ([report](../results/archive/gemma-4-31b/2026-10-03T004123Z-calibrate/summary.md)) | `decider_chat` | 4.123 | 5.378 (pooled; fitted 18.187) | 7.528 | −0.636 |
 | | `header` | 4.263 | 5.603 (pooled; fitted 19.999, edge) | 7.609 | 0 |
 | | `question_first` | 3.839 | 5.278 (pooled; fitted 19.999, edge) | 7.266 | −0.460 |
-| qwen3.8-27b ([report](../results/qwen3.8-27b/2026-10-03T004419Z-calibrate/summary.md)) | `decider_chat` | 1.496 | 1.664 (pooled; fitted 4.420) | 0.970 | 0 |
+| qwen3.8-27b ([report](../results/archive/qwen3.8-27b/2026-10-03T004419Z-calibrate/summary.md)) | `decider_chat` | 1.496 | 1.664 (pooled; fitted 4.420) | 0.970 | 0 |
 | | `header` | 1.536 | 1.775 (pooled; fitted 5.308) | 0.963 | 0 |
 | | `question_first` | 1.352 | 6.264 | 0.825 | 0 |
 
@@ -145,10 +148,10 @@ Eval split, before (T = 1, b = 0) → after, from the report (each file's `fit.e
 
   | Calibration | ECE | NLL | Run |
   |---|---|---|---|
-  | T = 1 | 0.085 | 0.694 | [eval](../results/qwen3.6-27b/2026-10-02T163545Z-offline-eval-decider_chat-identity-uncalibrated/summary.md) |
-  | ours (1.648 / 1.927 / 1.386) | 0.022 | 0.580 | [eval](../results/qwen3.6-27b/2026-10-02T174816Z-offline-eval-decider_chat-identity/summary.md) |
-  | pooled 1.927, every type | 0.038 | 0.597 | [eval](../results/qwen3.6-27b/2026-10-02T163557Z-offline-eval-decider_chat-identity-T1.927/summary.md) |
-  | decider's 1.943, every type | 0.041 | 0.598 | [eval](../results/qwen3.6-27b/2026-10-02T163601Z-offline-eval-decider_chat-identity-T1.943/summary.md) |
+  | T = 1 | 0.085 | 0.694 | [eval](../results/archive/qwen3.6-27b/2026-10-02T163545Z-offline-eval-decider_chat-identity-uncalibrated/summary.md) |
+  | ours (1.648 / 1.927 / 1.386) | 0.022 | 0.580 | [eval](../results/archive/qwen3.6-27b/2026-10-02T174816Z-offline-eval-decider_chat-identity/summary.md) |
+  | pooled 1.927, every type | 0.038 | 0.597 | [eval](../results/archive/qwen3.6-27b/2026-10-02T163557Z-offline-eval-decider_chat-identity-T1.927/summary.md) |
+  | decider's 1.943, every type | 0.041 | 0.598 | [eval](../results/archive/qwen3.6-27b/2026-10-02T163601Z-offline-eval-decider_chat-identity-T1.943/summary.md) |
 
 - **Transfer check (index-dev, never fitted or chosen on).** 7,990 rows, 14,684 gold
   questions, 99% choice. Accuracy is unchanged by T; `question_first`'s b moves noul
@@ -156,14 +159,14 @@ Eval split, before (T = 1, b = 0) → after, from the report (each file's `fit.e
 
   | Layout | Calibration | ECE | NLL | Accuracy | Run |
   |---|---|---|---|---|---|
-  | `decider_chat` | T = 1 | 0.108 | 0.887 | 0.761 | [index-dev](../results/qwen3.6-27b/2026-10-02T163611Z-offline-index-dev-decider_chat-identity-uncalibrated/summary.md) |
-  | | ours | 0.040 | 0.723 | 0.761 | [index-dev](../results/qwen3.6-27b/2026-10-02T174829Z-offline-index-dev-decider_chat-identity/summary.md) |
-  | | pooled 1.927 | 0.025 | 0.710 | 0.761 | [index-dev](../results/qwen3.6-27b/2026-10-02T163632Z-offline-index-dev-decider_chat-identity-T1.927/summary.md) |
-  | | decider's 1.943 | 0.025 | 0.710 | 0.761 | [index-dev](../results/qwen3.6-27b/2026-10-02T163641Z-offline-index-dev-decider_chat-identity-T1.943/summary.md) |
-  | `header` | T = 1 | 0.105 | 0.829 | 0.780 | [index-dev](../results/qwen3.6-27b/2026-10-02T163722Z-offline-index-dev-header-identity-uncalibrated/summary.md) |
-  | | ours | 0.045 | 0.672 | 0.780 | [index-dev](../results/qwen3.6-27b/2026-10-03T004723Z-offline-index-dev-header-identity/summary.md) |
-  | `question_first` | T = 1 | 0.103 | 0.881 | 0.751 | [index-dev](../results/qwen3.6-27b/2026-10-02T163733Z-offline-index-dev-question_first-identity-uncalibrated/summary.md) |
-  | | ours | 0.046 | 0.752 | 0.751 | [index-dev](../results/qwen3.6-27b/2026-10-02T174851Z-offline-index-dev-question_first-identity/summary.md) |
+  | `decider_chat` | T = 1 | 0.108 | 0.887 | 0.761 | [index-dev](../results/archive/qwen3.6-27b/2026-10-02T163611Z-offline-index-dev-decider_chat-identity-uncalibrated/summary.md) |
+  | | ours | 0.040 | 0.723 | 0.761 | [index-dev](../results/archive/qwen3.6-27b/2026-10-02T174829Z-offline-index-dev-decider_chat-identity/summary.md) |
+  | | pooled 1.927 | 0.025 | 0.710 | 0.761 | [index-dev](../results/archive/qwen3.6-27b/2026-10-02T163632Z-offline-index-dev-decider_chat-identity-T1.927/summary.md) |
+  | | decider's 1.943 | 0.025 | 0.710 | 0.761 | [index-dev](../results/archive/qwen3.6-27b/2026-10-02T163641Z-offline-index-dev-decider_chat-identity-T1.943/summary.md) |
+  | `header` | T = 1 | 0.105 | 0.829 | 0.780 | [index-dev](../results/archive/qwen3.6-27b/2026-10-02T163722Z-offline-index-dev-header-identity-uncalibrated/summary.md) |
+  | | ours | 0.045 | 0.672 | 0.780 | [index-dev](../results/archive/qwen3.6-27b/2026-10-03T004723Z-offline-index-dev-header-identity/summary.md) |
+  | `question_first` | T = 1 | 0.103 | 0.881 | 0.751 | [index-dev](../results/archive/qwen3.6-27b/2026-10-02T163733Z-offline-index-dev-question_first-identity-uncalibrated/summary.md) |
+  | | ours | 0.046 | 0.752 | 0.751 | [index-dev](../results/archive/qwen3.6-27b/2026-10-02T174851Z-offline-index-dev-question_first-identity/summary.md) |
 
 - **Transfer check, gemma and qwen3.8 (index-dev, same 14,684 questions).** Choice, score
   and noul pooled, `identity` order. Accuracy is unchanged by T except where noted.
@@ -172,12 +175,12 @@ Eval split, before (T = 1, b = 0) → after, from the report (each file's `fit.e
 
   | Profile | Layout | ECE | NLL | Accuracy | Runs |
   |---|---|---|---|---|---|
-  | gemma-4-31b | `decider_chat` | 0.241 → 0.155 | 3.486 → 0.970 | 0.749 | [T = 1](../results/gemma-4-31b/2026-10-03T001603Z-offline-index-dev-decider_chat-identity-uncalibrated/summary.md), [shipped](../results/gemma-4-31b/2026-10-03T001550Z-offline-index-dev-decider_chat-identity/summary.md) |
-  | | `header` | 0.204 → 0.126 | 3.013 → 0.814 | 0.789 | [T = 1](../results/gemma-4-31b/2026-10-03T001624Z-offline-index-dev-header-identity-uncalibrated/summary.md), [shipped](../results/gemma-4-31b/2026-10-03T001614Z-offline-index-dev-header-identity/summary.md) |
-  | | `question_first` | 0.241 → 0.163 | 3.340 → 0.982 | 0.749 | [T = 1](../results/gemma-4-31b/2026-10-03T001647Z-offline-index-dev-question_first-identity-uncalibrated/summary.md), [shipped](../results/gemma-4-31b/2026-10-03T001637Z-offline-index-dev-question_first-identity/summary.md) |
-  | qwen3.8-27b | `decider_chat` | 0.060 → 0.021 | 0.837 → 0.734 | 0.769 | [T = 1](../results/qwen3.8-27b/2026-10-03T002206Z-offline-index-dev-decider_chat-identity-uncalibrated/summary.md), [shipped](../results/qwen3.8-27b/2026-10-03T004736Z-offline-index-dev-decider_chat-identity/summary.md) |
-  | | `header` | 0.074 → 0.021 | 0.812 → 0.694 | 0.779 | [T = 1](../results/qwen3.8-27b/2026-10-03T002229Z-offline-index-dev-header-identity-uncalibrated/summary.md), [shipped](../results/qwen3.8-27b/2026-10-03T004746Z-offline-index-dev-header-identity/summary.md) |
-  | | `question_first` | 0.058 → 0.038 | 0.872 → 0.784 | 0.755 | [T = 1](../results/qwen3.8-27b/2026-10-03T002251Z-offline-index-dev-question_first-identity-uncalibrated/summary.md), [shipped](../results/qwen3.8-27b/2026-10-03T004756Z-offline-index-dev-question_first-identity/summary.md) |
+  | gemma-4-31b | `decider_chat` | 0.241 → 0.155 | 3.486 → 0.970 | 0.749 | [T = 1](../results/archive/gemma-4-31b/2026-10-03T001603Z-offline-index-dev-decider_chat-identity-uncalibrated/summary.md), [shipped](../results/archive/gemma-4-31b/2026-10-03T001550Z-offline-index-dev-decider_chat-identity/summary.md) |
+  | | `header` | 0.204 → 0.126 | 3.013 → 0.814 | 0.789 | [T = 1](../results/archive/gemma-4-31b/2026-10-03T001624Z-offline-index-dev-header-identity-uncalibrated/summary.md), [shipped](../results/archive/gemma-4-31b/2026-10-03T001614Z-offline-index-dev-header-identity/summary.md) |
+  | | `question_first` | 0.241 → 0.163 | 3.340 → 0.982 | 0.749 | [T = 1](../results/archive/gemma-4-31b/2026-10-03T001647Z-offline-index-dev-question_first-identity-uncalibrated/summary.md), [shipped](../results/archive/gemma-4-31b/2026-10-03T001637Z-offline-index-dev-question_first-identity/summary.md) |
+  | qwen3.8-27b | `decider_chat` | 0.060 → 0.021 | 0.837 → 0.734 | 0.769 | [T = 1](../results/archive/qwen3.8-27b/2026-10-03T002206Z-offline-index-dev-decider_chat-identity-uncalibrated/summary.md), [shipped](../results/archive/qwen3.8-27b/2026-10-03T004736Z-offline-index-dev-decider_chat-identity/summary.md) |
+  | | `header` | 0.074 → 0.021 | 0.812 → 0.694 | 0.779 | [T = 1](../results/archive/qwen3.8-27b/2026-10-03T002229Z-offline-index-dev-header-identity-uncalibrated/summary.md), [shipped](../results/archive/qwen3.8-27b/2026-10-03T004746Z-offline-index-dev-header-identity/summary.md) |
+  | | `question_first` | 0.058 → 0.038 | 0.872 → 0.784 | 0.755 | [T = 1](../results/archive/qwen3.8-27b/2026-10-03T002251Z-offline-index-dev-question_first-identity-uncalibrated/summary.md), [shipped](../results/archive/qwen3.8-27b/2026-10-03T004756Z-offline-index-dev-question_first-identity/summary.md) |
 
   Gemma stays far from calibrated on index-dev (ECE 0.13 to 0.16) although its eval ECE
   falls to 0.03 to 0.08, so its fitted Ts do not fully transfer. qwen3.8's `header` choice
@@ -308,7 +311,7 @@ any threshold on our own labelled data, not Jev's.
 
 ## 6. Why a yes/no lean can't be fixed by temperature
 
-JevBench's 625 gold noul rows ([jevbench-vs-jev.md](../results/jevbench-vs-jev.md); the
+JevBench's 625 gold noul rows ([jevbench-vs-jev.md](../results/archive/jevbench-vs-jev.md); the
 "said yes" column is derived from its counts):
 
 | Model | Gold yes, said no | Gold no, said yes | Said yes | Gold yes |
@@ -342,7 +345,7 @@ can trade false "no" for false "yes", so judge it on held-out rows, never on its
 ## 7. The phase-2 plan (DS-002)
 
 Spec: [phase-2 design](../superpowers/specs/2026-09-30-phase2-calibrate-evaluate-design.md).
-Items 2, 3 and 5 are done ([report](../results/qwen3.6-27b/2026-10-03T003833Z-calibrate/summary.md)):
+Items 2, 3 and 5 are done ([report](../results/archive/qwen3.6-27b/2026-10-03T003833Z-calibrate/summary.md)):
 
 1. **Labelled data only:** JevBench gold plus Decision Index, DecisionBench and
    typed-decisions, with a **calibration split** kept apart from the evaluation rows.

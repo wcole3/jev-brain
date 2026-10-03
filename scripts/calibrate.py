@@ -92,8 +92,8 @@ def ece_change(questions, q_type: str, T: float, b: float = 0.0) -> list[float]:
 def gate_temperatures(fit: dict, held: dict) -> dict:
     """Per type: of the candidates whose eval ECE-change CI low is <= 0, ship the lowest point ECE.
 
-    Candidates in order: fitted, b0 (noul with b != 0 only: noul T refit at b = 0), pooled, none (T = 1).
-    None always passes, so it wins only when every other passing candidate is worse than T = 1.
+    Candidates in order: fitted, b0 (noul with b != 0 only: noul T refit at b = 0), pooled.
+    T = 1 ("none") ships only when every candidate is significantly worse than T = 1.
     A noul b that passes ships as is; any source but "fitted" drops b.
     """
     gate, pooled = {}, fit["pooled"]["T"]
@@ -101,14 +101,17 @@ def gate_temperatures(fit: dict, held: dict) -> dict:
         fitted, b = fit[t]["T"], fit["noul"]["b"] if t == "noul" else 0.0
         d = {"fitted_T": fitted, "pooled_T": pooled, "shipped_T": fitted, "source": "fitted",
              "ece": ece_change(held[t], t, fitted, b), "ece_pooled": ece_change(held[t], t, pooled)}
-        candidates = [("fitted", fitted, d["ece"]), ("pooled", pooled, d["ece_pooled"]), ("none", 1.0, [0.0] * 3)]
+        candidates = [("fitted", fitted, d["ece"]), ("pooled", pooled, d["ece_pooled"])]
         if b != 0:
             d["ece_b0"] = ece_change(held[t], t, fit["noul_b0"]["T"])
             candidates.insert(1, ("b0", fit["noul_b0"]["T"], d["ece_b0"]))
         passing = [c for c in candidates if c[2][1] <= 0]
         if b != 0 and passing and passing[0][0] == "fitted":
             passing = passing[:1]  # the owner chose to keep b: it never competes
-        d["source"], d["shipped_T"], _ = min(passing, key=lambda c: c[2][0])
+        if passing:
+            d["source"], d["shipped_T"], _ = min(passing, key=lambda c: c[2][0])
+        else:
+            d["source"], d["shipped_T"] = "none", 1.0
         gate[t] = d
     return gate
 

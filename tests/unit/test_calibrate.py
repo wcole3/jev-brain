@@ -264,17 +264,17 @@ def test_gate_keeps_a_passing_noul_b_even_when_pooled_has_the_lower_ece():
     assert g["source"] == "fitted" and g["ece_pooled"][0] < g["ece"][0]
 
 
-def test_gate_ships_none_when_every_passing_candidate_is_worse_than_no_calibration():
+def test_gate_ships_the_lowest_real_candidate_even_when_all_are_worse_than_no_calibration():
     held = {"choice": calibrated_choice(), "score": [], "noul": []}
     g = calibrate.gate_temperatures(gate_fit(1.0, 1.0), held)["choice"]
     assert g["source"] == "fitted"  # ties go to the earlier candidate
+    g = calibrate.gate_temperatures(gate_fit(1.05, 1.1), held)["choice"]
     worse = calibrate.ece_change(held["choice"], "choice", 1.05)
-    assert worse[0] > 0 and worse[1] <= 0  # passes the CI test but is worse than T = 1
-    g = calibrate.gate_temperatures(gate_fit(1.05, 1.05), held)["choice"]
-    assert g["source"] == "none" and g["shipped_T"] == 1.0
+    assert worse[0] > 0 and worse[1] <= 0  # positive point change but passes the CI test
+    assert g["source"] == "fitted" and g["shipped_T"] == 1.05
 
 
-def test_gate_a_candidate_with_a_negative_point_change_beats_none():
+def test_gate_ships_a_candidate_with_a_negative_point_change():
     held = {"choice": underconfident_choice(), "score": [], "noul": []}
     g = calibrate.gate_temperatures(gate_fit(0.5, 15.0), held)["choice"]
     assert g["ece"][0] < 0 and g["source"] == "fitted" and g["shipped_T"] == 0.5

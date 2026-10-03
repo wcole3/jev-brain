@@ -119,11 +119,12 @@ Eval split, before (T = 1, b = 0) → after, from the report (each file's `fit.e
   DecisionBench), `identity` order. The eval split judges; Index rows are never used.
   Calib metrics sit in each file's `fit.calib`, eval metrics in `fit.eval`.
 - **Per-type ECE gate:** the candidates are the fitted T, the pooled T (one T fitted on all
-  types together), for noul with b shipping the noul T refit at b = 0, and T = 1 itself
-  (last, ECE change exactly 0). One passes when eval ECE is no worse than at T = 1 beyond its
-  bootstrap CI, so T = 1 always passes. The passing candidate with the lowest eval ECE change
-  ships, ties to the earlier, so T = 1 ships only when every other passing candidate is
-  worse than no calibration. A noul b that passes with its fitted T ships as is. Each file's `fit.t_decision` records, per type, the fitted, pooled and (when tried)
+  types together) and, for noul with b shipping, the noul T refit at b = 0. One passes when
+  eval ECE is no worse than at T = 1 beyond its bootstrap CI (CI low of the ECE change ≤ 0).
+  The passing candidate with the lowest eval ECE change ships, ties to the earlier. T = 1
+  ships only when every candidate fails, i.e. is significantly worse than T = 1: noise-level
+  eval differences don't override the calib fit. A noul b that passes with its fitted T ships
+  as is. Each file's `fit.t_decision` records, per type, the fitted, pooled and (when tried)
   b = 0 T with their ECE changes and the outcome. Pooled T: 1.927 `decider_chat`, 1.958
   `header`, 1.903 `question_first`.
 - **NLL falls for every type and layout, except `header` score (T = 1).** Accuracy is unchanged except `question_first`

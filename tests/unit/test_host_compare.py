@@ -85,7 +85,7 @@ def test_run_phases_in_order_and_writes_host_json(tmp_path, monkeypatch):
     ids = tmp_path / "data/splits"
     ids.mkdir(parents=True)
     (ids / "compare-2k.json").write_text(json.dumps({"ids": ["a", "b", "c"]}))
-    results = tmp_path / "docs/results/p"
+    results = tmp_path / "docs/results/archive/p"
     for old in ("1999-latency", "1999-quick", "1999-index-subset"):  # earlier runs must be ignored
         (results / old).mkdir(parents=True)
     summarized = []
@@ -135,7 +135,7 @@ def test_run_phases_in_order_and_writes_host_json(tmp_path, monkeypatch):
 
 def test_run_without_new_result_dir_fails(tmp_path, monkeypatch):
     monkeypatch.setattr(host_compare, "ROOT", tmp_path)
-    (tmp_path / "docs/results/p/1999-latency").mkdir(parents=True)
+    (tmp_path / "docs/results/archive/p/1999-latency").mkdir(parents=True)
     monkeypatch.setattr(host_compare.subprocess, "run", lambda *a, **k: None)
     monkeypatch.setattr(host_compare.subprocess, "Popen", lambda *a, **k: type("S", (), {
         "poll": lambda s: None, "terminate": lambda s: None, "wait": lambda s, timeout=None: 0})())
@@ -144,7 +144,7 @@ def test_run_without_new_result_dir_fails(tmp_path, monkeypatch):
 
 
 def test_run_marks_telemetry_unavailable_when_sampler_died(tmp_path, monkeypatch):
-    results = tmp_path / "docs/results/p"
+    results = tmp_path / "docs/results/archive/p"
     monkeypatch.setattr(host_compare, "ROOT", tmp_path)
     monkeypatch.setattr(host_compare, "git_revision", lambda: "abc")
     (tmp_path / "data/splits").mkdir(parents=True)

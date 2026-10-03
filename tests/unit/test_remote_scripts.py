@@ -545,20 +545,21 @@ def pull(tmp_path, *args: str, fail_first: bool = False, exit_code: int = 0,
 def test_pull_copies_results_runs_and_box_state_without_deleting(tmp_path):
     out, calls, repo = pull(tmp_path)
     assert out.returncode == 0, out.stderr
-    assert [call[-2:] for call in calls[:3]] == [
+    assert [call[-2:] for call in calls[:4]] == [
         [f"{HOST}:{BOX}/docs/results/{PROFILE}", "docs/results/"],
+        [f"{HOST}:{BOX}/docs/results/archive/{PROFILE}", "docs/results/archive/"],
         [f"{HOST}:{BOX}/.cache/collect/{PROFILE}", ".cache/collect/"],
         [f"{HOST}:{BOX}/.cache/index-runs/{PROFILE}", ".cache/index-runs/"],
     ]
     remote = f"{HOST}:{BOX}/.cache/remote"
     names = ["logs", "state", "telemetry.csv", "run_tag"]
-    assert calls[3][-5:] == [*(f"{remote}/{name}" for name in names), f".cache/remote-boxes/{PROFILE}/"]
-    assert len(calls) == 4
+    assert calls[4][-5:] == [*(f"{remote}/{name}" for name in names), f".cache/remote-boxes/{PROFILE}/"]
+    assert len(calls) == 5
     for call in calls:
         assert call[call.index("-e") + 1] == shlex.join(ssh_options(repo)) and "--delete" not in call
-    assert all("--update" in call for call in calls[:3]) and "--update" not in calls[3]
+    assert all("--update" in call for call in calls[:4]) and "--update" not in calls[4]
     assert out.stdout.splitlines()[-4:] == ["two", "three", "four", "bootstrap: running; job: none; failed: none"]
-    assert (repo / "docs" / "results" / PROFILE).is_dir()
+    assert (repo / "docs" / "results" / PROFILE).is_dir() and (repo / "docs" / "results" / "archive" / PROFILE).is_dir()
 
 
 def test_pull_names_the_job_that_is_running(tmp_path):
@@ -595,14 +596,14 @@ def test_pull_drops_alarms_the_box_has_cleared(tmp_path):
 
 def test_pull_loop_keeps_going_and_reports_a_failure_every_pass(tmp_path):
     out, calls, _ = pull(tmp_path, "--loop", "0", box={f"state/{PROFILE}/collect-eval.failed": "exit=1"})
-    assert out.returncode == 0 and len(calls) == 12
+    assert out.returncode == 0 and len(calls) == 15
     assert out.stdout.count("failed: collect-eval") == 3
 
 
 @pytest.mark.parametrize("code, ok", [(24, True), (23, False)])
 def test_pull_tolerates_only_vanished_files(tmp_path, code, ok):
     out, calls, _ = pull(tmp_path, exit_code=code)
-    assert (out.returncode == 0) == ok and len(calls) == (4 if ok else 1)
+    assert (out.returncode == 0) == ok and len(calls) == (5 if ok else 1)
 
 
 def test_pull_loop_survives_a_down_box_and_stops_after_a_pass_past_queue_done(tmp_path):
@@ -612,8 +613,8 @@ def test_pull_loop_survives_a_down_box_and_stops_after_a_pass_past_queue_done(tm
     out, calls, _ = pull(tmp_path, "--loop", "0", fail_first=True)
     assert out.returncode == 0, out.stderr
     assert "warning" in out.stderr
-    # failed pass (1 call), pass without QUEUE_DONE, pass that pulls it, final pass (4 calls each)
-    assert len(calls) == 13
+    # failed pass (1 call), pass without QUEUE_DONE, pass that pulls it, final pass (5 calls each)
+    assert len(calls) == 16
 
 
 def test_push_offers_the_vast_key_when_present(tmp_path):

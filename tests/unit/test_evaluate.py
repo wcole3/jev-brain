@@ -110,6 +110,21 @@ async def test_index_strict_exits_nonzero_after_writing_the_summary(index_run_he
     assert summary.read_text().endswith("body\n")
 
 
+def test_results_dir_puts_archived_runs_under_archive(tmp_path, monkeypatch):
+    monkeypatch.setattr(evaluate, "ROOT", tmp_path)
+    assert evaluate.results_dir("p", "run") == tmp_path / "docs" / "results" / "p" / "run"
+    archived = evaluate.results_dir("p", "run", archive=True)
+    assert archived == tmp_path / "docs" / "results" / "archive" / "p" / "run" and archived.is_dir()
+
+
+async def test_index_subset_run_is_archived(index_run_here):
+    (index_run_here / "merged" / "results.jsonl").write_text('{"status": "ok"}\n')
+    ids = index_run_here.parent / "ids.json"
+    ids.write_text('{"ids": ["a"]}')
+    await evaluate.cmd_index(evaluate.parse_args(["index", "--profile", "p", "--run-dir", str(index_run_here), "--ids", str(ids)]))
+    assert (index_run_here.parent / "docs" / "results" / "archive" / "p" / "run-index-subset" / "summary.md").exists()
+
+
 def offline_args(*extra):
     return evaluate.parse_args(["offline", "--profile", "qwen3.6-27b", "--split", "eval", *extra])
 

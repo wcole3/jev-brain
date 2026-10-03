@@ -43,8 +43,9 @@ def now() -> str:
     return datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%dT%H%M%SZ")
 
 
-def results_dir(profile: str, name: str) -> Path:
-    out = ROOT / "docs" / "results" / profile / name
+def results_dir(profile: str, name: str, archive: bool = False) -> Path:
+    """docs/results/<profile>/<name>: benchmark runs. Everything else (archive=True) goes under archive/."""
+    out = ROOT / "docs" / "results" / ("archive" if archive else "") / profile / name
     out.mkdir(parents=True, exist_ok=True)
     return out
 
@@ -102,7 +103,7 @@ def cmd_offline(args) -> None:
             "host": host_info.summary(), "profile": args.profile, "split": args.split,
             "collected": str(collected.relative_to(ROOT)), "coverage": f"{got} of {want} rows"}
     name = f"{stamp}-offline-{args.split}-{args.layout}-{args.orders.replace(':', '')}{arm_suffix(args)}"
-    out = results_dir(args.profile, name)
+    out = results_dir(args.profile, name, archive=True)
     (out / "summary.md").write_text(f"# {args.profile} offline: {args.split}\n\n{provenance(meta)}\n{markdown(report)}")
     print(out / "summary.md")
 
@@ -245,7 +246,7 @@ async def cmd_index(args) -> None:
             "host": host_info.summary(), "harness": HARNESS_SHA, "edition": EDITION,
             "run dir": str(run.relative_to(ROOT)), "shards": len(outcome["codes"]), "ids": args.ids or "full suite"}
     meta |= {k: health.get(k) for k in keys}
-    out = results_dir(args.profile, f"{run.name}-index{'-subset' if args.ids else ''}")
+    out = results_dir(args.profile, f"{run.name}-index{'-subset' if args.ids else ''}", archive=bool(args.ids))
     body = index_summary(args.profile, scores, run / "merged", run_notes(outcome), "subset run" if args.ids else None)
     (out / "summary.md").write_text(f"# {args.profile} Decision Index {EDITION}\n\n{provenance(meta)}\n{body}")
     print(out / "summary.md")
@@ -289,7 +290,7 @@ async def cmd_lengths(args) -> None:
     lines += [(f"At or over the decision cap ({s.systemone_max_len}): {len(over)} rows; "
                f"{fits} of them fit under MAX_MODEL_LEN ({s.max_model_len})."),
               f"Row ids written to {path.relative_to(ROOT)}."]
-    out = results_dir(args.profile, f"{now()}-lengths")
+    out = results_dir(args.profile, f"{now()}-lengths", archive=True)
     meta_lines = {"timestamp": now(), "repo commit": git_revision(), "profile": args.profile}
     (out / "summary.md").write_text(
         f"# {args.profile} decision lengths\n\n{provenance(meta_lines)}\n" + "\n".join(lines) + "\n")
@@ -304,7 +305,7 @@ def cmd_replace(args) -> None:
     meta = {"timestamp": now(), "repo commit": git_revision(), "base": str(base.relative_to(ROOT)),
             "override": str(override.relative_to(ROOT)), "rows swapped": swapped}
     body = index_summary(args.profile, scores, out / "merged", [], "long rows rerun at a higher cap")
-    target = results_dir(args.profile, f"{out.name}-index-replaced")
+    target = results_dir(args.profile, f"{out.name}-index-replaced", archive=True)
     (target / "summary.md").write_text(f"# {args.profile} Decision Index, long rows rerun\n\n{provenance(meta)}\n{body}")
     print(target / "summary.md")
 

@@ -60,7 +60,7 @@ def main(args) -> None:
     if s["answered"] == 0:
         raise SystemExit("no timed row returned an answer; nothing to summarize")
     stamp = now()
-    out = results_dir(args.profile, f"{stamp}-latency{'-' + '-'.join(extra.values()) if extra else ''}")
+    out = results_dir(args.profile, f"{stamp}-latency{'-' + '-'.join(extra.values()) if extra else ''}", archive=True)
     (out / "raw.jsonl").write_text("".join(json.dumps(r) + "\n" for r in records))
     board = [
         f"| {BOARD[k]['name']} (board, its own sample) | {BOARD[k]['median_ms']:.1f} | n/a |"

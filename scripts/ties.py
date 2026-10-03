@@ -58,7 +58,7 @@ def main() -> None:
     if args.dry_run:
         print(text)
         return
-    out = results_dir(args.profile, f"{meta['timestamp']}-ties") / "summary.md"
+    out = results_dir(args.profile, f"{meta['timestamp']}-ties", archive=True) / "summary.md"
     out.write_text(text)
     print(out)
 

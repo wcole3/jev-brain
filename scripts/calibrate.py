@@ -28,7 +28,7 @@ from scripts.splits import SPLITS, rows_for
 
 MIN_QUESTIONS = 30  # fewer and the fitted T is mostly noise: keep 1.0
 SPLIT = SPLITS / "calib.json"
-RESULTS = ROOT / "docs" / "results"
+RESULTS = ROOT / "docs" / "results" / "archive"
 
 
 @functools.cache

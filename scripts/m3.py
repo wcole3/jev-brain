@@ -150,7 +150,7 @@ def write(report: dict, markdown: str, name: str, dry_run: bool) -> None:
         print(markdown)
         return
     meta = report["meta"]
-    out = results_dir(meta["profile"], f"{meta['timestamp']}-{name}")
+    out = results_dir(meta["profile"], f"{meta['timestamp']}-{name}", archive=True)
     (out / "summary.md").write_text(markdown)
     (out / "report.json").write_text(json.dumps(report, indent=1) + "\n")
     print(out / "summary.md")

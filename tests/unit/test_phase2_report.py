@@ -15,8 +15,8 @@ def summary(index_cells="| **ours: p** | 51.61 | 0.022 | 352.7 | 1.000 |", temps
             "\n- ECE: a note that must not be read as provenance\n")
 
 
-def write(root, profile, name, text):
-    run = root / "docs" / "results" / profile / name
+def write(root, profile, name, text, archive=False):
+    run = root / "docs" / "results" / ("archive" if archive else "") / profile / name
     run.mkdir(parents=True)
     (run / "summary.md").write_text(text)
     return run
@@ -44,10 +44,18 @@ def test_latest_picks_newest_exact_suffix_and_ignores_subset(tree):
     assert report.latest("p", "latency") is None
 
 
+def test_latest_latency_looks_only_in_archive(tree):
+    write(tree, "p", "2026-10-01T000000Z-latency", "")
+    assert report.latest("p", "latency") is None
+    write(tree, "p", "2026-10-02T000000Z-latency", "", archive=True)
+    assert report.latest("p", "latency").parent.name == "p" and report.latest("p", "latency").parent.parent.name == "archive"
+
+
 def test_row_reports_the_runs_own_settings_and_marks_it_when_shipped_differs(tree):
     write(tree, "p", "2026-10-02T124707Z-index", summary())
     lat = ("| entry | median ms | p95 ms |", "| **ours** | 126.7 | 657.4 |")
-    write(tree, "p", "2026-10-02T130000Z-latency", summary(lat[1], head=lat[0]).replace("|---|---|---|---|---|", "|---|---|---|"))
+    write(tree, "p", "2026-10-02T130000Z-latency", summary(lat[1], head=lat[0]).replace("|---|---|---|---|---|", "|---|---|---|"),
+          archive=True)
     row = report.profile_row("p")
     assert (row["index"], row["ece"], row["coverage"]) == (51.61, 0.022, 1.0)
     assert (row["median_ms"], row["p95_ms"]) == (126.7, 657.4)
@@ -71,7 +79,7 @@ def test_latency_run_with_other_settings_is_flagged(tree):
     write(tree, "p", "2026-10-02T124707Z-index", summary())
     other = summary("| **ours** | 1.0 | 2.0 |", temps={"decider_chat": {**T1, "choice": 2.0}},
                     head="| entry | median ms | p95 ms |").replace("|---|---|---|---|---|", "|---|---|---|")
-    write(tree, "p", "2026-10-02T130000Z-latency", other)
+    write(tree, "p", "2026-10-02T130000Z-latency", other, archive=True)
     assert report.profile_row("p")["latency_differs"]
 
 

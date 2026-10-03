@@ -241,7 +241,7 @@ async def main(args) -> None:
     vllm = None if jev else Vllm(args.vllm, records)
     phase = vllm.watch if vllm else lambda name: contextlib.nullcontext()
     name = "jev" if jev else args.profile
-    out = ROOT / "docs" / "results" / name / suffix
+    out = ROOT / "docs" / "results" / ("archive" if args.quick else "") / name / suffix
     # TypeSafe's terms forbid using Jev outputs for training or calibration, so keep them out of the repo.
     raw = ROOT / ".cache" / "jev-results" / suffix if jev else out
     async with httpx.AsyncClient(base_url=base_url, headers=headers, timeout=600) as client:

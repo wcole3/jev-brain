@@ -52,13 +52,13 @@ def utc_now() -> str:
 
 
 def result_dirs(profile: str, pattern: str) -> set[Path]:
-    return set((ROOT / "docs" / "results" / profile).glob(pattern))
+    return set((ROOT / "docs" / "results" / "archive" / profile).glob(pattern))
 
 
 def created_since(profile: str, pattern: str, before: set[Path]) -> Path:
     """The newest result dir a step added; fail loudly rather than pick up an older run's."""
     if not (new := result_dirs(profile, pattern) - before):
-        raise SystemExit(f"{pattern}: the step created no result dir under docs/results/{profile}")
+        raise SystemExit(f"{pattern}: the step created no result dir under docs/results/archive/{profile}")
     return max(new)
 
 
@@ -73,7 +73,7 @@ def script(name: str, *args: str) -> list[str]:
 
 
 def run(profile: str, gateway: str, vllm: str) -> Path:
-    out = ROOT / "docs" / "results" / profile / f"{datetime.datetime.now(datetime.UTC).strftime('%Y-%m-%dT%H%M%SZ')}-host"
+    out = ROOT / "docs" / "results" / "archive" / profile / f"{datetime.datetime.now(datetime.UTC).strftime('%Y-%m-%dT%H%M%SZ')}-host"
     out.mkdir(parents=True)
     csv = out / "telemetry.csv"
     steps = {

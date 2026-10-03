@@ -27,8 +27,9 @@ NOTES = {
 
 
 def latest(profile: str, suffix: str) -> Path | None:
-    """Newest `<UTC stamp>-<suffix>` dir; `-index` matches `-vast-index` but not `-index-subset`."""
-    dirs = sorted((RESULTS / profile).glob(f"*-{suffix}"))
+    """Newest `<UTC stamp>-<suffix>` dir; Index runs are top level, latency runs live in archive/."""
+    where = RESULTS / "archive" if suffix == "latency" else RESULTS
+    dirs = sorted((where / profile).glob(f"*-{suffix}"))
     return dirs[-1] if dirs else None
 
 

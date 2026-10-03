@@ -1,7 +1,7 @@
 {
  "format": 2,
- "version": 2,
- "date": "2026-10-02T20:32:20Z",
+ "version": 3,
+ "date": "2026-10-03T00:47:00Z",
  "comments": [
   {
    "version": 1,
@@ -12,6 +12,11 @@
    "version": 2,
    "date": "2026-10-02T20:32:20Z",
    "text": "T = 1 is a gate candidate (owner); choice: none T 1.000, score: fitted T 6.264, noul: fitted T 0.825, b not shipped"
+  },
+  {
+   "version": 3,
+   "date": "2026-10-03T00:47:00Z",
+   "text": "T = 1 only when every candidate fails the gate (owner); choice: fitted T 1.352, score: fitted T 6.264, noul: fitted T 0.825, b not shipped"
   }
  ],
  "stamp": {
@@ -23,7 +28,7 @@
  },
  "types": {
   "choice": {
-   "T": 1.0
+   "T": 1.3522738771932372
   },
   "score": {
    "T": 6.26411640450269
@@ -50,7 +55,7 @@
      "noul": 0.2788739287794847
     },
     "after": {
-     "choice": 0.562600762975506,
+     "choice": 0.5274122390438872,
      "score": 1.289011519986025,
      "noul": 0.27496456284710963
     }
@@ -62,7 +67,7 @@
      "noul": 0.03744954012278118
     },
     "after": {
-     "choice": 0.03854144005041342,
+     "choice": 0.031593623519607796,
      "score": 0.07493952136465694,
      "noul": 0.027366655055125255
     }
@@ -76,7 +81,7 @@
      "noul": 0.28277980355624416
     },
     "after": {
-     "choice": 0.5104996428072199,
+     "choice": 0.5096888995969014,
      "score": 1.2986917883682256,
      "noul": 0.2777616960435593
     }
@@ -88,7 +93,7 @@
      "noul": 0.03474688834950739
     },
     "after": {
-     "choice": 0.021009978043493114,
+     "choice": 0.04190517123988666,
      "score": 0.1562069806215445,
      "noul": 0.019727332534264196
     }
@@ -112,8 +117,8 @@
    "choice": {
     "fitted_T": 1.3522738771932372,
     "pooled_T": 1.7029000107860284,
-    "shipped_T": 1.0,
-    "source": "none",
+    "shipped_T": 1.3522738771932372,
+    "source": "fitted",
     "ece": [
      0.020895193196393543,
      -0.0055679851083201,

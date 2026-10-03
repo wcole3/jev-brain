@@ -12,10 +12,14 @@ import json
 from collections import defaultdict
 from concurrent.futures import ProcessPoolExecutor
 
+from transformers import AutoTokenizer
+
 from gateway.calibration import Calibration
-from gateway.config import ROOT
+from gateway.config import ROOT, Settings
 from gateway.layouts import load_layouts
 from gateway.orders import option_orders
+from gateway.prompts import encode_each
+from gateway.questions import render_state
 from scripts import host_info, metrics
 from scripts.bench import git_revision
 from scripts.collect import COLLECT, records
@@ -26,7 +30,6 @@ from scripts.offline import Arm, keyed
 from scripts.order_stats import (
     disagreement_auroc,
     flip_rate,
-    in_prior_slice,
     noul_lean,
     position_histogram,
     pride_keyed,
@@ -63,20 +66,19 @@ def summary(items: dict) -> dict:
 
 
 def run_compare(job: tuple) -> dict:
-    a, b, keep = job
-    return compare(a, b, keep)
+    return compare(*job)
 
 
-def job(a: dict, b: dict, keep=None) -> tuple:
+def job(a: dict, b: dict) -> tuple:
     """A comparison to run in a worker process, with b cut down to a's questions so less is pickled."""
-    return a, {k: b[k] for k in a.keys() & b.keys()}, keep
+    return a, {k: b[k] for k in a.keys() & b.keys()}
 
 
-def compare_groups(base: dict, arms: dict, groups: dict, pmap=map, keeps=None) -> dict[str, dict]:
+def compare_groups(base: dict, arms: dict, groups: dict, pmap=map) -> dict[str, dict]:
     """Each arm against base in every bucket; pmap spreads the bootstraps over processes."""
-    keeps, parts = keeps or {}, {name: split_by(base, group) for name, group in groups.items()}
+    parts = {name: split_by(base, group) for name, group in groups.items()}
     slots = [(arm, name, bucket) for arm in arms for name in parts for bucket in parts[name]]
-    results = pmap(run_compare, [job(parts[name][bucket], arms[arm], keeps.get(arm)) for arm, name, bucket in slots])
+    results = pmap(run_compare, [job(parts[name][bucket], arms[arm]) for arm, name, bucket in slots])
     out = {arm: {name: {} for name in parts} for arm in arms}
     for (arm, name, bucket), result in zip(slots, results, strict=True):
         out[arm][name][bucket] = result
@@ -105,10 +107,6 @@ def agree(by_split: dict[str, str]) -> str:
     return picks[0] if len(set(picks)) == 1 else f"no change: splits disagree ({' vs '.join(picks)})"
 
 
-def outside_slice(key, _item) -> bool:
-    return not in_prior_slice(key[0])
-
-
 def mean_reads(items: dict, arm: str) -> float | None:
     """Reads per question as served: PriDe reads once, cyclic:k reads min(k, options) orders."""
     orders = DEFAULT_ORDERS if arm == "pride" else arm
@@ -125,11 +123,11 @@ def orders_data(calib_recs, calib_rows, recs, rows, layout: str, cals=None, pmap
     layouts = load_layouts()
     cals = cals or fit_orders(calib_recs, calib_rows, layout)
     arms = {arm: keyed(recs, rows, Arm(layout, arm, cals[arm]), layouts) for arm in ORDER_ARMS}
-    prior = pride_prior(recs, rows, layout, cals["identity"], layouts)
+    prior = pride_prior(calib_recs, calib_rows, layout, cals["identity"], layouts)  # deployable: no extra reads
     arms["pride"] = pride_keyed(recs, rows, layout, cals["identity"], prior, layouts)
     identity, averaged = arms["identity"], arms["identity+reversed"]
     reversed_ = reversed_keyed(recs, rows, layout, cals["identity"], layouts)
-    vs = compare_groups(identity, arms, BY_OPTIONS, pmap, keeps={"pride": outside_slice})
+    vs = compare_groups(identity, arms, BY_OPTIONS, pmap)
     summaries = {arm: {"T": cals[arm].T, "reads": READS[arm], "mean_reads": mean_reads(items, arm),
                        **per_group(items, BY_OPTIONS, summary)} for arm, items in arms.items()}
     best = max((arm for arm in arms if arm != DEFAULT_ORDERS),
@@ -148,12 +146,19 @@ def orders_data(calib_recs, calib_rows, recs, rows, layout: str, cals=None, pmap
     }
 
 
-def input_tokens(recs: list[dict], layout: str) -> dict[str, int]:
-    return {r["id"]: r["input_tokens"] for r in recs if r["status"] == "ok" and r["layout"] == layout}
+def load_tokenizer(profile: str):
+    s = Settings.from_profile(profile)
+    return AutoTokenizer.from_pretrained(s.hf_model, revision=s.hf_revision, local_files_only=True)  # HF cache only
+
+
+def count_state_tokens(tok, rows: dict) -> dict[str, int]:
+    """Each row's state as the prompt renders it, in tokens; one tokenizer call for all rows."""
+    ids = list(rows)
+    return dict(zip(ids, map(len, encode_each(tok, [render_state(rows[i]["state"]) for i in ids])), strict=True))
 
 
 def layout_groups(tokens: dict[str, int]) -> dict:
-    """Buckets by the default layout's state length, so every layout is bucketed on the same rows."""
+    """Buckets by state length in tokens, the same for every layout."""
     return {
         "overall": lambda key, item: "all",
         "type": lambda key, item: item.type,
@@ -164,10 +169,10 @@ def layout_groups(tokens: dict[str, int]) -> dict:
 
 def winners(arms: dict, summaries: dict, groups: dict, pmap=map) -> dict:
     """The most accurate layout overall and per bucket; a bucket auto-switches only on a CI clear of zero."""
-    def best(name, bucket):
-        return max(arms, key=lambda layout: summaries[layout][name][bucket]["accuracy"])
-    top = best("overall", "all")
-    slots = [(name, bucket, best(name, bucket)) for name in ("length", "slice") for bucket in summaries[top][name]]
+    def best(name, bucket, prefer):  # a tie goes to prefer
+        return max(arms, key=lambda layout: (summaries[layout][name][bucket]["accuracy"], layout == prefer))
+    top = best("overall", "all", DEFAULT_LAYOUT)
+    slots = [(name, bucket, best(name, bucket, top)) for name in ("length", "slice") for bucket in summaries[top][name]]
     differ = [slot for slot in slots if slot[2] != top]
     results = pmap(run_compare, [job(split_by(arms[top], groups[name])[bucket], arms[winner])
                                  for name, bucket, winner in differ])
@@ -184,20 +189,15 @@ def fit_layouts(calib_recs: list[dict], calib_rows: dict) -> dict[str, Calibrati
     return {name: fit_arm(calib_recs, calib_rows, name, DEFAULT_ORDERS) for name in sorted(load_layouts())}
 
 
-def layouts_data(calib_recs, calib_rows, recs, rows, cals=None, pmap=map) -> dict:
+def layouts_data(calib_recs, calib_rows, recs, rows, state_tokens: dict[str, int], cals=None, pmap=map) -> dict:
     """Each layout at identity with its own T, on the questions every layout answered."""
     layouts = load_layouts()
     cals = cals or fit_layouts(calib_recs, calib_rows)
     arms = {name: keyed(recs, rows, Arm(name, DEFAULT_ORDERS, cals[name]), layouts) for name in sorted(layouts)}
     shared = set.intersection(*(set(items) for items in arms.values()))
     arms = {name: {k: v for k, v in items.items() if k in shared} for name, items in arms.items()}
-    groups = layout_groups(input_tokens(recs, DEFAULT_LAYOUT))
-    ids = {row_id for row_id, _ in shared}
-    summaries = {}
-    for name, items in arms.items():
-        tokens = [n for row_id, n in input_tokens(recs, name).items() if row_id in ids]
-        summaries[name] = {"T": cals[name].T, "mean_input_tokens": sum(tokens) / len(tokens) if tokens else None,
-                           **per_group(items, groups, summary)}
+    groups = layout_groups(state_tokens)
+    summaries = {name: {"T": cals[name].T, **per_group(items, groups, summary)} for name, items in arms.items()}
     others = {name: items for name, items in arms.items() if name != DEFAULT_LAYOUT}
     vs = compare_groups(arms[DEFAULT_LAYOUT], others, groups, pmap)
     return {
@@ -206,6 +206,13 @@ def layouts_data(calib_recs, calib_rows, recs, rows, cals=None, pmap=map) -> dic
         "winners": winners(arms, summaries, groups, pmap),
         "recommendation": recommend(overall_comparisons(vs), DEFAULT_LAYOUT),
     }
+
+
+def switches_on_both(splits: dict) -> list[str]:
+    """Buckets that auto-switch to the same layout on every split, as "grouping bucket: layout"."""
+    flagged = [{f"{name} {bucket}: {w['winner']}" for name in ("length", "slice")
+                for bucket, w in data["winners"][name].items() if w["auto_switch"]} for data in splits.values()]
+    return sorted(set.intersection(*flagged))
 
 
 def load(profile: str, split: str) -> tuple[list[dict], dict, str]:
@@ -236,13 +243,14 @@ def orders_report(profile: str, layout: str, pmap=map) -> dict:
 
 def layouts_report(profile: str, pmap=map) -> dict:
     calib_recs, calib_rows, calib_path = load(profile, "calib")
-    cals = fit_layouts(calib_recs, calib_rows)
+    cals, tok = fit_layouts(calib_recs, calib_rows), load_tokenizer(profile)
     splits, paths = {}, {"calib": calib_path}
     for split in SPLITS:
         recs, rows, paths[split] = load(profile, split)
-        splits[split] = layouts_data(calib_recs, calib_rows, recs, rows, cals, pmap)
+        splits[split] = layouts_data(calib_recs, calib_rows, recs, rows, count_state_tokens(tok, rows), cals, pmap)
     return {"meta": provenance(profile, paths, cals), "splits": splits,
-            "recommendation": agree({split: data["recommendation"] for split, data in splits.items()})}
+            "recommendation": agree({split: data["recommendation"] for split, data in splits.items()}),
+            "auto_switch_on_both": switches_on_both(splits)}
 
 
 def write(report: dict, markdown: str, name: str, dry_run: bool) -> None:

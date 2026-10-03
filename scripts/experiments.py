@@ -49,7 +49,7 @@ def scores(cols: tuple[list, list, list], idx) -> tuple[float, float, float]:
 
 
 def bootstrap(xa: list[Scored], xb: list[Scored], resamples: int = 2000, seed: int = 0) -> dict:
-    """fit.bootstrap_diff for the three metrics at once: its resamples share one seed, so one draw serves all."""
+    """Must equal fit.bootstrap_diff per metric (tested): its calls share seed 0, so one draw serves all three."""
     ca, cb, rng, n = columns(xa), columns(xb), random.Random(seed), len(xa)
     diffs = []
     for _ in range(resamples):

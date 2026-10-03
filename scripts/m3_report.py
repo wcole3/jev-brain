@@ -7,19 +7,15 @@ BUCKETS = ["all", "2", "3-5", "6-26", "27+", "<512", "512-2k", "2k-8k", ">8k", "
 RULE = ("An arm wins on an accuracy CI low > 0 or an ECE CI high < 0, without the other metric getting worse"
         " beyond its CI; index-dev and eval must agree. The owner makes the final call.")
 
-ORDERS_NOTE = ("Δ is arm − identity on the same questions, with a 95% paired-bootstrap CI. PriDe is scored and paired"
-               " on the rows outside its 5% prior slice.")
+LATENCY = "latency measured live in Task 8"
+ORDERS_NOTE = "Δ is arm − identity on the same questions, with a 95% paired-bootstrap CI."
 LAYOUTS_NOTE = ("Every layout reads once per question (identity), on the questions all three answered. Δ is layout −"
-                " decider_chat with a 95% paired-bootstrap CI; length buckets and the long slice use decider_chat's"
-                " input_tokens.")
+                " decider_chat with a 95% paired-bootstrap CI. State length is the rendered state in the profile's"
+                " tokens.")
 
 
-def tokens(x) -> str:
-    return "n/a" if x is None else f"{x:.0f}"
-
-
-def ci(diff) -> str:
-    return "n/a" if diff is None else f"{diff[0]:+.3f} [{diff[1]:+.3f}, {diff[2]:+.3f}]"
+def ci(diff, places: int = 3) -> str:
+    return "n/a" if diff is None else "{:+.{p}f} [{:+.{p}f}, {:+.{p}f}]".format(*diff, p=places)
 
 
 def ordered(buckets) -> list[str]:
@@ -37,7 +33,7 @@ def arm_table(title: str, grouping: str, summaries: dict, vs: dict) -> list[str]
             if g is None:
                 continue
             c = vs.get(arm, {}).get(grouping, {}).get(bucket)
-            deltas = [ci(c[m]) if c else "baseline" for m in ("accuracy", "ece", "nll")]
+            deltas = [ci(c[m], places) if c else "baseline" for m, places in (("accuracy", 3), ("ece", 4), ("nll", 4))]
             lines.append(f"| {bucket} | {arm} | {g['n']} | {fmt(g['accuracy'])} | {fmt(g['ece'])} | {fmt(g['nll'])}"
                          f" | {fmt(g['brier'])} | " + " | ".join(deltas) + " |")
     return lines
@@ -53,7 +49,8 @@ def read_cost(report: dict) -> str:
     """The winning arm's reads per question, or identity's when the default stays."""
     arms = report["splits"]["index-dev"]["arms"]
     arm = report["recommendation"] if report["recommendation"] in arms else "identity"
-    return f"{arm}: at most {arms[arm]['reads']} reads per question, {fmt(arms[arm]['mean_reads'])} on average on index-dev"
+    return (f"{arm}: at most {arms[arm]['reads']} reads per question, {fmt(arms[arm]['mean_reads'])} on average on"
+            f" index-dev; {LATENCY}")
 
 
 def diagnostics(data: dict) -> list[str]:
@@ -72,7 +69,8 @@ def diagnostics(data: dict) -> list[str]:
          f" {fmt(lean['p_yes_reversed'])}, gold yes {fmt(lean['gold_yes'])}. p(yes) that moves with the order is a"
          " lean to a position; p(yes) that stays put is a lean to the word."),
         "",
-        f"PriDe prior (5% slice, cyclic:4 reads) for option counts: {prior}; other counts pass through unchanged.",
+        (f"PriDe prior from the calib split (deployable without extra reads): cyclic:4 reads at identity's T, for"
+         f" option counts {prior}; other counts pass through unchanged."),
     ]
 
 
@@ -126,11 +124,9 @@ def winners(data: dict) -> list[str]:
 
 def layouts_split(split: str, data: dict) -> list[str]:
     layouts, vs = data["layouts"], data["vs_decider_chat"]
-    sizes = [f"| {name} | {tokens(s['mean_input_tokens'])} |" for name, s in layouts.items()]
     return [
         f"## {split}", "",
         LAYOUTS_NOTE, "",
-        "| layout | mean input tokens |", "|---|---|", *sizes, "",
         *arm_table("overall", "overall", layouts, vs), "",
         *arm_table("type", "type", layouts, vs), "",
         *arm_table("state length", "length", layouts, vs), "",
@@ -141,11 +137,10 @@ def layouts_split(split: str, data: dict) -> list[str]:
 
 
 def layouts_markdown(report: dict) -> str:
-    sizes = report["splits"]["index-dev"]["layouts"]
-    cost = "one read per question for every layout; mean input tokens on index-dev: " + ", ".join(
-        f"{name} {tokens(s['mean_input_tokens'])}" for name, s in sizes.items())
+    switches = ", ".join(report["auto_switch_on_both"]) or "none"
     lines = [f"# {report['meta']['profile']} M3 layouts", "", provenance(report["meta"]),
-             *recommendation(report, cost)]
+             *recommendation(report, f"1 read per question for each layout (identity); {LATENCY}"),
+             f"Auto-switch on both splits: {switches}.", ""]
     for split, data in report["splits"].items():
         lines += layouts_split(split, data)
     return "\n".join(lines)

@@ -1,6 +1,5 @@
 """Order diagnostics: flips, position histograms, disagreement as an error signal, noul lean, and PriDe."""
 
-import hashlib
 from collections import defaultdict
 
 from gateway.calibration import Calibration, softmax
@@ -63,17 +62,11 @@ def noul_lean(identity: dict, reversed_: dict) -> dict:
     }
 
 
-def in_prior_slice(row_id: str) -> bool:
-    return int(hashlib.sha256(row_id.encode()).hexdigest(), 16) % 20 == 0
-
-
 def pride_prior(recs, rows_by_id, layout: str, cal: Calibration, layouts,
                 min_questions: int = 20) -> dict[int, list[float]]:
-    """Mean probability at each shown position over the cyclic:4 reads of the 5% slice, per option count."""
+    """Mean probability at each shown position over the cyclic:4 reads of recs (calib), per option count."""
     sums, counts = {}, defaultdict(int)
     for rec in recs:
-        if not in_prior_slice(rec["id"]):
-            continue
         for _, t, chosen, _ in offline.questions(rec, rows_by_id[rec["id"]], layout, "cyclic:4", layouts):
             if t == "noul":
                 continue
@@ -86,11 +79,9 @@ def pride_prior(recs, rows_by_id, layout: str, cal: Calibration, layouts,
 
 
 def pride_keyed(recs, rows_by_id, layout: str, cal: Calibration, prior: dict, layouts) -> dict:
-    """Identity reads of the rows outside the slice, with the position prior divided out (noul unchanged)."""
+    """Identity reads with the position prior divided out (noul unchanged): one read per question at serve time."""
     out = {}
     for rec in recs:
-        if in_prior_slice(rec["id"]):
-            continue
         row = rows_by_id[rec["id"]]
         for qid, t, chosen, gold in offline.questions(rec, row, layout, "identity", layouts):
             p = probabilities(chosen, t, cal)

@@ -71,9 +71,13 @@ def test_fit_arm_fits_each_type_on_calib_without_the_gate(monkeypatch):
     cal = fit_arm(list(recs), {r["id"]: r for r in rows}, "decider_chat", "identity+reversed")
     assert cal.orders == "identity+reversed" and cal.source == "calib fit decider_chat identity+reversed"
     assert cal.b == 0.0
-    noul = [(chosen, gold) for rec, row in zip(recs, rows, strict=True)
-            for _, t, chosen, gold in questions(rec, row, "decider_chat", "identity+reversed", LAYOUTS) if t == "noul"]
-    assert len(noul) == 3 and cal.T["noul"] == fits.fit_temperature(noul)
+    by_type = {"choice": [], "noul": []}
+    for rec, row in zip(recs, rows, strict=True):
+        for _, t, chosen, gold in questions(rec, row, "decider_chat", "identity+reversed", LAYOUTS):
+            by_type[t].append((chosen, gold))
+    assert len(by_type["noul"]) == len(by_type["choice"]) == 3
+    assert cal.T["noul"] == fits.fit_temperature(by_type["noul"])
+    assert cal.T["choice"] == fits.fit_temperature(by_type["choice"]) and cal.T["score"] == 1.0
 
 
 def test_fit_arm_keeps_t_one_below_the_minimum():

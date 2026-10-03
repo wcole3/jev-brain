@@ -1,8 +1,11 @@
 """Shared pieces of the M3 experiments: buckets, the long slice, per-arm temperatures, paired comparisons."""
 
+import math
+import random
+
 from gateway.calibration import Calibration
 from scripts import calibrate, metrics
-from scripts import fit as fits
+from scripts.metrics import Scored
 
 LONG_FAMILIES = {("jevbench", "invoices"), ("jevbench", "invoice_processing"), ("index", "ContractNLI"),
                  ("index", "NLI4CT"), ("index", "BRIGHT")}
@@ -33,10 +36,36 @@ def paired(a: dict, b: dict, keep=None) -> tuple[list, list]:
     return [a[k] for k in keys], [b[k] for k in keys]
 
 
+def columns(items: list[Scored]) -> tuple[list, list, list]:
+    """What accuracy, ECE and NLL read from each question, worked out once instead of once per resample."""
+    return ([i.correct for i in items], [i.confidence for i in items],
+            [-math.log(max(i.probs[i.gold], metrics.EPS)) for i in items])
+
+
+def scores(cols: tuple[list, list, list], idx) -> tuple[float, float, float]:
+    """Accuracy, ECE and NLL of the questions at idx, summed as metrics.py sums them, so the numbers match exactly."""
+    correct, confidence, loss = ([col[i] for i in idx] for col in cols)
+    return sum(correct) / len(idx), metrics.ece_of(confidence, correct), sum(loss) / len(idx)
+
+
+def bootstrap(xa: list[Scored], xb: list[Scored], resamples: int = 2000, seed: int = 0) -> dict:
+    """fit.bootstrap_diff for the three metrics at once: its resamples share one seed, so one draw serves all."""
+    ca, cb, rng, n = columns(xa), columns(xb), random.Random(seed), len(xa)
+    diffs = []
+    for _ in range(resamples):
+        idx = [rng.randrange(n) for _ in range(n)]
+        diffs.append([y - x for x, y in zip(scores(ca, idx), scores(cb, idx), strict=True)])
+    point = [y - x for x, y in zip(scores(ca, range(n)), scores(cb, range(n)), strict=True)]
+    out = {}
+    for m, name in enumerate(("accuracy", "ece", "nll")):
+        ranked = sorted(d[m] for d in diffs)
+        out[name] = (point[m], ranked[int(0.025 * resamples)], ranked[int(0.975 * resamples) - 1])
+    return out
+
+
 def compare(a: dict, b: dict, keep=None) -> dict:
     """metric(b) - metric(a) with 95% paired-bootstrap intervals, over the questions both arms answered."""
     xa, xb = paired(a, b, keep)
-    out = {"n": len(xa)}
-    for name, metric in (("accuracy", metrics.accuracy), ("ece", metrics.ece), ("nll", metrics.nll)):
-        out[name] = fits.bootstrap_diff(xa, xb, metric) if xa else None
-    return out
+    if not xa:
+        return {"n": 0, "accuracy": None, "ece": None, "nll": None}
+    return {"n": len(xa), **bootstrap(xa, xb)}

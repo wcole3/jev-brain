@@ -1,4 +1,5 @@
 import os
+import re
 import shlex
 import shutil
 import subprocess
@@ -44,7 +45,7 @@ def test_gpu_jobs_bring_the_stack_back_first(path):
     """A vLLM crash fails the job; its retry then restarts the stack (a no-op when it is healthy)."""
     jobs = [line.split(":", 1) for line in path.read_text().splitlines() if line and not line.startswith("#")]
     for name, command in jobs[1:]:
-        assert command.startswith(f" bash scripts/remote/stack.sh up {path.stem} && "), name
+        assert re.match(rf" bash scripts/remote/stack.sh up {re.escape(path.stem)}( [A-Z_]+=\S+)* && ", command), name
 
 
 def test_job_commands_name_only_their_own_profile():

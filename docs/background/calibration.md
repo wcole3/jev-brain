@@ -86,22 +86,22 @@ vLLM letter logprobs  →  softmax(logprobs / T)  →  average over option order
   `log Z / T` term is the same for every letter and cancels, so scaling logprobs equals
   scaling logits.
 
-Since the refit, `header` became qwen3.6's default layout (owner, 2026-10-03; see
-[m3-recommendations.md](../results/archive/m3-recommendations.md)); the other profiles keep `decider_chat`.
+`header` ships for all three profiles (qwen3.6 since 2026-10-03, qwen3.8 and gemma since 2026-10-04; see
+[m3-recommendations.md](../results/archive/m3-recommendations.md)).
 
 Refit 2026-10-03 (T = 1 only when every candidate fails) by [`scripts/calibrate.py`](../../scripts/calibrate.py)
 ([report](../results/archive/qwen3.6-27b/2026-10-03T003833Z-calibrate/summary.md); file version 6 for qwen3.6, 3 for gemma and qwen3.8):
 
 | Profile | Layout | T choice | T score | T noul | noul b |
 |---|---|---|---|---|---|
-| qwen3.6-27b | `decider_chat` (default) | 1.648 | 1.927 (pooled; fitted 6.323) | 1.386 | 0 |
-| qwen3.6-27b | `header` | 1.627 | 1.958 (pooled; fitted 7.195) | 1.284 | 0 |
+| qwen3.6-27b | `decider_chat` | 1.648 | 1.927 (pooled; fitted 6.323) | 1.386 | 0 |
+| qwen3.6-27b | `header` (shipped) | 1.627 | 1.958 (pooled; fitted 7.195) | 1.284 | 0 |
 | qwen3.6-27b | `question_first` | 1.484 | 8.055 | 1.145 | +0.253 |
 | gemma-4-31b ([report](../results/archive/gemma-4-31b/2026-10-03T004123Z-calibrate/summary.md)) | `decider_chat` | 4.123 | 5.378 (pooled; fitted 18.187) | 7.528 | −0.636 |
-| | `header` | 4.263 | 5.603 (pooled; fitted 19.999, edge) | 7.609 | 0 |
+| | `header` (shipped) | 4.263 | 5.603 (pooled; fitted 19.999, edge) | 7.609 | 0 |
 | | `question_first` | 3.839 | 5.278 (pooled; fitted 19.999, edge) | 7.266 | −0.460 |
 | qwen3.8-27b ([report](../results/archive/qwen3.8-27b/2026-10-03T004419Z-calibrate/summary.md)) | `decider_chat` | 1.496 | 1.664 (pooled; fitted 4.420) | 0.970 | 0 |
-| | `header` | 1.536 | 1.775 (pooled; fitted 5.308) | 0.963 | 0 |
+| | `header` (shipped) | 1.536 | 1.775 (pooled; fitted 5.308) | 0.963 | 0 |
 | | `question_first` | 1.352 | 6.264 | 0.825 | 0 |
 
 Eval split, before (T = 1, b = 0) → after, from the report (each file's `fit.eval`):

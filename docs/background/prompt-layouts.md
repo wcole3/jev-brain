@@ -9,7 +9,7 @@ the same method as [prompt-sharing.md](prompt-sharing.md) §4: it rebuilds the r
 ## Short answer
 
 - **A layout is the order of the pieces in the prompt.** We ship three: `decider_chat`
-  (state, then question; the default), `header` (question list, state, question) and
+  (state, then question), `header` (question list, state, question; the default) and
   `question_first` (question, then state).
 - **The order decides how much prefix sharing survives.** For one 2,048-token-state,
   16-question, 26-option request on qwen3.6-27b, vLLM computes 12,877 tokens under
@@ -32,8 +32,8 @@ common before their first question-specific part
 
 | Layout | `order` | Shared prefix across a request's questions |
 |---|---|---|
-| [`decider_chat`](../../prompts/decider_chat.toml) (default) | context, question, options | chat header + state |
-| [`header`](../../prompts/header.toml) | questions, context, question, options | chat header + list of all questions + state |
+| [`decider_chat`](../../prompts/decider_chat.toml) | context, question, options | chat header + state |
+| [`header`](../../prompts/header.toml) (default) | questions, context, question, options | chat header + list of all questions + state |
 | [`question_first`](../../prompts/question_first.toml) | question, options, context | chat header only (3 tokens) |
 
 A tiny request rendered with each layout (state "Order 17: 3 widgets shipped on Monday.", first
@@ -165,8 +165,12 @@ state at all. `header` keeps sharing and adds only the question list, but its ac
 appendix: keep `decider_chat` as default, use `question_first` only when a request has one question (nothing to
 share, so it is free), and A/B `header` on long, multi-question states.
 
-Update 2026-10-03: M3 measured `header` and the owner made it qwen3.6's default layout; qwen3.8 and gemma keep
-`decider_chat` ([m3-recommendations.md](../results/archive/m3-recommendations.md)).
+Update 2026-10-03: M3 measured `header` and the owner made it qwen3.6's default layout; qwen3.8 and gemma kept
+`decider_chat`.
+
+Update 2026-10-04: `header` ships for all three profiles. Full Decision Index runs beat `decider_chat` by 3.4 to 4.5
+points on each (the offline index-dev and eval splits had understated it), at +10–17 ms median latency and 7–11
+refused rows per profile ([m3-recommendations.md](../results/archive/m3-recommendations.md)).
 
 ## 4. Calibration status per layout
 

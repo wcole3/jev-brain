@@ -23,8 +23,8 @@ decider's T = 1.943). Accuracy in %; ECE is calibration error (lower is better):
 | qwen3.8-27b | 86.4 | 90.4 | 86.2 | 0.033 | 81 ms |
 | qwen3.6-27b | 84.3 | 91.9 | 83.5 | 0.053 | 83 ms |
 
-Since then qwen3.6's default layout is `header` (owner, 2026-10-03; M3 verdict in
-[docs/results/archive/m3-recommendations.md](docs/results/archive/m3-recommendations.md)).
+Since then `header` is the default layout for all three profiles (owner, 2026-10-04; full Index
+confirmation in [docs/results/archive/m3-recommendations.md](docs/results/archive/m3-recommendations.md)).
 Choice is level with Jev; most of the gap is in noul and score. Details and caveats:
 [docs/results/archive/jevbench-vs-jev.md](docs/results/archive/jevbench-vs-jev.md).
 
@@ -188,7 +188,7 @@ needed.
 - **Targets:** `GATEWAY_URL` (default `http://127.0.0.1:9000`) and `VLLM_URL` (default
   `http://127.0.0.1:8000`). The tests skip if the gateway isn't up, and send
   `GATEWAY_API_KEY` when it is set.
-- **Parity test:** proves the default `decider_chat` prompt layout reproduces decider's
+- **Parity test:** proves the `decider_chat` prompt layout reproduces decider's
   tokens exactly. To regenerate its fixtures (rarely needed), use a separate venv, because
   decider pins `numpy<2`:
 
@@ -309,7 +309,7 @@ recollect the calib and eval splits (`collect.py` ignores calibration files), th
 | Path | What |
 |---|---|
 | `gateway/` | FastAPI gateway: `/v1/systemone` flow (`decide.py`), chat proxy (`chat.py`), disconnect cancellation (`disconnect.py`) |
-| `prompts/` | Prompt layouts (`decider_chat` default, `header` for qwen3.6, `question_first`) |
+| `prompts/` | Prompt layouts (`header` default for all profiles, `decider_chat`, `question_first`) |
 | `profiles/` | One env file per model |
 | `data/` | Label tables and calibration per profile/layout; benchmark corpus |
 | `scripts/` | `fetch_model.py`, `build_labels.py`, `bench.py` (+ `bench_data.py`, `bench_report.py`), `decider_fixtures.py`; phase 2: `index_suite.py`, `splits.py`, `collect.py`, `calibrate.py` (+ `fit.py`, `calibrate_report.py`), `evaluate.py`, `latency.py` (+ helpers) |

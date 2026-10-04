@@ -53,3 +53,21 @@ A full Index run takes about 8 h on a rented box with one order. With two orders
 | gemma-4-31b | decider_chat | identity (2 orders not worth 2× reads) |
 
 No calibration refit: every profile keeps identity, and header already has its own fitted file. The final full Index run per profile confirms the change.
+
+## Index confirmation (2026-10-04)
+
+Full Decision Index 0.2.1 runs, all at identity orders with each layout's own calibration:
+
+| Profile | decider_chat Index | header Index | Summaries |
+|---|---|---|---|
+| qwen3.6-27b | 51.61 (borrowed T 1.943) | 55.92 | [decider_chat](../qwen3.6-27b/2026-10-01T152531Z-index/summary.md), [header](../qwen3.6-27b/2026-10-03T140831Z-vast-index/summary.md) |
+| qwen3.8-27b | 51.47 | 56.01 | [decider_chat](../qwen3.8-27b/2026-10-03T133219Z-vast-index/summary.md), [header](../qwen3.8-27b/2026-10-04T022907Z-vast-index/summary.md) |
+| gemma-4-31b | 57.16 | 60.61 | [decider_chat](../gemma-4-31b/2026-10-03T133229Z-vast-index/summary.md), [header](../gemma-4-31b/2026-10-04T013002Z-vast-index/summary.md) |
+
+Board entries: Decider chat Qwen3.6 51.35, simple-jev Qwen3.8 55.7, Decider chat Gemma 57.33, Jev 57.9.
+
+- **Lesson:** the offline rule (gain on both index-dev and eval) kept qwen3.8 and gemma on decider_chat. index-dev understated header's Index gain (+1.0 / +4.1 accuracy), and eval (JevBench + DecisionBench) showed none. The full Index decided it.
+- **Costs:** about +10–17 ms median latency, 7–11 rows per profile refused for length (header prompts are longer), and ECE equal or better.
+- **Ties:** ranking ties on ToolRet/BRIGHT stay at 55–62% at 4-decimal rounding.
+
+**Header ships for all three profiles.**

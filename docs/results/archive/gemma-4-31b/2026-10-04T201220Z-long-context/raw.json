@@ -1,0 +1,121 @@
+{
+  "health": {
+    "status": "ok",
+    "profile": "gemma-4-31b",
+    "served_model": "gemma-4-31b",
+    "hf_model": "google/gemma-4-31B-it",
+    "hf_revision": "842da3794eaa0b77d5f08bae87a17459d91ff475",
+    "prompt_layout": "header",
+    "option_orders": "identity",
+    "prefix_pad": "off",
+    "prefix_block": 0,
+    "prefix_pad_always": false,
+    "systemone_max_len": 32768,
+    "warm_min_prefix_tokens": 512,
+    "warm_up": "off",
+    "calibration": {
+      "decider_chat": {
+        "T": {
+          "choice": 4.122840843073183,
+          "score": 5.3780273588596375,
+          "noul": 7.527710804948447
+        },
+        "b": -0.6359937209430613,
+        "source": "gemma-4-31b/decider_chat/calibration.json",
+        "orders": "identity"
+      },
+      "header": {
+        "T": {
+          "choice": 4.262737987560785,
+          "score": 5.603443226920255,
+          "noul": 7.608748625511332
+        },
+        "b": 0.0,
+        "source": "gemma-4-31b/header/calibration.json",
+        "orders": "identity"
+      },
+      "question_first": {
+        "T": {
+          "choice": 3.8391851723192945,
+          "score": 5.278388968615397,
+          "noul": 7.266257519634274
+        },
+        "b": -0.4595075807224698,
+        "source": "gemma-4-31b/question_first/calibration.json",
+        "orders": "identity"
+      }
+    },
+    "vllm_version": "0.30.0",
+    "layouts": [
+      "decider_chat",
+      "header",
+      "question_first"
+    ]
+  },
+  "long": {
+    "prompt_tokens": 59757,
+    "completion_tokens": 75,
+    "ttft_s": 32.22610906499904,
+    "decode_tok_s": 18.336729750920014
+  },
+  "idle": {
+    "chat": [
+      {
+        "ttft_ms": 76.87764201546088,
+        "chunks_per_s": 13.131845022230339
+      },
+      {
+        "ttft_ms": 112.49508301261812,
+        "chunks_per_s": 15.433809130116213
+      },
+      {
+        "ttft_ms": 103.40152197750285,
+        "chunks_per_s": 15.209819669154564
+      },
+      {
+        "ttft_ms": 110.4172000195831,
+        "chunks_per_s": 14.865982756602465
+      }
+    ],
+    "decision": [
+      {
+        "ms": 107.47415805235505
+      },
+      {
+        "ms": 67.29369796812534
+      },
+      {
+        "ms": 67.47799302684143
+      },
+      {
+        "ms": 66.91743998089805
+      }
+    ]
+  },
+  "during": {
+    "chat": [
+      {
+        "ttft_ms": 32224.250225990545,
+        "chunks_per_s": 13.043456573333117
+      }
+    ],
+    "decision": [
+      {
+        "ms": 76.67620800202712
+      },
+      {
+        "ms": 31148.50089402171
+      },
+      {
+        "ms": 173.91341197071597
+      },
+      {
+        "ms": 203.528287995141
+      },
+      {
+        "ms": 210.59240901377052
+      }
+    ]
+  },
+  "prompt_tokens_local": 59744
+}

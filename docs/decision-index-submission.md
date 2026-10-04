@@ -107,6 +107,24 @@ Index-specific gains.
   We adopted it after comparing two full Index runs (qwen3.8 51.47 → 56.01, gemma 57.16 → 60.61),
   which is selection on the test set. The gain didn't show on our non-Index split. gemma at 60.61
   would also sit above Jev (57.89), which invites scrutiny.
+- **JevBench confirms header outside the Index (2026-10-04).** We compared all 1,682 JevBench
+  gold rows, paired by row, header now against the 2026-09-30 decider_chat runs, with a 95%
+  bootstrap interval:
+
+  | Profile | All rows | Choice + noul only |
+  |---|---|---|
+  | qwen3.6 | +4.82 pts [+3.69, +5.89] | +3.85 [+2.69, +5.02] |
+  | qwen3.8 | +3.27 [+2.26, +4.34] | +3.27 [+2.11, +4.44] |
+  | gemma | +1.25 [+0.36, +2.20] | +1.89 [+0.95, +2.91] |
+
+  - **Choice + noul only** removes temperature effects, because the top answer doesn't depend on
+    T at one option order with b = 0.
+  - **Runs:** [qwen3.6](results/qwen3.6-27b/2026-10-04T130116Z/summary.md),
+    [qwen3.8](results/qwen3.8-27b/2026-10-04T133322Z/summary.md),
+    [gemma](results/gemma-4-31b/2026-10-04T140204Z/summary.md).
+  - **Disclosure:** JevBench was measured after the layout was chosen, so it is a confirmation, not
+    the selection rule. Also say that our DecisionBench rows (the rest of eval) did not show the
+    gain for qwen3.8 and gemma.
 - **Option:** submit qwen3.8 and gemma on decider_chat instead, using the earlier final runs:
   [qwen3.8 51.47](results/qwen3.8-27b/2026-10-03T133219Z-vast-index/summary.md),
   [gemma 57.16](results/gemma-4-31b/2026-10-03T133229Z-vast-index/summary.md).

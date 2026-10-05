@@ -1,11 +1,13 @@
 """Chat and every other /v1/* call forwarded to vLLM unchanged, with a route() hook for phase 3."""
 
 import json
-from collections.abc import Mapping
+from collections.abc import AsyncIterator, Mapping
 
 import httpx
 from fastapi.responses import StreamingResponse
 from starlette.background import BackgroundTask
+
+from gateway.governor import Governor
 
 ALIASES = ("jev-latest", "jev-preview")
 
@@ -27,6 +29,30 @@ def forwarded(headers: Mapping[str, str]) -> dict[str, str]:
     return {name: headers[name] for name in FORWARDED_HEADERS if name in headers}
 
 
+async def counted(chunks: AsyncIterator[bytes], governor: Governor) -> AsyncIterator[bytes]:
+    """Pass chunks through; the chat counts as decoding from its first chunk until the stream closes."""
+    started = False
+    try:
+        async for chunk in chunks:
+            if not started:
+                governor.chat_started()
+                started = True
+            yield chunk
+    finally:
+        if started:
+            governor.chat_ended()
+
+
+class ClosingResponse(StreamingResponse):
+    """Closes the body iterator when the response ends, so a client that left still runs its finally blocks."""
+
+    async def __call__(self, scope, receive, send) -> None:
+        try:
+            await super().__call__(scope, receive, send)
+        finally:
+            await self.body_iterator.aclose()
+
+
 async def proxy(
     client: httpx.AsyncClient,
     method: str,
@@ -34,23 +60,29 @@ async def proxy(
     content: bytes,
     headers: dict[str, str],
     params: list[tuple[str, str]] | None = None,
+    governor: Governor | None = None,
 ) -> StreamingResponse:
-    """Stream vLLM's response back byte for byte (JSON and SSE alike)."""
+    """Stream vLLM's response back byte for byte (JSON and SSE alike); a governor counts it as a chat stream."""
     request = client.build_request(method, path, content=content, params=params, headers=headers, timeout=PROXY_TIMEOUT)
     upstream = await client.send(request, stream=True)
-    return StreamingResponse(
-        upstream.aiter_bytes(),
+    chunks = upstream.aiter_bytes()
+    return ClosingResponse(
+        counted(chunks, governor) if governor else chunks,
         status_code=upstream.status_code,
         media_type=upstream.headers.get("content-type"),
         background=BackgroundTask(upstream.aclose),
     )
 
 
-async def chat_completions(client: httpx.AsyncClient, body: dict, served_model: str) -> StreamingResponse:
+async def chat_completions(
+    client: httpx.AsyncClient, body: dict, served_model: str, governor: Governor | None = None
+) -> StreamingResponse:
     if body.get("model") in ALIASES:
         body = body | {"model": served_model}  # vLLM only knows the served model name
     content = json.dumps(route(body)).encode()
-    return await proxy(client, "POST", "/v1/chat/completions", content, {"content-type": "application/json"})
+    headers = {"content-type": "application/json"}
+    counting = governor if body.get("stream") else None  # only a streaming chat decodes for long
+    return await proxy(client, "POST", "/v1/chat/completions", content, headers, governor=counting)
 
 
 async def list_models(client: httpx.AsyncClient, served_model: str) -> dict:

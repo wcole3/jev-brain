@@ -3,12 +3,13 @@
 import asyncio
 import functools
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 from gateway.answers import answer
 from gateway.calibration import Calibration, softmax
 from gateway.config import Settings
+from gateway.governor import Governor
 from gateway.labels import Labels
 from gateway.layouts import Layout
 from gateway.orders import average_back, option_orders
@@ -30,6 +31,7 @@ class Engine:
     calibration: dict[str, Calibration]
     readout: Any
     padding: Padding = OFF
+    governor: Governor = field(default_factory=Governor)
 
 
 OrderFn = Callable[[int], list[list[int]]]

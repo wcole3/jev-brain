@@ -4,10 +4,13 @@ import json
 import httpx
 import pytest
 from fastapi.testclient import TestClient
+from starlette.requests import ClientDisconnect
 
 import gateway.app
+from gateway import chat
 from gateway.app import create_app, load_engine
 from gateway.calibration import UNCALIBRATED
+from gateway.governor import Governor
 from tests.helpers import QUICKSTART, SSE, STATE, fake_vllm
 
 NOUL = {"state": "s", "questions": {"q": {"type": "noul", "instructions": "ok?"}}}
@@ -104,7 +107,105 @@ def test_health(client):
     assert padding == (s.prefix_pad, s.prefix_block, s.prefix_pad_always, s.warm_min_prefix_tokens)
     assert body["warm_up"] == s.warm_up
     assert body["systemone_max_len"] == s.systemone_max_len
+    assert (body["governor_duty"], body["governor_wave"], body["chats_decoding"]) == (1.0, 4, 0)
     assert body["calibration"] == {k: c.as_dict() for k, c in client.app.state.engine.calibration.items()}
+
+
+CHUNKS = [b'data: {"choices": []}\n\n'] * 3
+
+
+def streaming_vllm(seen: list, fail_after: int | None = None) -> httpx.MockTransport:
+    """A fake vLLM whose chat stream records the gateway's chat count before each chunk after the first."""
+    state = {}  # the engine, set once the app has started
+
+    async def chunks():
+        for i, chunk in enumerate(CHUNKS):
+            if i == fail_after:
+                raise httpx.ReadError("upstream died")
+            if i:
+                seen.append(state["engine"].governor.decoding)
+            yield chunk
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content) if request.content else {}
+        if request.url.path != "/v1/chat/completions":
+            return fake_vllm(request)
+        state["engine"] = state["app"].state.engine
+        if body.get("stream"):
+            return httpx.Response(200, content=chunks(), headers={"content-type": "text/event-stream"})
+        seen.append(state["engine"].governor.decoding)
+        return httpx.Response(200, json={"echo": body})
+
+    transport = httpx.MockTransport(handler)
+    transport.state = state
+    return transport
+
+
+def test_streaming_chat_counts_while_streaming(qwen_settings):
+    seen = []
+    vllm = streaming_vllm(seen)
+    app = create_app(qwen_settings, vllm)
+    vllm.state["app"] = app
+    with TestClient(app) as c:
+        r = c.post("/v1/chat/completions", json=CHAT | {"stream": True})
+        assert r.content == b"".join(CHUNKS)
+        assert seen == [1, 1]  # counted from the first chunk on
+        assert c.app.state.engine.governor.decoding == 0
+
+
+def test_plain_chat_is_not_counted(qwen_settings):
+    seen = []
+    vllm = streaming_vllm(seen)
+    app = create_app(qwen_settings, vllm)
+    vllm.state["app"] = app
+    with TestClient(app) as c:
+        assert c.post("/v1/chat/completions", json=CHAT).status_code == 200
+        assert seen == [0]
+        assert c.app.state.engine.governor.decoding == 0
+
+
+async def stream_through_gateway(chunks, governor, leave_after: int | None = None) -> None:
+    """Run chat.chat_completions as an ASGI response; a client that leaves makes send raise OSError."""
+    transport = httpx.MockTransport(lambda r: httpx.Response(200, content=chunks()))
+    async with httpx.AsyncClient(base_url="http://vllm", transport=transport) as client:
+        response = await chat.chat_completions(client, CHAT | {"stream": True}, "m", governor)
+        sent = 0
+
+        async def send(message):
+            nonlocal sent
+            sent += message["type"] == "http.response.body"
+            if sent == leave_after:
+                raise OSError("client left")
+
+        try:
+            await response({"type": "http", "asgi": {"spec_version": "2.4"}}, None, send)
+        except (OSError, ClientDisconnect, httpx.ReadError):
+            pass
+
+
+async def test_stream_count_drops_when_client_leaves_mid_stream():
+    governor = Governor()
+    seen = []
+
+    async def chunks():
+        for chunk in CHUNKS:
+            seen.append(governor.decoding)
+            yield chunk
+
+    await stream_through_gateway(chunks, governor, leave_after=2)
+    assert seen[1] == 1
+    assert governor.decoding == 0
+
+
+async def test_stream_count_drops_on_upstream_error():
+    governor = Governor()
+
+    async def chunks():
+        yield CHUNKS[0]
+        raise httpx.ReadError("upstream died")
+
+    await stream_through_gateway(chunks, governor)
+    assert governor.decoding == 0
 
 
 def test_padded_gateway_reports_padding_and_bills_without_it(qwen_settings, vllm, sent):

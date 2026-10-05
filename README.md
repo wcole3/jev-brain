@@ -94,6 +94,8 @@ curl -s localhost:9000/health                                     # {"status":"o
   them. Over the cap is a 422 "maximum context length".
 - **Decision priority:** `SYSTEMONE_PRIORITY` (default 0) sets the vLLM priority of decision requests;
   1 runs them after chat, but vLLM needs `--scheduling-policy priority`. 0 sends no field.
+- **Decision governor:** `GOVERNOR_DUTY` (default 1.0 = off) is the share of time decisions may run while a chat
+  streams (0.5 = half); `GOVERNOR_WAVE` rows per wave. Only streaming chat counts.
 - `HF_TOKEN` in your shell raises Hugging Face rate limits for `fetch_model.py`.
 - If host tools report `Permission denied` in the HF cache (older setups let the vLLM
   container write there as root), fix it once with `sudo chown -R $USER: ~/.cache/huggingface`.

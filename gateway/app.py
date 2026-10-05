@@ -18,6 +18,7 @@ from gateway.calibration import UNCALIBRATED, load_calibration, orders_warning, 
 from gateway.config import Settings
 from gateway.decide import Engine, decide
 from gateway.disconnect import unless_disconnected
+from gateway.governor import Governor
 from gateway.labels import load_labels
 from gateway.layouts import load_layouts
 from gateway.padding import load_padding
@@ -53,6 +54,7 @@ def load_engine(s: Settings, client: httpx.AsyncClient, calibrated: bool = True)
         raise ValueError(f"SYSTEMONE_MAX_LEN {s.systemone_max_len} exceeds MAX_MODEL_LEN {s.max_model_len}")
     tok = AutoTokenizer.from_pretrained(s.hf_model, revision=s.hf_revision)
     layouts = load_layouts()
+    governor = Governor(s.governor_duty, s.governor_wave)
     return Engine(
         settings=s,
         tokenizer=tok,
@@ -60,8 +62,9 @@ def load_engine(s: Settings, client: httpx.AsyncClient, calibrated: bool = True)
         frames={name: chat_frame(tok, layout) for name, layout in layouts.items()},
         labels={name: load_labels(s.data_dir(name) / "labels.json", tok, layout) for name, layout in layouts.items()},
         calibration=load_calibrations(s, tok, layouts) if calibrated else dict.fromkeys(layouts, UNCALIBRATED),
-        readout=Readout(client, s.served_model, s.warm_min_prefix_tokens, s.warm_up, s.systemone_priority),
+        readout=Readout(client, s.served_model, s.warm_min_prefix_tokens, s.warm_up, s.systemone_priority, governor),
         padding=load_padding(s, tok),
+        governor=governor,
     )
 
 
@@ -171,6 +174,9 @@ def create_app(settings: Settings | None = None, transport: httpx.AsyncBaseTrans
             "systemone_priority": s.systemone_priority,
             "warm_min_prefix_tokens": s.warm_min_prefix_tokens,
             "warm_up": s.warm_up,
+            "governor_duty": s.governor_duty,
+            "governor_wave": s.governor_wave,
+            "chats_decoding": engine.governor.decoding,
             "calibration": {name: cal.as_dict() for name, cal in engine.calibration.items()},
             "vllm_version": await vllm_version(request.app.state.client) if ok else None,
             "layouts": sorted(engine.layouts),
@@ -187,8 +193,8 @@ def create_app(settings: Settings | None = None, transport: httpx.AsyncBaseTrans
         body = await json_object(request)
         if body is None:
             return error(400, "request body must be a JSON object")
-        served_model = request.app.state.engine.settings.served_model
-        call = chat.chat_completions(request.app.state.client, body, served_model)
+        engine = request.app.state.engine
+        call = chat.chat_completions(request.app.state.client, body, engine.settings.served_model, engine.governor)
         upstream = await unless_disconnected(request, call)
         return client_left("chat") if upstream is None else upstream
 

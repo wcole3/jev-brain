@@ -2,13 +2,16 @@
 
 import httpx
 
+from gateway.governor import Governor
 from gateway.schema import RequestError
 
 MAX_LABEL_IDS = 128  # vLLM's cap on logprob_token_ids per request (MAX_LOGPROB_TOKEN_IDS)
 
 
 class Readout:
-    def __init__(self, client: httpx.AsyncClient, model: str, warm_min_prefix_tokens: int = 512, warm_up: str = "row", priority: int = 0):
+    def __init__(
+        self, client: httpx.AsyncClient, model: str, warm_min_prefix_tokens: int = 512, warm_up: str = "row", priority: int = 0, governor: Governor | None = None
+    ):
         self.client = client
         self.model = model
         self.warm_min_prefix_tokens = warm_min_prefix_tokens
@@ -16,6 +19,7 @@ class Readout:
             raise ValueError(f"WARM_UP must be 'row' or 'off', not {warm_up!r}")
         self.warm_up = warm_up
         self.priority = priority
+        self.governor = governor or Governor()
 
     async def letter_logprobs(
         self, prompts: list[list[int]], label_ids: list[list[int]], shared_len: int
@@ -35,9 +39,13 @@ class Readout:
             chunk = wanted[start : start + MAX_LABEL_IDS]
             in_chunk = set(chunk)
             rows = [k for k, ids in enumerate(label_ids) if not in_chunk.isdisjoint(ids)]
-            got = await self._call([prompts[k] for k in rows], chunk)
-            for k, logprobs in zip(rows, got, strict=True):
-                found[k].update(logprobs)
+            wave = self.governor.wave_size() or len(rows)  # while a chat decodes, send a few rows at a time
+            for w in range(0, len(rows), wave):
+                wave_rows = rows[w : w + wave]
+                batch = [prompts[k] for k in wave_rows]
+                got = await self.governor.call(lambda batch=batch, chunk=chunk: self._call(batch, chunk))
+                for k, logprobs in zip(wave_rows, got, strict=True):
+                    found[k].update(logprobs)
         return [[row[i] for i in ids] for row, ids in zip(found, label_ids)]
 
     async def _call(self, prompts: list[list[int]], ids: list[int]) -> list[dict[int, float]]:

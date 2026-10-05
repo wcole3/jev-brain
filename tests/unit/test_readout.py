@@ -3,6 +3,7 @@ import json
 import httpx
 import pytest
 
+from gateway.governor import Governor
 from gateway.labels import label_table
 from gateway.readout import MAX_LABEL_IDS, Readout
 from gateway.schema import RequestError
@@ -27,9 +28,15 @@ def fake_vllm(seen: list, logprob=same_for_every_prompt):
     return handler
 
 
-def readout(handler, warm_up: str = "row") -> Readout:
+def readout(handler, warm_up: str = "row", governor: Governor | None = None) -> Readout:
     client = httpx.AsyncClient(base_url="http://vllm", transport=httpx.MockTransport(handler))
-    return Readout(client, "m", warm_min_prefix_tokens=512, warm_up=warm_up)
+    return Readout(client, "m", warm_min_prefix_tokens=512, warm_up=warm_up, governor=governor)
+
+
+def decoding(duty: float, wave: int = 2) -> Governor:
+    governor = Governor(duty=duty, wave=wave)
+    governor.chat_started()
+    return governor
 
 
 async def test_reads_label_logprobs_in_label_order():
@@ -104,3 +111,45 @@ async def test_unreachable_vllm_raises_transport_error():
 
     with pytest.raises(httpx.TransportError):
         await readout(handler).letter_logprobs([[1]], [[5]], shared_len=0)
+
+
+PROMPTS = [[1], [2], [3], [4], [5]]
+
+
+def by_prompt(prompt, token):
+    return -float(token) - 1000.0 * prompt[0]
+
+
+async def test_duty_one_sends_exactly_todays_calls():
+    plain, governed = [], []
+    labels = [[5], [5, 6], [5], [6], [5]]
+    want = await readout(fake_vllm(plain, by_prompt), warm_up="off").letter_logprobs(PROMPTS, labels, shared_len=0)
+    out = await readout(fake_vllm(governed, by_prompt), warm_up="off", governor=decoding(1.0)).letter_logprobs(
+        PROMPTS, labels, shared_len=0
+    )
+    assert governed == plain and out == want
+
+
+async def test_waves_split_rows_while_chat_decodes():
+    seen = []
+    labels = [[5]] * 5
+    want = await readout(fake_vllm([], by_prompt), warm_up="off").letter_logprobs(PROMPTS, labels, shared_len=0)
+    r = readout(fake_vllm(seen, by_prompt), warm_up="off", governor=decoding(0.5))
+    out = await r.letter_logprobs(PROMPTS, labels, shared_len=0)
+    assert [len(b["prompt"]) for b in seen] == [2, 2, 1]
+    assert out == want
+
+
+async def test_waves_and_label_chunks_keep_row_order(qwen_tok):
+    ids = label_table(qwen_tok).ids
+    labels = [ids[:3], ids[:200], ids[:2], ids[100:200], ids[:130]]
+    want = await readout(fake_vllm([], by_prompt), warm_up="off").letter_logprobs(PROMPTS, labels, shared_len=0)
+    r = readout(fake_vllm([], by_prompt), warm_up="off", governor=decoding(0.5))
+    assert await r.letter_logprobs(PROMPTS, labels, shared_len=0) == want
+
+
+async def test_no_waves_when_no_chat():
+    seen = []
+    r = readout(fake_vllm(seen, by_prompt), warm_up="off", governor=Governor(duty=0.5, wave=2))
+    await r.letter_logprobs(PROMPTS, [[5]] * 5, shared_len=0)
+    assert [len(b["prompt"]) for b in seen] == [5]

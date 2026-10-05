@@ -1,3 +1,4 @@
+import asyncio
 import dataclasses
 import json
 
@@ -164,47 +165,78 @@ def test_plain_chat_is_not_counted(qwen_settings):
         assert c.app.state.engine.governor.decoding == 0
 
 
-async def stream_through_gateway(chunks, governor, leave_after: int | None = None) -> None:
-    """Run chat.chat_completions as an ASGI response; a client that leaves makes send raise OSError."""
-    transport = httpx.MockTransport(lambda r: httpx.Response(200, content=chunks()))
+class RecordedStream(httpx.AsyncByteStream):
+    """An upstream body that notes whether it was closed."""
+
+    def __init__(self, chunks):
+        self.chunks, self.closed = chunks, False
+
+    async def __aiter__(self):
+        async for chunk in self.chunks():
+            yield chunk
+
+    async def aclose(self):
+        self.closed = True
+
+
+async def stream_through_gateway(chunks, governor, spec: str = "2.4", leave_after: int | None = None):
+    """Run chat.chat_completions as an ASGI response; the client leaves when it is sent chunk number leave_after.
+
+    ASGI 2.4: send raises OSError. 2.3 (uvicorn): send hangs and receive reports http.disconnect.
+    Returns the highest chat count seen while sending, and whether upstream was closed at the end.
+    """
+    upstream = RecordedStream(chunks)
+    transport = httpx.MockTransport(lambda r: httpx.Response(200, stream=upstream))
     async with httpx.AsyncClient(base_url="http://vllm", transport=transport) as client:
         response = await chat.chat_completions(client, CHAT | {"stream": True}, "m", governor)
-        sent = 0
+        sent, peak = 0, 0
 
         async def send(message):
-            nonlocal sent
+            nonlocal sent, peak
             sent += message["type"] == "http.response.body"
+            peak = max(peak, governor.decoding)
             if sent == leave_after:
-                raise OSError("client left")
+                if spec == "2.4":
+                    raise OSError("client left")
+                await asyncio.sleep(10)
+
+        async def receive():
+            await asyncio.sleep(0.05)
+            return {"type": "http.disconnect"}
 
         try:
-            await response({"type": "http", "asgi": {"spec_version": "2.4"}}, None, send)
+            await response({"type": "http", "asgi": {"spec_version": spec}}, receive, send)
         except (OSError, ClientDisconnect, httpx.ReadError):
             pass
+    return peak, upstream.closed
 
 
-async def test_stream_count_drops_when_client_leaves_mid_stream():
+@pytest.mark.parametrize("spec", ["2.3", "2.4"])
+async def test_stream_count_drops_when_client_leaves_mid_stream(spec):
     governor = Governor()
-    seen = []
 
     async def chunks():
         for chunk in CHUNKS:
-            seen.append(governor.decoding)
             yield chunk
 
-    await stream_through_gateway(chunks, governor, leave_after=2)
-    assert seen[1] == 1
+    peak, upstream_closed = await stream_through_gateway(chunks, governor, spec, leave_after=2)
+    assert peak == 1
     assert governor.decoding == 0
+    assert upstream_closed
 
 
 async def test_stream_count_drops_on_upstream_error():
     governor = Governor()
+    seen = []
 
     async def chunks():
         yield CHUNKS[0]
+        seen.append(governor.decoding)
         raise httpx.ReadError("upstream died")
 
-    await stream_through_gateway(chunks, governor)
+    peak, _ = await stream_through_gateway(chunks, governor)
+    assert seen == [1]
+    assert peak == 1
     assert governor.decoding == 0
 
 

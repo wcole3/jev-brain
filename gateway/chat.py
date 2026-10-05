@@ -5,7 +5,6 @@ from collections.abc import AsyncIterator, Mapping
 
 import httpx
 from fastapi.responses import StreamingResponse
-from starlette.background import BackgroundTask
 
 from gateway.governor import Governor
 
@@ -44,13 +43,18 @@ async def counted(chunks: AsyncIterator[bytes], governor: Governor) -> AsyncIter
 
 
 class ClosingResponse(StreamingResponse):
-    """Closes the body iterator when the response ends, so a client that left still runs its finally blocks."""
+    """Always closes the body iterator and the upstream when the response ends, even if the client left."""
+
+    def __init__(self, content, upstream: httpx.Response, **kwargs) -> None:
+        super().__init__(content, status_code=upstream.status_code, **kwargs)
+        self.upstream = upstream
 
     async def __call__(self, scope, receive, send) -> None:
         try:
             await super().__call__(scope, receive, send)
         finally:
-            await self.body_iterator.aclose()
+            await self.body_iterator.aclose()  # runs counted's finally
+            await self.upstream.aclose()  # so vLLM aborts an abandoned stream
 
 
 async def proxy(
@@ -68,9 +72,8 @@ async def proxy(
     chunks = upstream.aiter_bytes()
     return ClosingResponse(
         counted(chunks, governor) if governor else chunks,
-        status_code=upstream.status_code,
+        upstream,
         media_type=upstream.headers.get("content-type"),
-        background=BackgroundTask(upstream.aclose),
     )
 
 
@@ -81,7 +84,7 @@ async def chat_completions(
         body = body | {"model": served_model}  # vLLM only knows the served model name
     content = json.dumps(route(body)).encode()
     headers = {"content-type": "application/json"}
-    counting = governor if body.get("stream") else None  # only a streaming chat decodes for long
+    counting = governor if body.get("stream") else None  # only streaming chat counts as decoding
     return await proxy(client, "POST", "/v1/chat/completions", content, headers, governor=counting)
 
 

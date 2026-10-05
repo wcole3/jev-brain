@@ -82,3 +82,12 @@ def test_systemone_cap_never_defaults_above_the_model_limit():
 def test_systemone_cap_from_env():
     env = REQUIRED | {"MAX_MODEL_LEN": "262144", "SYSTEMONE_MAX_LEN": "8192"}
     assert Settings.from_env(env).systemone_max_len == 8192
+
+
+def test_governor_env():
+    base = {"PROFILE": "p", "HF_MODEL": "m", "HF_REVISION": "r", "SERVED_MODEL": "s", "MAX_MODEL_LEN": "1024"}
+    s = Settings.from_env(base | {"GOVERNOR_DUTY": "0.25", "GOVERNOR_WAVE": "2"})
+    assert (s.governor_duty, s.governor_wave) == (0.25, 2)
+    for blank in ({}, {"GOVERNOR_DUTY": "", "GOVERNOR_WAVE": ""}):
+        s = Settings.from_env(base | blank)
+        assert (s.governor_duty, s.governor_wave) == (1.0, 4)

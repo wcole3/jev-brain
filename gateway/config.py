@@ -37,6 +37,8 @@ class Settings:
     prefix_block: int = 0  # pad it to a multiple of this many tokens; 0 never pads
     prefix_pad_always: bool = False  # pad even when it does not pay (fidelity experiments)
     systemone_priority: int = 0  # vLLM priority for decision requests; >0 runs them after chat (needs --scheduling-policy priority)
+    governor_duty: float = 1.0  # share of GPU time decisions keep while chat decodes; 1.0 turns the governor off (DS-007)
+    governor_wave: int = 4  # prompts per decision request while throttling
     data_root: Path = ROOT / "data"
 
     @classmethod
@@ -61,6 +63,8 @@ class Settings:
             prefix_block=int(e.get("PREFIX_BLOCK") or 0),
             prefix_pad_always=e.get("PREFIX_PAD_ALWAYS") == "1",
             systemone_priority=int(e.get("SYSTEMONE_PRIORITY") or 0),
+            governor_duty=float(e.get("GOVERNOR_DUTY") or 1.0),
+            governor_wave=int(e.get("GOVERNOR_WAVE") or 4),
             data_root=Path(e.get("DATA_ROOT") or ROOT / "data"),
         )
 

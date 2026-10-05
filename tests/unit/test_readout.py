@@ -41,6 +41,15 @@ async def test_reads_label_logprobs_in_label_order():
     assert seen[0]["prompt"] == [[1, 2], [1, 3]]
 
 
+async def test_priority_is_sent_only_when_set():
+    seen = []
+    await readout(fake_vllm(seen)).letter_logprobs([[1]], [[10]], shared_len=1)
+    assert "priority" not in seen[0]
+    client = httpx.AsyncClient(base_url="http://vllm", transport=httpx.MockTransport(fake_vllm(seen)))
+    await Readout(client, "m", priority=1).letter_logprobs([[1]], [[10]], shared_len=1)
+    assert seen[1]["priority"] == 1
+
+
 async def test_more_than_128_labels_are_split_across_calls():
     seen = []
     ids = list(range(200))

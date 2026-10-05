@@ -8,13 +8,14 @@ MAX_LABEL_IDS = 128  # vLLM's cap on logprob_token_ids per request (MAX_LOGPROB_
 
 
 class Readout:
-    def __init__(self, client: httpx.AsyncClient, model: str, warm_min_prefix_tokens: int = 512, warm_up: str = "row"):
+    def __init__(self, client: httpx.AsyncClient, model: str, warm_min_prefix_tokens: int = 512, warm_up: str = "row", priority: int = 0):
         self.client = client
         self.model = model
         self.warm_min_prefix_tokens = warm_min_prefix_tokens
         if warm_up not in ("row", "off"):
             raise ValueError(f"WARM_UP must be 'row' or 'off', not {warm_up!r}")
         self.warm_up = warm_up
+        self.priority = priority
 
     async def letter_logprobs(
         self, prompts: list[list[int]], label_ids: list[list[int]], shared_len: int
@@ -50,6 +51,8 @@ class Readout:
             "return_tokens_as_token_ids": True,
             "add_special_tokens": False,
         }
+        if self.priority:
+            payload["priority"] = self.priority  # only sent when set: vLLM refuses it without --scheduling-policy priority
         r = await self.client.post("/v1/completions", json=payload)
         if r.status_code == 400 and "maximum context length" in r.text:
             raise RequestError("prompt is longer than the maximum context length")

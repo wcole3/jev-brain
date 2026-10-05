@@ -92,6 +92,8 @@ curl -s localhost:9000/health                                     # {"status":"o
   caps `/v1/systemone` prompts separately from chat. Long decisions compete with chat and
   coding agents for KV cache and prefill, so keep it below `MAX_MODEL_LEN` unless you need
   them. Over the cap is a 422 "maximum context length".
+- **Decision priority:** `SYSTEMONE_PRIORITY` (default 0) sets the vLLM priority of decision requests;
+  1 runs them after chat, but vLLM needs `--scheduling-policy priority`. 0 sends no field.
 - `HF_TOKEN` in your shell raises Hugging Face rate limits for `fetch_model.py`.
 - If host tools report `Permission denied` in the HF cache (older setups let the vLLM
   container write there as root), fix it once with `sudo chown -R $USER: ~/.cache/huggingface`.

@@ -61,6 +61,13 @@ def test_prefix_padding_comes_from_the_environment():
     assert not Settings.from_env(base | {"PREFIX_PAD_ALWAYS": "0"}).prefix_pad_always
 
 
+def test_systemone_priority_defaults_to_zero_and_reads_env():
+    base = {"PROFILE": "p", "HF_MODEL": "m", "HF_REVISION": "r", "SERVED_MODEL": "s", "MAX_MODEL_LEN": "1024"}
+    assert Settings.from_env(base).systemone_priority == 0
+    assert Settings.from_env(base | {"SYSTEMONE_PRIORITY": ""}).systemone_priority == 0
+    assert Settings.from_env(base | {"SYSTEMONE_PRIORITY": "1"}).systemone_priority == 1
+
+
 REQUIRED = {"PROFILE": "p", "HF_MODEL": "m", "HF_REVISION": "r", "SERVED_MODEL": "s"}
 
 

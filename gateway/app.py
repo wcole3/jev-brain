@@ -60,7 +60,7 @@ def load_engine(s: Settings, client: httpx.AsyncClient, calibrated: bool = True)
         frames={name: chat_frame(tok, layout) for name, layout in layouts.items()},
         labels={name: load_labels(s.data_dir(name) / "labels.json", tok, layout) for name, layout in layouts.items()},
         calibration=load_calibrations(s, tok, layouts) if calibrated else dict.fromkeys(layouts, UNCALIBRATED),
-        readout=Readout(client, s.served_model, s.warm_min_prefix_tokens, s.warm_up),
+        readout=Readout(client, s.served_model, s.warm_min_prefix_tokens, s.warm_up, s.systemone_priority),
         padding=load_padding(s, tok),
     )
 
@@ -168,6 +168,7 @@ def create_app(settings: Settings | None = None, transport: httpx.AsyncBaseTrans
             "prefix_block": s.prefix_block,
             "prefix_pad_always": s.prefix_pad_always,
             "systemone_max_len": s.systemone_max_len,
+            "systemone_priority": s.systemone_priority,
             "warm_min_prefix_tokens": s.warm_min_prefix_tokens,
             "warm_up": s.warm_up,
             "calibration": {name: cal.as_dict() for name, cal in engine.calibration.items()},

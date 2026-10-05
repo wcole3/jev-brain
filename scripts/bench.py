@@ -54,7 +54,7 @@ CHAT_PROMPTS = {
 }
 
 
-PREFIX_KEYS = ("prefix_pad", "prefix_block", "prefix_pad_always", "warm_min_prefix_tokens", "warm_up")
+PREFIX_KEYS = ("prefix_pad", "prefix_block", "prefix_pad_always", "warm_min_prefix_tokens", "warm_up", "systemone_priority")
 CACHE_LABEL_KEYS = (
     "cache_dtype",
     "mamba_cache_dtype",

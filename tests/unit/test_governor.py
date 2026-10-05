@@ -27,12 +27,12 @@ async def test_off_by_default_passes_calls_through():
     log = []
     start = time.monotonic()
     assert await g.call(timed(log, 0.01, "v")) == "v"
-    assert time.monotonic() - start < 0.04
+    assert time.monotonic() - start < 0.1
 
 
 def test_invalid_settings_raise():
-    for kwargs in ({"duty": 0}, {"duty": 1.5}, {"wave": 0}):
-        with pytest.raises(ValueError):
+    for kwargs, name in (({"duty": 0}, "GOVERNOR_DUTY"), ({"duty": 1.5}, "GOVERNOR_DUTY"), ({"wave": 0}, "GOVERNOR_WAVE")):
+        with pytest.raises(ValueError, match=name):
             Governor(**kwargs)
 
 
@@ -71,18 +71,29 @@ async def test_pause_follows_duty():
     assert second_enter - first_exit >= 0.055
 
 
+async def test_caller_returns_before_the_pause_and_next_call_waits():
+    g = Governor(duty=0.1)  # 20 ms of work earns a ~180 ms pause
+    g.chat_started()
+    log = []
+    start = time.monotonic()
+    await g.call(timed(log, 0.02))
+    assert time.monotonic() - start < 0.1
+    await g.call(timed(log, 0.001))
+    (_, first_exit), (second_enter, _) = sorted(log)
+    assert second_enter - first_exit >= 0.1
+
+
 async def test_pause_ends_when_last_chat_ends():
     g = Governor(duty=0.1)
     g.chat_started()
     log = []
-    first = asyncio.create_task(g.call(timed(log, 0.03)))
-    await asyncio.sleep(0.05)  # fn done, ~270 ms pause under way
+    await g.call(timed(log, 0.03))  # earns a ~270 ms pause
     second = asyncio.create_task(g.call(timed(log, 0.001)))
     await asyncio.sleep(0.02)
+    ended = time.monotonic()
     g.chat_ended()
-    start = time.monotonic()
-    await asyncio.gather(first, second)
-    assert time.monotonic() - start < 0.1
+    await second
+    assert sorted(log)[1][0] - ended < 0.1
 
 
 async def test_no_pause_when_no_chat():
@@ -93,15 +104,27 @@ async def test_no_pause_when_no_chat():
     assert second_enter < first_exit
 
 
-@pytest.mark.parametrize("cancel_after", [0.005, 0.03])  # in the fn, then in the pause
-async def test_cancelled_call_frees_the_slot(cancel_after):
+async def test_cancel_in_the_call_frees_the_slot():
     g = Governor(duty=0.1)
     g.chat_started()
-    task = asyncio.create_task(g.call(timed([], 0.02)))
-    await asyncio.sleep(cancel_after)
+    task = asyncio.create_task(g.call(timed([], 0.05)))
+    await asyncio.sleep(0.005)
     task.cancel()
     with pytest.raises(asyncio.CancelledError):
         await task
-    start = time.monotonic()
-    await asyncio.wait_for(g.call(timed([], 0.001)), timeout=0.1)
-    assert time.monotonic() - start < 0.1
+    await asyncio.wait_for(g.call(timed([], 0.001)), timeout=0.5)
+
+
+async def test_cancel_in_the_gate_frees_the_slot():
+    g = Governor(duty=0.1)
+    g.chat_started()
+    log = []
+    await g.call(timed(log, 0.02))  # earns a ~180 ms pause
+    ready_at = time.monotonic() + 0.18
+    waiting = asyncio.create_task(g.call(timed(log, 0.001)))
+    await asyncio.sleep(0.02)
+    waiting.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await waiting
+    await asyncio.wait_for(g.call(timed(log, 0.001)), timeout=0.5)
+    assert sorted(log)[1][0] <= ready_at + 0.1

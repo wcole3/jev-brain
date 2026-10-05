@@ -18,6 +18,14 @@ def read_env_file(path: Path) -> dict[str, str]:
     return env
 
 
+def number(env: dict[str, str], key: str, kind: type, default):
+    """env[key] as kind; empty or missing gives default; junk raises ValueError naming key."""
+    try:
+        return kind(env.get(key) or default)
+    except ValueError:
+        raise ValueError(f"{key} must be a number, got {env[key]!r}") from None
+
+
 @dataclass(frozen=True)
 class Settings:
     profile: str
@@ -63,8 +71,8 @@ class Settings:
             prefix_block=int(e.get("PREFIX_BLOCK") or 0),
             prefix_pad_always=e.get("PREFIX_PAD_ALWAYS") == "1",
             systemone_priority=int(e.get("SYSTEMONE_PRIORITY") or 0),
-            governor_duty=float(e.get("GOVERNOR_DUTY") or 1.0),
-            governor_wave=int(e.get("GOVERNOR_WAVE") or 4),
+            governor_duty=number(e, "GOVERNOR_DUTY", float, 1.0),
+            governor_wave=number(e, "GOVERNOR_WAVE", int, 4),
             data_root=Path(e.get("DATA_ROOT") or ROOT / "data"),
         )
 

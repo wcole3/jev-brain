@@ -1,3 +1,5 @@
+import pytest
+
 from gateway.config import ROOT, Settings, read_env_file
 from tests.helpers import PROFILES
 
@@ -91,3 +93,10 @@ def test_governor_env():
     for blank in ({}, {"GOVERNOR_DUTY": "", "GOVERNOR_WAVE": ""}):
         s = Settings.from_env(base | blank)
         assert (s.governor_duty, s.governor_wave) == (1.0, 4)
+
+
+def test_governor_env_junk_names_the_variable():
+    base = {"PROFILE": "p", "HF_MODEL": "m", "HF_REVISION": "r", "SERVED_MODEL": "s", "MAX_MODEL_LEN": "1024"}
+    for key in ("GOVERNOR_DUTY", "GOVERNOR_WAVE"):
+        with pytest.raises(ValueError, match=key):
+            Settings.from_env(base | {key: "abc"})

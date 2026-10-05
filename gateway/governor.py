@@ -11,15 +11,16 @@ T = TypeVar("T")
 class Governor:
     def __init__(self, duty: float = 1.0, wave: int = 4):
         if not 0 < duty <= 1:
-            raise ValueError(f"duty must be in (0, 1], got {duty}")
+            raise ValueError(f"GOVERNOR_DUTY must be in (0, 1], got {duty}")
         if wave < 1:
-            raise ValueError(f"wave must be >= 1, got {wave}")
+            raise ValueError(f"GOVERNOR_WAVE must be >= 1, got {wave}")
         self.duty = duty
         self.wave = wave
         self.decoding = 0
         self._lock = asyncio.Lock()
         self._idle = asyncio.Event()
         self._idle.set()
+        self._ready_at = 0.0  # monotonic time before which the next throttled call waits
 
     @property
     def enabled(self) -> bool:
@@ -33,6 +34,7 @@ class Governor:
         self.decoding = max(0, self.decoding - 1)
         if self.decoding == 0:
             self._idle.set()
+            self._ready_at = 0.0
 
     def throttling(self) -> bool:
         return self.enabled and self.decoding > 0
@@ -44,15 +46,19 @@ class Governor:
         if not self.throttling():
             return await fn()
         async with self._lock:
-            start = time.monotonic()
-            result = await fn()
             if self.throttling():
-                await self._pause(time.monotonic() - start)
-            return result
+                await self._wait_until(self._ready_at)
+            start = time.monotonic()
+            try:
+                return await fn()
+            finally:
+                end = time.monotonic()
+                if self.throttling():
+                    self._ready_at = end + (end - start) * (1 - self.duty) / self.duty
 
-    async def _pause(self, busy: float) -> None:
-        """Idle for busy * (1 - duty) / duty, or until the last chat stream ends."""
+    async def _wait_until(self, ready_at: float) -> None:
+        """Sleep until ready_at, or until the last chat stream ends."""
         try:
-            await asyncio.wait_for(self._idle.wait(), timeout=busy * (1 - self.duty) / self.duty)
+            await asyncio.wait_for(self._idle.wait(), timeout=max(0.0, ready_at - time.monotonic()))
         except TimeoutError:
             pass

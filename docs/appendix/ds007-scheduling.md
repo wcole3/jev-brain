@@ -120,6 +120,31 @@ Quantitative references:
 - Hybrid caveat: B < 784 makes most chunks sub-block. The v0.30.0 split re-aligns at the next boundary, so states still land on 784 multiples. B = 768 is 64-aligned and just under a block; B = 784 exactly matches the block. Test both 512 and 768/784.
 - Gemma-4 caveat: it is multimodal prefix-LM and `LANGUAGE_MODEL_ONLY=0`. vLLM only raises B to fit one image when B was left at the default (`arg_utils.py:L2943-L2969`). An explicit small B could stop image requests from fitting. Keep B ≥ the largest per-image token count for that profile, or set LANGUAGE_MODEL_ONLY=1.
 
+### 2a. The reverse case: one long chat prefill vs decisions (DS-025)
+
+Source reading 2026-10-05; step times are estimates.
+
+- **Why everything waits.** Running requests are scheduled first, and a long prompt takes
+  `min(remaining, budget)` = 8,192 tokens every step (`scheduler.py:L612, L661-L665`).
+  Waiting requests are admitted only while budget is left (`L858`), so none get in until
+  its last chunk. Gemma measured this exactly: chat and a decision each waited the whole
+  32 s prefill of a 60k prompt.
+- **Qwen's 352-token gap.** The 784-token Mamba alignment trims each chunk to 7,840
+  (`L472-L479`), so 352 tokens per step stay free.
+  - Our ~200-token probe decision fits in that gap. It still took ~5 s (p95 9 s), because
+    async scheduling queues 1–2 steps of ~2–3.8 s ahead of it (`vllm.py:L589-L599`).
+  - A decision needing more than 352 uncached tokens gets nothing and waits for the whole
+    prefill, and it blocks the waiting queue behind it (`L1091`).
+- **The lever is `--long-prefill-token-threshold` T.** It caps each request's chunk, so
+  budget − T is free every step. Priority scheduling doesn't help, because it never
+  preempts a running prefill. A smaller budget alone doesn't either: the long prompt
+  still takes all of it.
+- **Candidates:**
+  - Qwen: T = 3,136, 2,352 or 1,568 (multiples of 784).
+  - Gemma: T = 4,096 or 2,560. Keep T ≥ 2,560, because an image or video larger than T is
+    never scheduled (`L1764-L1777`).
+  - Cost: a lone long prompt runs smaller steps, +3–15% TTFT (estimate).
+
 ## 3. Queuing, admission control, and adaptive budgets
 
 ### (a) Gateway-side governor: pure queuing, no vLLM change

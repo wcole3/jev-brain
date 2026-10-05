@@ -77,8 +77,9 @@ decision endpoint from the same model, behind a small FastAPI gateway.
   per-call overhead in transformers dominates.
 - **Abort metrics:** client aborts don't appear in vLLM's `request_success_total`; watch
   the `num_requests_running`/`waiting` gauges.
-- **Gemma 4 31B** is KV-bound at ~50k tokens with or without the vision tower. An fp8 KV
-  cache is the lever (DS-005).
+- **Gemma 4 31B** is KV-bound: ~9,950 blocks, ~144k tokens for one prompt, with or without
+  the vision tower. vLLM's logged "KV cache size" moves with `MAX_MODEL_LEN` (DS-026). An
+  fp8 KV cache is the lever (DS-005).
 
 ## Environment
 

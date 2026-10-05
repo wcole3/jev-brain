@@ -13,8 +13,9 @@ vLLM v0.30.0 source, our startup logs and our bench results. Units: 1 KiB = 1,02
 - **Qwen memory:** 64 KiB per token, plus a fixed ~147 MiB of recurrent state per
   request whatever its length.
 - **Gemma memory:** 60 attention layers. Until the 1,024-token sliding window fills,
-  every token costs 880 KiB, 14× Qwen. vLLM's accounting works out to ~505 KiB per
-  token, which is why only ~50k KV tokens fit.
+  every token costs 880 KiB, 14× Qwen. The pool is ~9,950 blocks (~24 GiB), enough for
+  one ~144k-token prompt. vLLM's logged "KV cache size" counts max-length requests, not
+  token slots, so it moves with `max_model_len`: ~50k at 32k, 87k at 65k (§5, DS-026).
 - **Why prefix caching on hybrid Qwen is 784-token granular:** vLLM makes one page of
   attention KV the same size as one saved recurrent state: 784 tokens × 4 KiB (one
   attention layer) = 3.06 MiB = one Gated DeltaNet layer's state. States are saved only at page ends, so a cache hit
@@ -160,6 +161,17 @@ same formula, assuming vLLM's default 8,192-token prefill chunk:
     layers hold up to ~17.4k tokens. Hence only 1.54× concurrency at 32k.
 - **Pool:** the two token counts fit whole pools of exactly 9,965 and 9,827 blocks,
   ~24.3 and ~24.0 GiB (estimate). Dropping the vision tower freed no KV cache.
+- **The logged figure moves with `max_model_len` (DS-026).** The ~5,445 sliding blocks
+  are reserved per request whatever its length, so they weigh more as the max shrinks:
+
+  | `max_model_len` | Blocks per max-length request | Logged tokens | Pool that fits |
+  |---|---|---|---|
+  | 32,768 | 1,024 + 5,445 = 6,469 | 50,476 | 9,965 |
+  | 65,536 | 2,048 + 5,445 = 7,493 | 86,999 | 9,947 |
+  | 131,072 | 4,096 + 5,445 = 9,541 | 136,374 | 9,927 |
+
+  - The pool barely changes, so lowering the max to 65k did not cost capacity.
+  - The longest single prompt is (9,947 − 5,445) × 32 ≈ 144k tokens.
 
 ## 6. Why `--max-num-seqs 256` is required on hybrid Qwen
 

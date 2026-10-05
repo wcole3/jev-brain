@@ -10,7 +10,13 @@ MAX_LABEL_IDS = 128  # vLLM's cap on logprob_token_ids per request (MAX_LOGPROB_
 
 class Readout:
     def __init__(
-        self, client: httpx.AsyncClient, model: str, warm_min_prefix_tokens: int = 512, warm_up: str = "row", priority: int = 0, governor: Governor | None = None
+        self,
+        client: httpx.AsyncClient,
+        model: str,
+        warm_min_prefix_tokens: int = 512,
+        warm_up: str = "row",
+        priority: int = 0,
+        governor: Governor | None = None,
     ):
         self.client = client
         self.model = model

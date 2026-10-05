@@ -43,18 +43,22 @@ class Governor:
         return self.wave if self.throttling() else None
 
     async def call(self, fn: Callable[[], Awaitable[T]]) -> T:
-        if not self.throttling():
-            return await fn()
-        async with self._lock:
-            if self.throttling():
-                await self._wait_until(self._ready_at)
-            start = time.monotonic()
-            try:
-                return await fn()
-            finally:
-                end = time.monotonic()
+        if self.throttling():
+            async with self._lock:
                 if self.throttling():
-                    self._ready_at = end + (end - start) * (1 - self.duty) / self.duty
+                    return await self._paced(fn)
+        return await fn()  # not throttling, or the last chat ended while this call queued
+
+    async def _paced(self, fn: Callable[[], Awaitable[T]]) -> T:
+        """Run fn after the pause the previous call earned; then earn the next pause."""
+        await self._wait_until(self._ready_at)
+        start = time.monotonic()
+        try:
+            return await fn()
+        finally:
+            end = time.monotonic()
+            if self.throttling():
+                self._ready_at = end + (end - start) * (1 - self.duty) / self.duty
 
     async def _wait_until(self, ready_at: float) -> None:
         """Sleep until ready_at, or until the last chat stream ends."""

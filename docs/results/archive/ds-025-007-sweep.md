@@ -78,6 +78,7 @@ Live suite on P1 settings: 14/14 pass.
 - Profiles at their shipped vLLM settings (P1 for Qwen, G3 for gemma). Only the gateway's `GOVERNOR_DUTY`/`GOVERNOR_WAVE` changed between rows.
 - Probe (`.cache/sweep/gov.py`): 4 decision workers sending fresh 2,048-token states × 16 questions × 26 options, plus back-to-back 512-token streaming chats, for 60 s.
 - Decisions per second counts only those finished while chat streamed.
+- Preemptions were not measured in these rows (probe does not read /metrics).
 - n = 2–4 chats per row, so TTFT is noisy. The duty-1.0 rows' TTFT includes waiting behind full decision batches.
 
 | Profile | Duty:wave | Chat TTFT p50 ms | Chat chunks/s | Decisions/s while chat streams | Decision p50 ms |

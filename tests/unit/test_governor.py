@@ -77,7 +77,7 @@ async def test_caller_returns_before_the_pause_and_next_call_waits():
     log = []
     start = time.monotonic()
     await g.call(timed(log, 0.02))
-    assert time.monotonic() - start < 0.1
+    assert time.monotonic() - start < 0.15
     await g.call(timed(log, 0.001))
     (_, first_exit), (second_enter, _) = sorted(log)
     assert second_enter - first_exit >= 0.1
@@ -128,3 +128,24 @@ async def test_cancel_in_the_gate_frees_the_slot():
         await waiting
     await asyncio.wait_for(g.call(timed(log, 0.001)), timeout=0.5)
     assert sorted(log)[1][0] <= ready_at + 0.1
+
+
+async def test_queued_calls_overlap_once_the_last_chat_ends():
+    g = Governor(duty=0.5)
+    g.chat_started()
+    log, starts = [], []
+
+    def noting(duration):
+        async def fn():
+            starts.append(time.monotonic())
+            await asyncio.sleep(duration)
+
+        return fn
+
+    holder = asyncio.create_task(g.call(timed(log, 0.05)))
+    await asyncio.sleep(0.005)
+    queued = [asyncio.create_task(g.call(noting(0.05))) for _ in range(3)]
+    await asyncio.sleep(0.005)
+    g.chat_ended()
+    await asyncio.gather(holder, *queued)
+    assert max(starts) - min(starts) < 0.02

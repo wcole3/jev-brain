@@ -1,4 +1,4 @@
-from scripts.long_context import INSTRUCTION, build_prompt, render
+from scripts.long_context import INSTRUCTION, build_prompt, count_tokens, fresh_states, render
 
 
 class FakeTokenizer:
@@ -21,8 +21,8 @@ def test_prompt_hits_target_within_margin():
 def test_summary_renders_from_raw():
     raw = {
         "long": {"prompt_tokens": 199000, "completion_tokens": 40, "ttft_s": 123.4, "decode_tok_s": 17.5},
-        "idle": {"chat": [{"ttft_ms": 50.0}], "decision": [{"ms": 80.0}]},
-        "during": {"chat": [{"error": "ReadTimeout"}], "decision": [{"ms": 900.0}, {"ms": 1100.0}]},
+        "idle": {"chat": [{"ttft_ms": 50.0}], "decision": [{"ms": 80.0}], "fresh": [{"ms": 120.0}]},
+        "during": {"chat": [{"error": "ReadTimeout"}], "decision": [{"ms": 900.0}, {"ms": 1100.0}], "fresh": [{"ms": 5000.0}]},
     }
     text = render(raw, {"profile": "p", "max_model_len": 262144, "systemone_max_len": 32768})
     assert "- max_model_len: 262144" in text
@@ -30,3 +30,13 @@ def test_summary_renders_from_raw():
     assert "| 50 / 50 / 1 |" in text
     assert "no samples (1 errors)" in text
     assert "1000 / 1100 / 2" in text
+    assert "| Fresh decision ms (median / p95 / n) | 120 / 120 / 1 | 5000 / 5000 / 1 |" in text
+
+
+def test_fresh_states_start_with_unique_nonce_and_hit_length():
+    filler = " ".join(f"word{i}" for i in range(500))
+    tok = FakeTokenizer()
+    states = fresh_states(tok, filler, n=5, tokens=100)
+    assert len({s.split("\n")[0] for s in states}) == 5
+    assert all(s.startswith("Ticket ") for s in states)
+    assert all(95 <= n <= 100 for n in count_tokens(tok, states))

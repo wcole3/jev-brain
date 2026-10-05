@@ -5,6 +5,7 @@ import asyncio
 import json
 import statistics
 import time
+from uuid import uuid4
 
 import httpx
 
@@ -20,6 +21,7 @@ DECISION = {
     "state": "Customer: my invoice shows a charge I don't recognise and support hasn't replied in a week.",
     "questions": {"escalate": {"type": "noul", "instructions": "Should a manager see this"}},
 }
+FRESH_POOL = 1000  # fresh states built up front: idle samples plus about one per second of a long run
 
 
 def filler_text() -> str:
@@ -73,13 +75,33 @@ async def long_chat(client: httpx.AsyncClient, served: str, prompt: str, max_tok
     }
 
 
-async def probe_decision(client: httpx.AsyncClient) -> dict:
+def fresh_states(tok, filler: str, n: int, tokens: int) -> list[str]:
+    """n states of about `tokens` tokens, each starting with a unique nonce so no prefix is shared."""
+    nonces = [f"Ticket {uuid4().hex}\n" for _ in range(n)]
+    filler_ids = tok([filler], add_special_tokens=False)["input_ids"][0]
+    return [nonce + tok.decode(filler_ids[: max(tokens - used, 0)]) for nonce, used in zip(nonces, count_tokens(tok, nonces))]
+
+
+async def probe_decision(client: httpx.AsyncClient, body: dict = DECISION) -> dict:
     start = time.perf_counter()
     try:
-        (await client.post("/v1/systemone", json=DECISION)).raise_for_status()
+        (await client.post("/v1/systemone", json=body)).raise_for_status()
     except httpx.HTTPError as e:
         return {"error": type(e).__name__}
     return {"ms": (time.perf_counter() - start) * 1000}
+
+
+def probe_fresh(client: httpx.AsyncClient, states: list[str]):
+    """Probe that sends the next unused state each call."""
+    unused = iter(states)
+
+    async def probe() -> dict:
+        state = next(unused, None)
+        if state is None:
+            return {"error": "out of fresh states"}
+        return await probe_decision(client, DECISION | {"state": state})
+
+    return probe
 
 
 async def probe_loop(probe, stop: asyncio.Event, samples: list) -> None:
@@ -92,18 +114,20 @@ async def idle_samples(probe, n: int = 4) -> list[dict]:
     return [await probe() for _ in range(n)]
 
 
-async def run(args, s: Settings, prompt: str) -> dict:
+async def run(args, s: Settings, prompt: str, states: list[str]) -> dict:
     async with httpx.AsyncClient(base_url=args.gateway, headers=gateway_headers(), timeout=None) as client:
         health = (await client.get("/health")).json()
         if health["profile"] != args.profile:
             raise SystemExit(f"gateway serves {health['profile']!r}, not {args.profile!r}")
         chat = lambda: probe_chat(client, s.served_model)
         decide = lambda: probe_decision(client)
-        idle = {"chat": await idle_samples(chat), "decision": await idle_samples(decide)}
-        stop, during = asyncio.Event(), {"chat": [], "decision": []}
+        fresh = probe_fresh(client, states)
+        idle = {"chat": await idle_samples(chat), "decision": await idle_samples(decide), "fresh": await idle_samples(fresh)}
+        stop, during = asyncio.Event(), {"chat": [], "decision": [], "fresh": []}
         probes = [
             asyncio.create_task(probe_loop(chat, stop, during["chat"])),
             asyncio.create_task(probe_loop(decide, stop, during["decision"])),
+            asyncio.create_task(probe_loop(fresh, stop, during["fresh"])),
         ]
         try:
             long = await long_chat(client, s.served_model, prompt, args.max_tokens)
@@ -127,6 +151,7 @@ def render(raw: dict, meta: dict) -> str:
         "| --- | --- | --- |",
         f"| Short chat TTFT ms (median / p95 / n) | {stats(idle['chat'], 'ttft_ms')} | {stats(during['chat'], 'ttft_ms')} |",
         f"| Decision ms (median / p95 / n) | {stats(idle['decision'], 'ms')} | {stats(during['decision'], 'ms')} |",
+        f"| Fresh decision ms (median / p95 / n) | {stats(idle['fresh'], 'ms')} | {stats(during['fresh'], 'ms')} |",
     ]
     return "\n".join([
         f"# {meta['profile']} long-context chat\n",
@@ -146,6 +171,7 @@ def parse_args(argv=None) -> argparse.Namespace:
     p.add_argument("--profile", required=True)
     p.add_argument("--tokens", type=int, default=200_000)
     p.add_argument("--gateway", default="http://127.0.0.1:9000")
+    p.add_argument("--fresh-tokens", type=int, default=1500, help="length of each never-cached decision state")
     p.add_argument("--max-tokens", type=int, default=256)
     p.add_argument("--dry-run", action="store_true", help="build the prompt and print its token count only")
     return p.parse_args(argv)
@@ -157,11 +183,12 @@ def main(argv=None) -> None:
     args = parse_args(argv)
     s = Settings.from_profile(args.profile)
     tok = AutoTokenizer.from_pretrained(s.hf_model, revision=s.hf_revision, local_files_only=True)
-    prompt, tokens = build_prompt(tok, filler_text(), args.tokens)
+    filler = filler_text()
+    prompt, tokens = build_prompt(tok, filler, args.tokens)
     print(f"prompt tokens: {tokens} (target {args.tokens})")
     if args.dry_run:
         return
-    raw = asyncio.run(run(args, s, prompt)) | {"prompt_tokens_local": tokens}
+    raw = asyncio.run(run(args, s, prompt, fresh_states(tok, filler, FRESH_POOL, args.fresh_tokens))) | {"prompt_tokens_local": tokens}
     health = raw["health"]
     meta = {
         "timestamp": now(), "repo commit": git_revision(), "host": host_info.summary(), "profile": args.profile,

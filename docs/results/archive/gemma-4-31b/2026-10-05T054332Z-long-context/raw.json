@@ -1,0 +1,189 @@
+{
+  "health": {
+    "status": "ok",
+    "profile": "gemma-4-31b",
+    "served_model": "gemma-4-31b",
+    "hf_model": "google/gemma-4-31B-it",
+    "hf_revision": "842da3794eaa0b77d5f08bae87a17459d91ff475",
+    "prompt_layout": "header",
+    "option_orders": "identity",
+    "prefix_pad": "off",
+    "prefix_block": 0,
+    "prefix_pad_always": false,
+    "systemone_max_len": 32768,
+    "systemone_priority": 0,
+    "warm_min_prefix_tokens": 512,
+    "warm_up": "off",
+    "calibration": {
+      "decider_chat": {
+        "T": {
+          "choice": 4.122840843073183,
+          "score": 5.3780273588596375,
+          "noul": 7.527710804948447
+        },
+        "b": -0.6359937209430613,
+        "source": "gemma-4-31b/decider_chat/calibration.json",
+        "orders": "identity"
+      },
+      "header": {
+        "T": {
+          "choice": 4.262737987560785,
+          "score": 5.603443226920255,
+          "noul": 7.608748625511332
+        },
+        "b": 0.0,
+        "source": "gemma-4-31b/header/calibration.json",
+        "orders": "identity"
+      },
+      "question_first": {
+        "T": {
+          "choice": 3.8391851723192945,
+          "score": 5.278388968615397,
+          "noul": 7.266257519634274
+        },
+        "b": -0.4595075807224698,
+        "source": "gemma-4-31b/question_first/calibration.json",
+        "orders": "identity"
+      }
+    },
+    "vllm_version": "0.30.0",
+    "layouts": [
+      "decider_chat",
+      "header",
+      "question_first"
+    ]
+  },
+  "long": {
+    "prompt_tokens": 59757,
+    "completion_tokens": 80,
+    "ttft_s": 34.99932688899935,
+    "decode_tok_s": 17.59981504600837
+  },
+  "idle": {
+    "chat": [
+      {
+        "ttft_ms": 1497.4846570003137,
+        "chunks_per_s": 17.10178661595393
+      },
+      {
+        "ttft_ms": 87.02929600076459,
+        "chunks_per_s": 18.037016206546387
+      },
+      {
+        "ttft_ms": 87.67408600033377,
+        "chunks_per_s": 15.289949444950256
+      },
+      {
+        "ttft_ms": 86.27883100052713,
+        "chunks_per_s": 18.032532051078142
+      }
+    ],
+    "decision": [
+      {
+        "ms": 1168.3261250000214
+      },
+      {
+        "ms": 56.048777001706185
+      },
+      {
+        "ms": 56.23592699885194
+      },
+      {
+        "ms": 55.956266000066535
+      }
+    ],
+    "fresh": [
+      {
+        "ms": 347.3443969996879
+      },
+      {
+        "ms": 352.4704939991352
+      },
+      {
+        "ms": 350.99193299902254
+      },
+      {
+        "ms": 349.84666899981676
+      }
+    ]
+  },
+  "during": {
+    "chat": [
+      {
+        "ttft_ms": 1018.4967950008286,
+        "chunks_per_s": 2.1967774246913017
+      }
+    ],
+    "decision": [
+      {
+        "ms": 133.14487299976463
+      },
+      {
+        "ms": 8650.042713999937
+      },
+      {
+        "ms": 2688.8528670006053
+      },
+      {
+        "ms": 3382.0731609994255
+      },
+      {
+        "ms": 2894.5483030001924
+      },
+      {
+        "ms": 3309.8583449991565
+      },
+      {
+        "ms": 3779.07756499917
+      },
+      {
+        "ms": 3153.409601000021
+      },
+      {
+        "ms": 440.69682200097304
+      },
+      {
+        "ms": 437.2265640013211
+      },
+      {
+        "ms": 429.33977100074117
+      }
+    ],
+    "fresh": [
+      {
+        "ms": 408.3280790000572
+      },
+      {
+        "ms": 8372.981831000288
+      },
+      {
+        "ms": 2689.8181729993667
+      },
+      {
+        "ms": 3382.3226819986303
+      },
+      {
+        "ms": 2895.414321001226
+      },
+      {
+        "ms": 3308.6013899992395
+      },
+      {
+        "ms": 3779.3423359998997
+      },
+      {
+        "ms": 3154.0001680004934
+      },
+      {
+        "ms": 440.94338700051594
+      },
+      {
+        "ms": 437.3282329997892
+      },
+      {
+        "ms": 429.79777400068997
+      }
+    ]
+  },
+  "prompt_tokens_local": 59744
+}

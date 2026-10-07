@@ -82,3 +82,8 @@ class Settings:
 
     def data_dir(self, layout: str) -> Path:
         return self.data_root / self.profile / layout
+
+    def calibration_path(self, layout: str) -> Path:
+        """calibration-<prefix_block>.json when the layout has one, else calibration.json."""
+        sized = self.data_dir(layout) / f"calibration-{self.prefix_block}.json"
+        return sized if sized.exists() else self.data_dir(layout) / "calibration.json"

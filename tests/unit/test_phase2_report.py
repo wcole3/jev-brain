@@ -27,7 +27,7 @@ def tree(tmp_path, monkeypatch):
     monkeypatch.setattr(report, "RESULTS", tmp_path / "docs" / "results")
     monkeypatch.setattr(report, "ROOT", tmp_path)
     (tmp_path / "profiles").mkdir()
-    (tmp_path / "profiles" / "p.env").write_text("PROMPT_LAYOUT=decider_chat\nOPTION_ORDERS=identity\n")
+    (tmp_path / "profiles" / "p.env").write_text("PROFILE=p\nHF_MODEL=m\nHF_REVISION=r\nSERVED_MODEL=s\nMAX_MODEL_LEN=1024\nPROMPT_LAYOUT=decider_chat\nOPTION_ORDERS=identity\n")
     calibration = tmp_path / "data" / "p" / "decider_chat"
     calibration.mkdir(parents=True)
     types = {"choice": {"T": 1.5}, "score": {"T": 1.6}, "noul": {"T": 1.2, "b": 0.0}}

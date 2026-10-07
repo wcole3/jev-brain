@@ -380,11 +380,18 @@ OLD_STAMP = {"tokenizer_sha256": "t", "layout_sha256": "l", "hf_revision": "old"
              "prefix_block": 0}
 
 
-def write_calibration(s, **fit):
+def write_calibration(s, name="calibration.json", **fit):
     """A v2 file stamped OLD_STAMP: stale for the real tokenizer and revision."""
     types = {"choice": {"T": 1.5}, "score": {"T": 1.5}, "noul": {"T": 1.5, "b": 0.0}}
-    path = s.data_dir("decider_chat") / "calibration.json"
+    path = s.data_dir("decider_chat") / name
     path.write_text(json.dumps({"format": 2, "stamp": OLD_STAMP, "types": types, "fit": fit}))
+
+
+def test_gateway_loads_the_calibration_file_of_its_prefix_block(qwen_settings):
+    s = dataclasses.replace(qwen_settings, prefix_block=784)
+    write_calibration(s, "calibration-784.json")
+    with pytest.raises(RuntimeError, match="changed .* move the stale file aside"):
+        load_engine(s, None)
 
 
 def test_stale_calibration_refuses_the_gateway_but_not_collect(qwen_settings):

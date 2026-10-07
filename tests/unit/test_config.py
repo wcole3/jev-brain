@@ -1,3 +1,5 @@
+import json
+
 import pytest
 
 from gateway.config import ROOT, Settings, read_env_file
@@ -100,3 +102,33 @@ def test_governor_env_junk_names_the_variable():
     for key in ("GOVERNOR_DUTY", "GOVERNOR_WAVE"):
         with pytest.raises(ValueError, match=key):
             Settings.from_env(base | {key: "abc"})
+
+
+def sized(tmp_path, block, *names):
+    for n in names:
+        (tmp_path / "p" / "L").mkdir(parents=True, exist_ok=True)
+        (tmp_path / "p" / "L" / n).write_text("{}")
+    s = Settings.from_env({"PROFILE": "p", "HF_MODEL": "m", "HF_REVISION": "r", "SERVED_MODEL": "s",
+                           "MAX_MODEL_LEN": "1024", "PREFIX_BLOCK": str(block), "DATA_ROOT": str(tmp_path)})
+    return s.calibration_path("L"), tmp_path / "p" / "L"
+
+
+def test_calibration_path_prefers_the_file_of_the_exact_block_size(tmp_path):
+    path, d = sized(tmp_path, 784, "calibration.json", "calibration-784.json", "calibration-800.json")
+    assert path == d / "calibration-784.json"
+
+
+def test_calibration_path_falls_back_to_the_plain_file(tmp_path):
+    path, d = sized(tmp_path, 784, "calibration.json", "calibration-800.json")
+    assert path == d / "calibration.json"
+    assert sized(tmp_path, 0, "calibration.json")[0] == d / "calibration.json"
+
+
+@pytest.mark.parametrize("block", [None, "784"])
+@pytest.mark.parametrize("name", ["qwen3.6-27b", "qwen3.8-27b"])
+def test_shipped_qwen_calibration_is_stamped_for_the_profiles_block(name, block):
+    env = read_env_file(ROOT / "profiles" / f"{name}.env")
+    s = Settings.from_env({**env, **({"PREFIX_BLOCK": block} if block else {})})
+    for layout in ("decider_chat", "header", "question_first"):
+        stamp = json.loads(s.calibration_path(layout).read_text())["stamp"]
+        assert stamp["prefix_block"] == s.prefix_block

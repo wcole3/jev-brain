@@ -79,7 +79,7 @@ def offline_calibration(args, s: Settings, expect: dict | None) -> Calibration:
         return UNCALIBRATED
     if args.temperature is not None:
         return Calibration(dict.fromkeys(TYPES, args.temperature), source=f"override T={args.temperature}")
-    return load_calibration(s.data_dir(args.layout) / "calibration.json", expect)
+    return load_calibration(s.calibration_path(args.layout), expect)
 
 
 def arm_suffix(args) -> str:
@@ -319,8 +319,8 @@ def parse_args(argv=None) -> argparse.Namespace:
     o.add_argument("--layout", default="decider_chat")
     o.add_argument("--orders", default="identity")
     cal = o.add_mutually_exclusive_group()
-    cal.add_argument("--uncalibrated", action="store_true", help="T = 1 for every type instead of calibration.json")
-    cal.add_argument("--temperature", type=float, help="this T for every type (b = 0) instead of calibration.json")
+    cal.add_argument("--uncalibrated", action="store_true", help="T = 1 for every type instead of the layout's calibration file")
+    cal.add_argument("--temperature", type=float, help="this T for every type (b = 0) instead of the layout's calibration file")
     o.add_argument("--allow-partial", action="store_true", help="score even when some rows were not collected")
     i = sub.add_parser("index")
     i.add_argument("--profile", required=True)

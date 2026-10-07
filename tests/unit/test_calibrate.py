@@ -3,6 +3,7 @@ import json
 import pytest
 
 from gateway.calibration import Calibration
+from gateway.config import Settings
 from scripts import calibrate, calibrate_report
 from scripts import fit as fits
 
@@ -203,6 +204,27 @@ def test_gate_outcome_names_what_each_type_ships(monkeypatch):
     assert calibrate.gate_outcome(r) == ("choice: fitted T 1.200, score: fitted T 1.000, noul: none T 1.000,"
                                          " b not shipped")
     assert "pooled T (one T for every type, b = 0; the gate's fallback): 15.000" in calibrate.layout_report(r)
+
+
+def test_calibrate_writes_the_file_the_gateway_reads_for_that_block(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+
+    s = Settings.from_env({"PROFILE": "p", "HF_MODEL": "m", "HF_REVISION": "r", "SERVED_MODEL": "s",
+                           "MAX_MODEL_LEN": "1024", "PREFIX_BLOCK": "784", "DATA_ROOT": str(tmp_path)})
+    (tmp_path / "p" / LAYOUT).mkdir(parents=True)
+    (tmp_path / "p" / LAYOUT / "calibration-784.json").write_text("{}")
+    monkeypatch.setattr(calibrate, "history", lambda path: (0, []))
+    r = SimpleNamespace(fit={}, ship=False, stats={"acc": (0, 0), "ece": (0, 0)}, b_fitted=0.0, gate={})
+    monkeypatch.setattr(calibrate, "split_questions", lambda *a: ({t: [] for t in calibrate.TYPES}, STAMP))
+    monkeypatch.setattr(calibrate, "fit_and_judge", lambda *a: r)
+    monkeypatch.setattr(calibrate, "moves", lambda *a: {})
+    monkeypatch.setattr(calibrate, "gate_outcome", lambda r: "gate")
+    monkeypatch.setattr(calibrate, "layout_report", lambda r: [])
+    monkeypatch.setattr(calibrate, "calibration_file", lambda *a: {"format": 2})
+    args = SimpleNamespace(orders="identity", comment="c", dry_run=False)
+    calibrate.calibrate_layout(args, s, LAYOUT, {"calib": [], "eval": []}, {"calib": {}, "eval": {}})
+    assert (tmp_path / "p" / LAYOUT / "calibration-784.json").read_text().startswith('{\n "format"')
+    assert not (tmp_path / "p" / LAYOUT / "calibration.json").exists()
 
 
 def test_dry_run_writes_nothing_and_prints_the_report(tmp_path, monkeypatch, capsys):

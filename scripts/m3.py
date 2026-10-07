@@ -101,15 +101,15 @@ def load(profile: str, split: str) -> tuple[list[dict], dict, str]:
 
 
 def shipped_calibration(s: Settings, layout: str, recs: list[dict]) -> Calibration:
-    """The layout's calibration.json as the gateway loads it, refused when stale (as evaluate.py offline)."""
-    return load_calibration(s.data_dir(layout) / "calibration.json", collect_stamp(recs, layout))
+    """The layout's calibration file as the gateway loads it, refused when stale (as evaluate.py offline)."""
+    return load_calibration(s.calibration_path(layout), collect_stamp(recs, layout))
 
 
 def provenance(s: Settings, paths: dict, cals: dict, shipped: Calibration, **extra) -> dict:
     meta = {"timestamp": now(), "repo commit": git_revision(), "host": host_info.summary(), "profile": s.profile,
             "defaults": f"PROMPT_LAYOUT {s.prompt_layout}, OPTION_ORDERS {s.option_orders} (profiles/{s.profile}.env)",
             **extra, **{f"collect {split}": path for split, path in paths.items()},
-            "temperatures": "each arm's T is an ungated fit on the calib split (b = 0), not the shipped calibration.json",
+            "temperatures": "each arm's T is an ungated fit on the calib split (b = 0), not the shipped calibration file",
             SHIPPED: (f"{shipped.source}: T " + ", ".join(f"{t} {v:.3f}" for t, v in shipped.T.items())
                       + f", b {shipped.b:.3f}" + (f" ({w})" if (w := orders_warning(shipped, s.option_orders)) else ""))}
     return meta | {f"T {arm}": ", ".join(f"{t} {v:.3f}" for t, v in cal.T.items()) for arm, cal in cals.items()}

@@ -42,7 +42,7 @@ def load_calibrations(s: Settings, tok, layouts: dict) -> dict:
     """Each layout's stamped calibration; a fit made under other option orders is used, with a warning."""
     out = {}
     for name, layout in layouts.items():
-        out[name] = load_calibration(s.data_dir(name) / "calibration.json", stamp_for(tok, layout, s))
+        out[name] = load_calibration(s.calibration_path(name), stamp_for(tok, layout, s))
         if warning := orders_warning(out[name], s.option_orders):
             log.warning("%s", warning)
     return out

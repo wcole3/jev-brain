@@ -213,7 +213,7 @@ def calibrate_layout(args, s, layout, recs, rows) -> list[str]:
         raise SystemExit(f"{layout}: calib and eval were collected under different stamps")
     r = fit_and_judge(layout, calib, held)
     b_decision = {"ship": r.ship, "acc": list(r.stats["acc"]), "ece": list(r.stats["ece"]), "b_fitted": r.b_fitted}
-    path = s.data_dir(layout) / "calibration.json"
+    path = s.calibration_path(layout)
     comment = f"{args.comment or default_comment(path, args.orders)}; {gate_outcome(r)}"
     data = calibration_file(r.fit, stamp, args.orders, {t: len(calib[t]) for t in TYPES},
                             {"calib": moves(r, "calib"), "eval": moves(r, "eval")},

@@ -1,0 +1,187 @@
+{
+ "format": 2,
+ "version": 6,
+ "date": "2026-10-03T00:41:15Z",
+ "comments": [
+  {
+   "version": 1,
+   "date": "2026-10-02T15:47:50Z",
+   "text": "refit on calib (orders identity)"
+  },
+  {
+   "version": 2,
+   "date": "2026-10-02T16:01:56Z",
+   "text": "per-type ECE gate; score falls back when fitted T worsens eval ECE"
+  },
+  {
+   "version": 3,
+   "date": "2026-10-02T16:35:23Z",
+   "text": "final review fixes: fit.calib/fit.eval metrics, pooled T in t_decision; choice: fitted T 1.484, score: fitted T 8.055, noul: fitted T 1.145, b +0.253 shipped"
+  },
+  {
+   "version": 4,
+   "date": "2026-10-02T17:48:03Z",
+   "text": "gate ships lowest eval ECE among passing T candidates (owner 3b); choice: fitted T 1.484, score: fitted T 8.055, noul: fitted T 1.145, b +0.253 shipped"
+  },
+  {
+   "version": 5,
+   "date": "2026-10-02T20:27:16Z",
+   "text": "T = 1 is a gate candidate (owner); choice: fitted T 1.484, score: fitted T 8.055, noul: fitted T 1.145, b +0.253 shipped"
+  },
+  {
+   "version": 6,
+   "date": "2026-10-03T00:41:15Z",
+   "text": "T = 1 only when every candidate fails the gate (owner); choice: fitted T 1.484, score: fitted T 8.055, noul: fitted T 1.145, b +0.253 shipped"
+  }
+ ],
+ "stamp": {
+  "tokenizer_sha256": "f1738377fb7acbc5a747d00bc34135bac9fd81777240ba1aaa8eb53c0aed08e1",
+  "layout_sha256": "97445f325f30f5f252d8a4af276d99b3197888fbbb4f9b1d1236ebf51077e83c",
+  "hf_revision": "6a9e13bd6fc8f0983b9b99948120bc37f49c13e9",
+  "prefix_pad": "front",
+  "prefix_block": 784
+ },
+ "types": {
+  "choice": {
+   "T": 1.4836733616074274
+  },
+  "score": {
+   "T": 8.054659971948029
+  },
+  "noul": {
+   "T": 1.1446681550320104,
+   "b": 0.2527877422356274
+  }
+ },
+ "fit": {
+  "split": "data/splits/calib.json",
+  "split_sha256": "a4e492db25b2be6fb34f65689bbb715031e938a3d449e12c2677f8aa4d0e6ca8",
+  "orders": "identity",
+  "n": {
+   "choice": 898,
+   "score": 259,
+   "noul": 670
+  },
+  "calib": {
+   "nll": {
+    "before": {
+     "choice": 0.6038444407145686,
+     "score": 3.2905655347641884,
+     "noul": 0.26960226867510806
+    },
+    "after": {
+     "choice": 0.5300254023943343,
+     "score": 1.306286278396462,
+     "noul": 0.2630255980771627
+    }
+   },
+   "ece": {
+    "before": {
+     "choice": 0.05841058902293095,
+     "score": 0.40659220106457844,
+     "noul": 0.027641926721272872
+    },
+    "after": {
+     "choice": 0.048257678152885584,
+     "score": 0.13800768168521085,
+     "noul": 0.03922404585291611
+    }
+   }
+  },
+  "eval": {
+   "nll": {
+    "before": {
+     "choice": 0.5764958413296265,
+     "score": 2.1809134023375827,
+     "noul": 0.286774634937011
+    },
+    "after": {
+     "choice": 0.5291637439832739,
+     "score": 1.3175285628436881,
+     "noul": 0.27744509651519056
+    }
+   },
+   "ece": {
+    "before": {
+     "choice": 0.06808814893287043,
+     "score": 0.25291191616685993,
+     "noul": 0.03700839660795464
+    },
+    "after": {
+     "choice": 0.02545181737772405,
+     "score": 0.16725220113023245,
+     "noul": 0.02644239653529278
+    }
+   }
+  },
+  "b_decision": {
+   "ship": true,
+   "acc": [
+    0.016516516516516533,
+    0.0030030030030030463,
+    0.03003003003003002
+   ],
+   "ece": [
+    -0.01648345620351777,
+    -0.026513565835146836,
+    0.009189714257338062
+   ],
+   "b_fitted": 0.2527877422356274
+  },
+  "t_decision": {
+   "choice": {
+    "fitted_T": 1.4836733616074274,
+    "pooled_T": 1.902706423169544,
+    "shipped_T": 1.4836733616074274,
+    "source": "fitted",
+    "ece": [
+     -0.04263633155514639,
+     -0.056657032394391474,
+     -0.017725977752812372
+    ],
+    "ece_pooled": [
+     0.0020869253858169234,
+     -0.030679771990533164,
+     0.030610864985144197
+    ]
+   },
+   "score": {
+    "fitted_T": 8.054659971948029,
+    "pooled_T": 1.902706423169544,
+    "shipped_T": 8.054659971948029,
+    "source": "fitted",
+    "ece": [
+     -0.08565971503662748,
+     -0.1587418159218472,
+     -0.02353532559926394
+    ],
+    "ece_pooled": [
+     -0.050199033849770425,
+     -0.09350878847653435,
+     -0.0038253726029579826
+    ]
+   },
+   "noul": {
+    "fitted_T": 1.1446681550320104,
+    "pooled_T": 1.902706423169544,
+    "shipped_T": 1.1446681550320104,
+    "source": "fitted",
+    "ece": [
+     -0.010566000072661858,
+     -0.023720716924975724,
+     0.015609552335520076
+    ],
+    "ece_pooled": [
+     0.03667748798851781,
+     0.007108861050262885,
+     0.057444792205083535
+    ],
+    "ece_b0": [
+     0.005917456130855911,
+     -0.009541430745951693,
+     0.018292785680863906
+    ]
+   }
+  }
+ }
+}

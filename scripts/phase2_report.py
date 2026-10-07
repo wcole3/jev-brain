@@ -12,7 +12,7 @@ import json
 import re
 from pathlib import Path
 
-from gateway.config import ROOT, read_env_file
+from gateway.config import ROOT, Settings, read_env_file
 from scripts.board import BOARD, MATCHES, fmt
 
 RESULTS = ROOT / "docs" / "results"
@@ -92,7 +92,8 @@ def digits(stamp: str) -> str:
 def shipped_settings(profile: str) -> dict:
     env = read_env_file(ROOT / "profiles" / f"{profile}.env")
     layout = env["PROMPT_LAYOUT"]
-    data = json.loads((ROOT / "data" / profile / layout / "calibration.json").read_text())
+    s = Settings.from_env({**env, "DATA_ROOT": str(ROOT / "data")})
+    data = json.loads(s.calibration_path(layout).read_text())
     T = {t: data["types"][t]["T"] for t in TYPES}
     return {"layout": layout, "orders": env["OPTION_ORDERS"], "T": T, "b": data["types"]["noul"].get("b", 0.0),
             "version": data["version"], "stamp": digits(data["date"])}

@@ -20,6 +20,8 @@ vLLM v0.30.0 source, our startup logs and our bench results. Units: 1 KiB = 1,02
   attention KV the same size as one saved recurrent state: 784 tokens × 4 KiB (one
   attention layer) = 3.06 MiB = one Gated DeltaNet layer's state. States are saved only at page ends, so a cache hit
   can only end on a multiple of 784. On v0.30.0, `--mamba-block-size` cannot change this.
+  With MTP on (3 draft tokens) the state grows and the block becomes 800 tokens
+  ([kv-cache.md §6](kv-cache.md)).
 - **Why `--max-num-seqs 256`:** vLLM refuses to start a hybrid model when
   `max_num_seqs` is larger than the whole block pool (638 or 665 blocks, depending on
   free memory at startup). The default of 1024 fails; 256 passes.
@@ -42,14 +44,14 @@ layer type:
 | **Linear attention: Gated DeltaNet** | one fixed-size matrix per head, updated in place for each token | flat from token 1 | 48 Qwen layers |
 
 - **Gated DeltaNet** (Yang, Kautz & Hatamizadeh, ICLR 2025) is a linear-attention
-  layer from the Mamba family. At each token it fades out old memory (the *gate*) and
-  writes a targeted correction (the *delta rule*). Its memory is a d_k × d_v matrix per
-  head, whatever the prompt length.
+  layer from the Mamba family: a d_k × d_v matrix per head, faded by a gate and corrected
+  by the delta rule at every token. How it works and what it means for serving:
+  [speculative-decoding-and-mamba.md §2](speculative-decoding-and-mamba.md).
 - **Hybrid model** here means one model that mixes layer types. In Qwen the pattern is
   16 × (3 Gated DeltaNet + 1 full attention); in Gemma it is 10 × (5 sliding + 1 full).
 - **Recurrent state is not a KV cache.** It is overwritten at every token, so the state
   "after token 1,000" exists only if something saved a copy at that moment. That fact
-  drives most of §4.
+  drives most of §4 and [kv-cache.md §6](kv-cache.md).
 
 ## 2. The three models
 
@@ -60,7 +62,7 @@ layer type:
 | Attention KV heads × head dim | 4 × 256 (24 query heads) | sliding: 16 × 256; full: 4 × 512 |
 | Gated DeltaNet | 16 QK heads, 48 V heads, head dim 128; state kept in fp32 (`mamba_ssm_dtype`) | none |
 | Vision encoder | present; we serve with `--language-model-only` | ~550M params; kept for image chat (`LANGUAGE_MODEL_ONLY=0`) |
-| Other | a multi-token-prediction head, unused (speculative decoding conflicts with label scoring, #42592) | `attention_k_eq_v` on the 10 full layers (see below) |
+| Other | one multi-token-prediction (MTP) module; not shipped. Stock vLLM v0.30.0 drops label logprobs when MTP is on; DS-004 is testing a patch ([speculative-decoding-and-mamba.md §3](speculative-decoding-and-mamba.md)) | `attention_k_eq_v` on the 10 full layers (see below) |
 
 **Gemma's `attention_k_eq_v`:** the model card says the global layers use "unified Keys
 and Values" to save memory. In vLLM v0.30.0 this saves weights only: the model code
@@ -69,109 +71,41 @@ get different norms (and RoPE only on keys), so the cache still stores both.
 
 ## 3. Memory per token and per request
 
-The formula for one attention layer is 2 (K and V) × KV heads × head dim × 2 bytes
-(bf16).
+The formula, per-layer arithmetic and per-row examples are in
+[kv-cache.md §2](kv-cache.md). For these models in bf16:
 
-| | Arithmetic | Result |
+| | Per token | Fixed per request |
 |---|---|---|
-| Qwen attention, per token | 2 × 4 × 256 × 2 B = 4 KiB per layer × 16 layers | **64 KiB** |
-| Qwen Gated DeltaNet state, per layer | matrix: 48 × 128 × 128 × 4 B (fp32) = 3 MiB; plus conv: (16·128·2 + 48·128) channels × 3 × 2 B = 60 KiB | **3.06 MiB** (3,207,168 B) |
-| Qwen state, per request | 3.06 MiB × 48 layers | **~147 MiB** |
-| Gemma sliding window, per token | 2 × 16 × 256 × 2 B = 16 KiB × 50 layers | **800 KiB**, only for the last ~1k tokens |
-| Gemma full attention, per token | 2 × 4 × 512 × 2 B = 8 KiB × 10 layers | **80 KiB**, for every token |
+| Qwen3.6 / 3.8 | 64 KiB (16 attention layers × 4 KiB) | ~147 MiB of Gated DeltaNet state (48 × 3.06 MiB, fp32) |
+| Gemma 4 31B | 880 KiB while inside the 1,024-token window, 80 KiB after | none |
 
-For one of our systemone rows (2,541 tokens, the largest row in the
-[quick run](../results/archive/qwen3.6-27b/2026-09-29T210957Z-quick/summary.md)):
-- **Qwen:** 2,541 × 64 KiB + 147 MiB ≈ **306 MiB**.
-- **Gemma:** the whole row is inside the window while it prefills, so 2,541 × 880 KiB
-  ≈ **2.1 GiB**, about 7× Qwen.
+One 2,541-token systemone row: ~306 MiB on Qwen, ~2.1 GiB on Gemma.
 
 ## 4. How vLLM fits mixed layers into one pool
 
-vLLM's **hybrid KV cache manager** keeps one memory pool, split into blocks that all
-have the same *page size* (bytes). It groups layers of the same type into groups of
-equal size (the smallest layer count, 16 for Qwen and 10 for Gemma). Every group draws
-block ids from the same pool ([design doc][hkv], [kv_cache_utils.py][grp]).
+Explained in [kv-cache.md §6](kv-cache.md). In short:
 
-**Qwen: 4 groups** (1 attention group + 3 Gated DeltaNet groups, 16 layers each).
-- A saved recurrent state is a single 3.06 MiB page that doesn't split by token.
-- So vLLM grows the attention block until one attention page is at least as big: 16 ×
-  ⌈3,207,168 / (16 × 4,096)⌉ = **784 tokens**.
-- It then pads the state page by the 4,096-byte difference (0.13%)
-  ([interface.py `_align_hybrid_block_size`][align]).
-
-```
-one Gated DeltaNet state (one layer)    |██████████████████████████| 3,207,168 B
-784 tokens of K+V (one attention layer) |██████████████████████████| 3,211,264 B
-                                         = one page; one block = that page × 16 layers = 49 MiB
-```
-
-**"Align" mode** is what vLLM turns on for hybrid models when prefix caching is enabled
-([config.py][cfg]):
-- The recurrent state is saved only when a scheduler step ends on a multiple of the
-  block size. Each running request holds at most two state pages per group: the previous
-  step's state and the one being written ([MambaSpec][mspec]).
-- A prefix-cache hit needs a saved state at the exact token where the hit ends. States
-  exist only at multiples of 784, so hits are 784-token granular.
-- In align mode vLLM also sets `mamba_block_size = block_size`
-  ([interface.py L939–L940][align]), which overrides any `--mamba-block-size` you pass.
-
-**Gemma: 6 groups** (5 sliding + 1 full, 10 layers each; our estimate from the grouping
-rule).
-- A full-attention page is half a sliding page (8 KiB vs 16 KiB per token), so vLLM
-  doubles the full-attention block to keep pages equal: 32 tokens vs 16, if the backend
-  default is 16 ([unify rule][unify]).
-- With no recurrent layers, cache hits can land on any 32-token boundary (estimate). A
-  sliding-window hit only needs the last 1,023 tokens still cached.
+- **Qwen: 4 groups** of 16 layers (1 attention, 3 Gated DeltaNet). The attention block grows
+  until one attention page holds one 3.06 MiB state: **784 tokens**, state padded by 0.13%;
+  one block is 49 MiB. With MTP on it is **800 tokens**.
+- **"Align" mode** (the default with prefix caching) saves the state only at block boundaries
+  and keeps the last one before the prompt ends, so hits are 784-token granular. It also sets
+  `mamba_block_size = block_size`, overriding `--mamba-block-size`.
+- **Gemma: 6 groups** of 10 layers (5 sliding, 1 full); the full block is doubled to 32 tokens
+  to match the sliding page (estimate), so hits can land on 32-token boundaries.
 
 ## 5. Reading vLLM's numbers
 
-The startup line `GPU KV cache size: N tokens` does **not** count token slots. It is
-blocks in the pool ÷ blocks one maximum-length request would need × `max_model_len`
-([kv_cache_utils.py][cap]).
+The logged `GPU KV cache size: N tokens` is blocks in the pool ÷ blocks per max-length
+request × `max_model_len`, not token slots. The worked checks are in
+[kv-cache.md §8](kv-cache.md):
 
-**Qwen3.6**: the startup log of 2026-09-28 (partly quoted in
-[ds007-scheduling.md §0](../appendix/ds007-scheduling.md)) and `cache_config_info` in the
-[quick run](../results/archive/qwen3.6-27b/2026-09-29T210957Z-quick/summary.md). Qwen3.8 has the
-identical config, so we expect the same, but haven't read its log.
-
-```
-Mamba cache mode is set to 'align' ... when prefix caching is enabled
-Setting attention block size to 784 tokens to ensure that attention page size is >= mamba page size.
-Padding mamba page size by 0.13% to ensure that mamba page size and attention page size are exactly equal.
-GPU KV cache size: 453,973 tokens, Maximum concurrency for 32,768 tokens per request: 13.85x
-kv lcm block sizes 784
-```
-
-- **Pool:** 665 blocks × 49 MiB = 31.8 GiB.
-- **One 32,768-token request needs 48 blocks:** ⌈32,768 / 784⌉ = 42 attention blocks,
-  plus 3 groups × 2 state pages = 6.
-- **Check against the log:** 665 / 48 = 13.85×, and × 32,768 = **453,973**, as logged.
-
-**Gemma 4 31B** (DS-011: 50,476 KV tokens with vision, 49,777 language-model-only). The
-same formula, assuming vLLM's default 8,192-token prefill chunk:
-- **Full group:** ⌈32,768 / 32⌉ = 1,024 blocks.
-- **Each sliding group:** vLLM reserves the window plus every prefill chunk still in
-  flight. With async scheduling that is 2 × 8,192 = 16,384 tokens
-  ([SlidingWindowSpec][swspec], [vllm.py][inflight]).
-  - That gives ⌈(1,023 + 16,384) / 16⌉ + 1 = 1,089 blocks per group, × 5 groups = 5,445.
-- **Total:** 6,469 blocks × 2.5 MiB = 15.8 GiB for one 32k request, or **505 KiB per
-  reported token**. That matches DS-011's ~505 KiB (≈ 80 + 800 × 17,407 / 32,768).
-  - This is a real peak, not bookkeeping: while a long prompt prefills, its sliding
-    layers hold up to ~17.4k tokens. Hence only 1.54× concurrency at 32k.
-- **Pool:** the two token counts fit whole pools of exactly 9,965 and 9,827 blocks,
-  ~24.3 and ~24.0 GiB (estimate). Dropping the vision tower freed no KV cache.
-- **The logged figure moves with `max_model_len` (DS-026).** The ~5,445 sliding blocks
-  are reserved per request whatever its length, so they weigh more as the max shrinks:
-
-  | `max_model_len` | Blocks per max-length request | Logged tokens | Pool that fits |
-  |---|---|---|---|
-  | 32,768 | 1,024 + 5,445 = 6,469 | 50,476 | 9,965 |
-  | 65,536 | 2,048 + 5,445 = 7,493 | 86,999 | 9,947 |
-  | 131,072 | 4,096 + 5,445 = 9,541 | 136,374 | 9,927 |
-
-  - The pool barely changes, so lowering the max to 65k did not cost capacity.
-  - The longest single prompt is (9,947 − 5,445) × 32 ≈ 144k tokens.
+- **Qwen3.6** (2026-09-28 log, `max_model_len` 32,768): 665 blocks ÷ 48 per request × 32,768
+  = 453,973 tokens, as logged; pool 31.8 GiB.
+- **Gemma 4 31B** (DS-011, DS-026): ~5,445 sliding-window blocks are reserved per request
+  whatever its length, so the logged figure moves with `max_model_len` (50,476 at 32k, 86,999
+  at 65k) while the pool stays ~9,950 blocks (~24 GiB). The longest single prompt is ≈ 144k
+  tokens.
 
 ## 6. Why `--max-num-seqs 256` is required on hybrid Qwen
 
@@ -183,7 +117,7 @@ same formula, assuming vLLM's default 8,192-token prefill chunk:
 - **Our case:** at first bring-up the pool had 638 blocks at 0.90 GPU memory use (commit
   `723fe4e`); later startups got 665. vLLM's default of 1024 fails; 256 passes.
 - **256 is a ceiling, not a reachable concurrency.** Each running request holds up to
-  6 blocks of state, so 256 of them could need 1,536 blocks, more than the pool
+  6 blocks of state (15 with MTP's 3 draft tokens, [kv-cache.md §6](kv-cache.md)), so 256 of them could need 1,536 blocks, more than the pool
   (estimate). In practice ~13 run at once, limited by compute
   ([prompt-sharing.md §5](prompt-sharing.md)).
 
@@ -198,7 +132,8 @@ same formula, assuming vLLM's default 8,192-token prefill chunk:
   [qwen3.6](../results/qwen3.6-27b/2026-09-28T000000Z/summary.md)). This is a hypothesis
   until a Gemma `--quick` run shows its cache hits.
 - **DS-008 fixes, re-read against the v0.30.0 source** (none tested yet):
-  - `--mamba-block-size 256/128` is overridden in align mode (§4), so it should do nothing.
+  - `--mamba-block-size 256/128` is overridden in align mode (§4), so it should do nothing
+    (confirmed by DS-008).
   - Padding the shared part to a multiple of 784 still works.
   - A bf16 recurrent state (`--mamba-ssm-cache-dtype bfloat16`) would halve the state
     page and give 400-token blocks (formula estimate). Qwen's config asks for fp32, so
@@ -224,7 +159,12 @@ same formula, assuming vLLM's default 8,192-token prefill chunk:
 
 **fp8 KV on Qwen coarsens sharing.** The attention page per token halves while the fp32
 state doesn't, so the block would double to **1,568 tokens** (formula estimate). Qwen
-isn't short of memory, so this only hurts, unless the state dtype shrinks too.
+isn't short of memory, so this only hurts, unless the state dtype shrinks too. fp8 KV with
+MTP is also reported to corrupt output on our GPU (#49010, [kv-cache.md §7](kv-cache.md)).
+
+**MTP changes Qwen's block to 800 tokens** (DS-004), so the gateway's 784-token prefix
+padding no longer lines up when MTP is on
+([speculative-decoding-and-mamba.md §3c](speculative-decoding-and-mamba.md)).
 
 ## Caveats
 
@@ -257,7 +197,9 @@ isn't short of memory, so this only hurts, unless the state dtype shrinks too.
   [qwen3.8](../results/qwen3.8-27b/2026-09-28T000000Z/summary.md) and
   [gemma](../results/gemma-4-31b/2026-09-28T000000Z/summary.md);
   [ds007-scheduling.md](../appendix/ds007-scheduling.md);
-  [prompt-sharing.md](prompt-sharing.md); [5-combined-server.md](../5-combined-server.md).
+  [prompt-sharing.md](prompt-sharing.md); [5-combined-server.md](../5-combined-server.md);
+  [kv-cache.md](kv-cache.md) and
+  [speculative-decoding-and-mamba.md](speculative-decoding-and-mamba.md) (mechanisms, MTP).
 - **Model cards:** https://huggingface.co/Qwen/Qwen3.6-27B,
   https://huggingface.co/Qwen/Qwen3.8-27B, https://huggingface.co/google/gemma-4-31B-it
 - **Gated DeltaNet paper:** https://arxiv.org/abs/2412.06464

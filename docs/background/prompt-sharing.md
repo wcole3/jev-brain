@@ -54,8 +54,12 @@ Qwen3.6 is a hybrid model: 48 of its 64 layers are recurrent (Gated DeltaNet,
 Mamba-style), and only 16 are attention.
 
 - **Why blocks:** a recurrent layer keeps a running state instead of per-token keys and
-  values, and vLLM can only save that state at chunk ends. In its "align" mode it saves
-  one every **784 tokens**, so a cache hit must end on a multiple of 784.
+  values, so a hit needs a saved copy of the state exactly where it ends. In its "align"
+  mode vLLM saves states only on **784-token** block boundaries, so a cache hit must end on
+  a multiple of 784. How and why: [kv-cache.md §6](kv-cache.md).
+- **With MTP on** the block is 800 tokens and the saved state moves back one block
+  ([speculative-decoding-and-mamba.md §3c](speculative-decoding-and-mamba.md)); everything
+  here assumes MTP off, as shipped.
 - **What that means here:** 2,064 = 2 × 784 + 496. Rows 2–16 reuse 1,568 tokens and
   recompute the last 496 shared tokens before reaching their own question.
 
@@ -162,7 +166,7 @@ Notes:
   default with prefix caching) it then overwrites `mamba_block_size` with that block size,
   so `--mamba-block-size` has no effect. DS-008 confirms this on the GPU; the rows above
   show what a future vLLM with finer blocks could gain. More in
-  [model-architectures.md](model-architectures.md).
+  [model-architectures.md](model-architectures.md) and [kv-cache.md §6](kv-cache.md).
 - **Finer blocks leave small states unshared.** The cold mix stays at 1.45 because
   256-token states still go without a warm-up row (below the 512-token threshold). With
   finer blocks it would be worth lowering `WARM_MIN_PREFIX_TOKENS`. The cost is one extra
@@ -274,8 +278,8 @@ the shared prefix is at least `WARM_MIN_PREFIX_TOKENS` long.
 | qwen3.6 / qwen3.8 | `WARM_UP=row`, threshold 784, front padding | Recurrent layers need a saved state at the prefix end |
 | gemma-4-31b | `WARM_UP=off` plus vLLM `--prefix-cache-retention-interval 32` | Sliding-window blocks must be hashed densely; then no warm-up is fastest |
 
-**Qwen (hybrid, recurrent layers).** vLLM saves a recurrent-state checkpoint only at the last
-784-token boundary of a prefill. Row 1 is the padded prefix plus its question (~480 tokens,
+**Qwen (hybrid, recurrent layers).** vLLM keeps a recurrent-state checkpoint only at the last
+784-token boundary of a prefill ([kv-cache.md §6](kv-cache.md)). Row 1 is the padded prefix plus its question (~480 tokens,
 less than one block), so its last boundary is exactly the end of the padded prefix: every later
 row resumes from there. Rows sent together without a warm-up can't reuse each other, because
 no one has saved that checkpoint yet. Warming with the *prefix alone* was tried and did worse

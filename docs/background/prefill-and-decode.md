@@ -33,7 +33,7 @@ Terms used below:
 - **Step** (or iteration): one forward pass of the model over the current batch. Every
   step reads all the weights from GPU memory once: about 55 GB for Qwen3.6-27B in bf16.
 - **KV cache:** the keys and values the model keeps for each token it has already
-  processed, so later tokens don't recompute them.
+  processed, so later tokens don't recompute them ([kv-cache.md](kv-cache.md)).
 - **Prefill:** processing the prompt, all its tokens in parallel. It fills the KV cache and
   yields the first output token.
 - **Decode:** generating the rest of the reply, one token per request per step.
@@ -70,9 +70,15 @@ Why they differ:
   steps with running decodes. Without it, a big prefill would stall every decode for
   its full length. vLLM V1 enables it by default.
 - **Token budget:** `--max-num-batched-tokens` caps the tokens in one step.
-  - Each running decode costs 1 token of the budget; prefill chunks fill the rest.
+  - Each running decode costs 1 token of the budget (1 + K with speculative decoding,
+    [speculative-decoding-and-mamba.md §1e](speculative-decoding-and-mamba.md)); prefill
+    chunks fill the rest.
   - Our [entrypoint](../../docker/vllm-entrypoint.sh) doesn't set it, so vLLM picks
-    8,192 on this GPU (startup log, DS-007 §0).
+    8,192 on this GPU (startup log, DS-007 §0). The measurements below were taken there.
+  - Since DS-025 the Qwen profiles set a budget of 2,352 and a per-request chunk cap of 784
+    (`--long-prefill-token-threshold`); Gemma keeps 8,192 with a cap of 1,024.
+  - How chunks interact with KV blocks and hybrid Qwen's block-aligned state:
+    [kv-cache.md §9](kv-cache.md).
 
 The budget is a trade-off knob. vLLM's docs: "Smaller values (e.g., 2048) achieve better
 ITL because there are fewer prefills slowing down decodes. Higher values achieve better

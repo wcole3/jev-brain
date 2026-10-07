@@ -11,7 +11,9 @@ the order below goes from "how a request works" to "how good the answers are".
 | [Prompt layouts](prompt-layouts.md) | The three layouts, where the question should go for long documents, option-order bias, and what each costs in prefix sharing |
 | [Prompt sharing](prompt-sharing.md) | Why hybrid Qwen reuses the shared state only in 784-token blocks, and what that costs in throughput |
 | [Model architectures](model-architectures.md) | Qwen's Gated DeltaNet hybrid vs Gemma's sliding window: memory per token, why blocks are 784 tokens, why Gemma is KV-bound |
+| [KV cache](kv-cache.md) | What K and V are, vLLM's paged blocks, block pool and prefix hashing, how hybrid Qwen's state fits the pool (784/800-token blocks), fp8 KV, `max_model_len` vs capacity |
 | [Prefill and decode](prefill-and-decode.md) | Why decision traffic starves chat on one GPU, what priority scheduling can and can't fix |
+| [Speculative decoding and Mamba](speculative-decoding-and-mamba.md) | Draft/verify and MTP, recurrent state vs KV, and what MTP does to label scoring and prefix caching on hybrid Qwen (DS-004) |
 | [Determinism](determinism.md) | Why identical requests can give different answers (bf16, batching), our noise floor, deterministic modes |
 | [Yes/no bias](noul-bias.md) | Why Qwen leans "no" and Gemma "yes" on noul questions, where it happens, and what a bias term can and can't fix |
 | [Calibration](calibration.md) | Temperature scaling, ECE and Brier, Jev's confidence formulas, why a yes/no bias needs more than a temperature |

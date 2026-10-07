@@ -1,0 +1,3 @@
+4 chats on qwen3.6-27b for 3600 s -> docs/results/ds-004/qwen3.6-27b/chat-load/Aprime.jsonl
+chats: 100 finished, 0 errors; p50 decode 18.5 tok/s, p50 TTFT 269 ms, p50 completion 512 tokens
+spec decode: no drafts (MTP off?)

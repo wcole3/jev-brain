@@ -1,0 +1,11 @@
+vllm-1  | (EngineCore pid=347) JEV-SPIKE rejection sampler: step 1 with logprob_token_ids, 2 such rows, 2 total
+vllm-1  | (EngineCore pid=347) JEV-SPIKE rejection sampler: step 200 with logprob_token_ids, 1 such rows, 271 total
+vllm-1  | (EngineCore pid=347) JEV-SPIKE rejection sampler: step 400 with logprob_token_ids, 1 such rows, 471 total
+vllm-1  | (EngineCore pid=347) JEV-SPIKE rejection sampler: step 600 with logprob_token_ids, 1 such rows, 671 total
+vllm-1  | (EngineCore pid=347) JEV-SPIKE rejection sampler: step 800 with logprob_token_ids, 1 such rows, 871 total
+vllm-1  | (EngineCore pid=347) JEV-SPIKE rejection sampler: step 1000 with logprob_token_ids, 1 such rows, 1071 total
+vllm-1  | (EngineCore pid=347) JEV-SPIKE rejection sampler: step 1200 with logprob_token_ids, 1 such rows, 1271 total
+vllm-1  | (EngineCore pid=347) JEV-SPIKE rejection sampler: step 1400 with logprob_token_ids, 1 such rows, 1471 total
+vllm-1  | (EngineCore pid=347) JEV-SPIKE rejection sampler: step 1600 with logprob_token_ids, 1 such rows, 1671 total
+vllm-1  | (EngineCore pid=347) JEV-SPIKE rejection sampler: step 1800 with logprob_token_ids, 1 such rows, 1871 total
+vllm-1  | (EngineCore pid=347) JEV-SPIKE rejection sampler: step 2000 with logprob_token_ids, 1 such rows, 2071 total

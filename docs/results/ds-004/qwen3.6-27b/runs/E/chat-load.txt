@@ -1,0 +1,3 @@
+4 chats on qwen3.6-27b for 3600 s -> docs/results/ds-004/qwen3.6-27b/chat-load/E.jsonl
+chats: 256 finished, 0 errors; p50 decode 36.1 tok/s, p50 TTFT 356 ms, p50 completion 512 tokens
+spec decode: 50.1% of 158016 draft tokens accepted, mean accepted length 2.50

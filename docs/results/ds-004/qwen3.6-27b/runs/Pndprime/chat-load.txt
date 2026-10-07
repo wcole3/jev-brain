@@ -1,0 +1,3 @@
+4 chats on qwen3.6-27b for 3600 s -> docs/results/ds-004/qwen3.6-27b/chat-load/Pndprime.jsonl
+chats: 253 finished, 0 errors; p50 decode 35.1 tok/s, p50 TTFT 365 ms, p50 completion 512 tokens
+spec decode: 50.0% of 156282 draft tokens accepted, mean accepted length 2.50

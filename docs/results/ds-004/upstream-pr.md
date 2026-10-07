@@ -58,7 +58,7 @@ code `Sampler` already runs.
 ## Diff (against v0.30.0; rebase before posting)
 
 `vllm/v1/worker/gpu/spec_decode/rejection_sampler.py`: see
-`docker/spike/vllm/rejection_sampler.upstream.diff` (about 15 lines). Core change:
+`docker/vllm/rejection_sampler.diff` (about 15 lines). Core change:
 
 ```diff
 -        max_num_logprobs = self.sampler.sampling_states.max_num_logprobs(
@@ -77,7 +77,7 @@ code `Sampler` already runs.
 +            max_per_req_token_ids=max_per_req_token_ids,
 ```
 
-`vllm/v1/worker/gpu/model_runner.py`: see `docker/spike/vllm/model_runner.diff`.
+`vllm/v1/worker/gpu/model_runner.py`: see `docker/vllm/model_runner.diff`.
 `vllm/v1/worker/gpu/sample/sampler.py`: drop the `include_token_ids` parameter (to do).
 
 ## Reproduction

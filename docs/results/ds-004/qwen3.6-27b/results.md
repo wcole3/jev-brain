@@ -456,6 +456,37 @@ rows.
 - No other bench phase runs a chat, so there were no drafting steps to share with
   decisions.
 
+## 4. The shipped default and its off-switch (2026-10-07)
+
+Two checks after the Qwen profiles switched to MTP (padding 800, cap / budget 800 / 2400).
+
+- **Default profile** from plain `compose.yaml` (`runs/default-mtp/`, JevBench only): MTP
+  loaded, 800-token blocks, 0 errors, 89.1%, p50 / p95 132 / 334 ms. Against R800 (same
+  settings, different server start): max |Δp| **0.0000**, 0 flips. The two instances
+  repeated each other bit for bit, unlike the stock restarts in §2.
+- **MTP off, padding left at 800** (`runs/pad800-nomtp/`, full bench): vLLM goes back to
+  784-token blocks, so the gateway's 800-token padding no longer lines up.
+
+| | S (stock, padding 784) | MTP off, padding 800 |
+|---|---|---|
+| Warm sweep p50 / p95 | 781 / 817 ms | 1,098 / 1,117 ms |
+| Throughput 1 / 4 / 16 workers | 0.8 / 1.0 / 1.0 req/s | 0.6 / 0.8 / 0.8 |
+| Cached prompt tokens (throughput) | 86.1% | 84.5% |
+| Chat alone, short / long | 27.0 / 26.7 tok/s | 23.0 / 23.6 |
+| JevBench vs S | — | max \|Δp\| 0.068, 5 flips, 89.2% both |
+
+Turning MTP off by deleting the flag alone costs ~20% decision throughput and ~40% on the
+warm sweep. Full speed without MTP needs `PREFIX_BLOCK=784` and a 784-stamped calibration.
+
+The profiles therefore keep a 784 calibration next to the 800 one: the gateway loads
+`calibration-<PREFIX_BLOCK>.json` when it exists, else `calibration.json`. The documented
+off-switch (delete `--speculative-config`, set `PREFIX_BLOCK` and `WARM_MIN_PREFIX_TOKENS`
+to 784) was checked from plain `compose.yaml` with `bench.py --quick` (not kept): the
+gateway loaded `calibration-784.json` for every layout, vLLM used 784-token blocks, 0 error
+rows, warm sweep 849 ms, throughput 1.0 req/s at 16 workers, 86.1% cached. The default
+(MTP) in the same check: `calibration.json`, 800-token blocks, 0 error rows, warm sweep
+888 ms, 0.9 req/s, 86.2% cached.
+
 ## Files
 
 - `runs/`: every arm. A, A′ (`Aprime`), E, P, P′ (`Pprime`), Pnd, Pnd′ (`Pndprime`) are §1;

@@ -37,7 +37,7 @@ decision endpoint from the same model, behind a small FastAPI gateway.
   2. `orders.option_orders`
   3. `prompts.build_rows` (token ids built piecewise, like decider)
   4. `readout.Readout` (vLLM `/v1/completions`, `max_tokens=1`, `logprob_token_ids`)
-  5. `decide.probabilities` (per-type T, noul offset b, from `calibration.json`)
+  5. `decide.probabilities` (per-type T, noul offset b, from the layout's calibration file)
   6. `orders.average_back`
   7. `answers.answer`
 - **Prompt wording** lives only in `prompts/<layout>.toml`. Editing it means rebuilding
@@ -52,8 +52,9 @@ decision endpoint from the same model, behind a small FastAPI gateway.
 - **Never train, calibrate or tune on Jev API outputs** (TypeSafe's terms forbid it).
   - Use JevBench gold labels or our own data.
   - Jev's per-row answers stay in `.cache/jev-results/`.
-- **Calibration** (`data/<profile>/<layout>/calibration.json`) is valid for one model +
-  precision + layout + option-order setting.
+- **Calibration** (`data/<profile>/<layout>/calibration.json`, or
+  `calibration-<prefix_block>.json` when present) is valid for one model + precision +
+  layout + option-order setting.
   - With one option order T keeps the top answer, but it moves `score` values (expected
     level). Averaged orders can flip a close top answer.
   - T can't fix a yes/no bias; the noul offset b can.
@@ -63,7 +64,8 @@ decision endpoint from the same model, behind a small FastAPI gateway.
   this; gateway startup only checks hashes.
 - **vLLM limits and bugs:**
   - `logprob_token_ids` takes ≤128 ids per request;
-  - no speculative decoding/MTP with label scoring (#42592);
+  - MTP with label scoring needs our patched rejection sampler (`docker/vllm/`, DS-004);
+    stock vLLM returns HTTP 500 for label-id rows batched with drafts;
   - co-batched top-k logprobs can be `-inf` (#51789);
   - LoRA can be a silent no-op on Qwen hybrids (#49354);
   - `--max-num-seqs 256` is required for hybrid Qwen (Mamba cache blocks);
@@ -73,8 +75,9 @@ decision endpoint from the same model, behind a small FastAPI gateway.
   above 0.05 and fails only if the top answer flips when the top-two gap > 0.10.
 - **Chat contention:** decision prefill starves chat decode (DS-007). A long chat prefill
   stalls decisions unless `--long-prefill-token-threshold` is set; on hybrid Qwen keep
-  budget − threshold > 784 or a decision blocks the queue (DS-025).
-- **Prefix cache:** hybrid Qwen prefix caching is 784-token granular (DS-008).
+  budget − threshold > one block or a decision blocks the queue (DS-025).
+- **Prefix cache:** hybrid Qwen caches in 784-token blocks, 800 with MTP; the Qwen profiles
+  pad to 800 and cap prefill at 800, or prompts ≥ 784 tokens take an extra step (DS-008, DS-004).
 - **Tokenizer calls:** encode many short texts in one call (`prompts.encode_each`); the
   per-call overhead in transformers dominates.
 - **Abort metrics:** client aborts don't appear in vLLM's `request_success_total`; watch

@@ -77,16 +77,20 @@ That noise is tracked in DS-028.
 | The patch, written up for vLLM (draft, not posted) | [upstream-pr.md](upstream-pr.md) |
 | How it works | [KV caches](../../background/kv-cache.md), [speculative decoding and Mamba](../../background/speculative-decoding-and-mamba.md) |
 
-## What shipping MTP on a Qwen profile would take
+## What shipping MTP on a Qwen profile takes
 
-- The patched rejection sampler, mounted over the pinned image until a vLLM release has
-  the fix. The patch and the compose override live on branch `spike/ds-004-mtp`,
-  uncommitted.
+Shipped as the Qwen default on 2026-10-07 (`profiles/qwen3.*-27b.env`). The spike code
+(`docker/spike/`, `compose.spike*.yaml`, `profiles/spike/`, `scripts/spike_*.py`) named in
+the results docs was removed then; it is not in the repo.
+
+- The patched rejection sampler (`docker/vllm/`), mounted over the pinned image in
+  `compose.yaml` until a vLLM release has the fix.
 - `--speculative-config {"method":"mtp","num_speculative_tokens":3,"disable_eagle_block_drop":true}`,
   `--long-prefill-token-threshold 800 --max-num-batched-tokens 2400` (budget − cap = 1,600,
   above the 800-token block, per DS-025).
-- Gateway `PREFIX_BLOCK=800` and `WARM_MIN_PREFIX_TOKENS=800`, with a calibration collected
-  and fitted at padding 800 (DS-029). The runs here used the 784-fitted temperatures.
+- Gateway `PREFIX_BLOCK=800` and `WARM_MIN_PREFIX_TOKENS=800`. The shipped calibration is
+  stamped 800 with the 784-fitted temperatures until DS-029 refits. Padding stays 800 with
+  MTP off, so turning MTP off only removes `--speculative-config`.
 - 13% less KV cache (436,397 vs 499,687 tokens).
 
 ## Not covered

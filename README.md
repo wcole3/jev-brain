@@ -303,8 +303,9 @@ uv run python scripts/build_labels.py --profile qwen3.6-27b   # repeat per profi
 ```
 
 A layout change also invalidates its calibration
-(`data/<profile>/<layout>/calibration.json`); the gateway refuses the stale file and names
-the changed field. Move the stale file aside (the gateway then runs that layout at T = 1),
+(`data/<profile>/<layout>/calibration.json`, or `calibration-<prefix_block>.json` when that
+exists for the gateway's `PREFIX_BLOCK`); the gateway refuses the stale file and names the
+changed field. Move the stale file aside (the gateway then runs that layout at T = 1),
 recollect the calib and eval splits (`collect.py` ignores calibration files), then rerun
 `uv run python scripts/calibrate.py --profile <profile>`.
 

@@ -72,9 +72,10 @@ vLLM letter logprobs  →  softmax(logprobs / T)  →  average over option order
 ```
 
 - [`calibration.py`](../../gateway/calibration.py): `load_calibration` reads
-  `data/<profile>/<layout>/calibration.json` (format 2): T for `choice`, `score` and `noul`,
-  and the noul offset `b`, added per option order before averaging. A missing file means
-  T = 1, b = 0 plus a startup warning ([test](../../tests/unit/test_calibration.py)).
+  `data/<profile>/<layout>/calibration.json` (format 2; `calibration-<prefix_block>.json`
+  wins when present): T for `choice`, `score` and `noul`, and the noul offset `b`, added
+  per option order before averaging. A missing file means T = 1, b = 0 plus a startup
+  warning ([test](../../tests/unit/test_calibration.py)).
 - **Files are stamped.** Each records the tokenizer hash, layout hash, model revision and
   prefix padding it was fitted under. Startup refuses a stale, v1, unstamped or malformed
   file and names the field, as it does for `labels.json`. To refit, move the stale file

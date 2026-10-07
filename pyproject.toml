@@ -38,3 +38,5 @@ addopts = "-m 'not live'"
 [tool.ruff]
 line-length = 120
 target-version = "py312"
+# Vendored, patched vLLM file (DS-004): keep upstream style.
+extend-exclude = ["docker/vllm"]

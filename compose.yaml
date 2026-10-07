@@ -28,6 +28,8 @@ services:
     volumes:
       - ${HOME}/.cache/huggingface:/root/.cache/huggingface:ro
       - ./docker/vllm-entrypoint.sh:/opt/jev/vllm-entrypoint.sh:ro
+      # v0.30.0 rejection sampler + fix: label-id reads survive MTP batches (DS-004). Pinned to the image digest.
+      - ./docker/vllm/rejection_sampler.py:/usr/local/lib/python3.12/dist-packages/vllm/v1/worker/gpu/spec_decode/rejection_sampler.py:ro
     ports: ["127.0.0.1:8000:8000"]
     healthcheck:
       test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]

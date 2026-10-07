@@ -114,9 +114,9 @@ async def probe_chat(client: httpx.AsyncClient, served: str) -> dict:
         ttft, rate = await chat_once(client, served, CHAT_PROMPTS["short"])
     except httpx.HTTPError as e:
         return {"error": type(e).__name__}
-    except TypeError:  # chat_once found no chunk to time
-        return {"error": "no chunks streamed"}
-    return {"ttft_ms": ttft, "chunks_per_s": rate}
+    except ValueError:  # chat_once saw no token or no usage chunk
+        return {"error": "no tokens streamed"}
+    return {"ttft_ms": ttft, "tokens_per_s": rate}
 
 
 async def chat_probe(client: httpx.AsyncClient, served: str, stop: asyncio.Event, samples: list) -> None:
@@ -222,8 +222,8 @@ def run_notes(outcome: dict) -> list[str]:
         failed = len(samples) - len(ok)
         if ok:
             ttft = percentile([s["ttft_ms"] for s in ok], 0.5)
-            rate = percentile([s["chunks_per_s"] for s in ok], 0.5)
-            notes.append(f"- chat {label}: median TTFT {ttft:.0f} ms, {rate:.1f} chunks/s"
+            rate = percentile([s["tokens_per_s"] for s in ok], 0.5)
+            notes.append(f"- chat {label}: median TTFT {ttft:.0f} ms, {rate:.1f} tokens/s"
                          f" ({len(ok)} samples, {failed} failed)")
         elif samples:
             notes.append(f"- chat {label}: {failed} of {len(samples)} probes failed")

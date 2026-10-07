@@ -1,8 +1,41 @@
 import datetime
+import json
 
+import httpx
 import pytest
 
-from scripts.bench import parse_args, run_suffix
+from scripts.bench import chat_once, parse_args, run_suffix
+
+
+def sse(*chunks: dict) -> bytes:
+    return "".join(f"data: {json.dumps(c)}\n\n" for c in chunks).encode() + b"data: [DONE]\n\n"
+
+
+async def test_chat_once_counts_tokens_from_usage_not_chunks():
+    body = sse(
+        {"choices": [{"delta": {"role": "assistant", "content": ""}}]},
+        {"choices": [{"delta": {"reasoning": "Hmm"}}]},
+        {"choices": [{"delta": {"content": "2, 3, 5"}}]},
+        {"choices": [], "usage": {"completion_tokens": 9}},
+    )
+    seen = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.update(json.loads(request.content))
+        return httpx.Response(200, content=body)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler), base_url="http://gw") as client:
+        ttft, rate = await chat_once(client, "m", "primes")
+    assert ttft >= 0 and rate > 0
+    assert seen["stream_options"] == {"include_usage": True}
+
+
+async def test_chat_once_refuses_a_stream_without_usage():
+    body = sse({"choices": [{"delta": {"content": "2"}}]})
+    async with httpx.AsyncClient(transport=httpx.MockTransport(lambda r: httpx.Response(200, content=body)),
+                                 base_url="http://gw") as client:
+        with pytest.raises(ValueError, match="usage"):
+            await chat_once(client, "m", "primes")
 
 
 def test_parse_args_chat_defaults_off():

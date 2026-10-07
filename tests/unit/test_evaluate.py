@@ -31,22 +31,23 @@ async def test_probe_records_failures_instead_of_raising():
     async with client_for(down) as c:
         assert await evaluate.probe_chat(c, "m") == {"error": "ConnectError"}
     async with client_for(lambda r: httpx.Response(500, text="boom")) as c:
-        assert await evaluate.probe_chat(c, "m") == {"error": "no chunks streamed"}
+        assert await evaluate.probe_chat(c, "m") == {"error": "no tokens streamed"}
 
 
 async def test_probe_measures_a_streamed_reply():
-    sse = b'data: {"choices": []}\n\ndata: {"choices": []}\n\ndata: [DONE]\n\n'
+    sse = (b'data: {"choices": [{"delta": {"content": "2, 3"}}]}\n\n'
+           b'data: {"choices": [], "usage": {"completion_tokens": 5}}\n\ndata: [DONE]\n\n')
     async with client_for(lambda r: httpx.Response(200, content=sse)) as c:
         sample = await evaluate.probe_chat(c, "m")
-    assert set(sample) == {"ttft_ms", "chunks_per_s"}
+    assert set(sample) == {"ttft_ms", "tokens_per_s"}
 
 
 def test_run_notes_count_failed_probes():
     outcome = {"codes": [0], "seconds": 60, "vllm": [], "idle": [{"error": "ConnectError"}],
-               "busy": [{"ttft_ms": 10.0, "chunks_per_s": 50.0}, {"error": "ReadTimeout"}]}
+               "busy": [{"ttft_ms": 10.0, "tokens_per_s": 50.0}, {"error": "ReadTimeout"}]}
     notes = evaluate.run_notes(outcome)
     assert "- chat idle: 1 of 1 probes failed" in notes
-    assert "- chat during run: median TTFT 10 ms, 50.0 chunks/s (1 samples, 1 failed)" in notes
+    assert "- chat during run: median TTFT 10 ms, 50.0 tokens/s (1 samples, 1 failed)" in notes
 
 
 def test_offline_coverage_counts_collected_records_for_the_layout():

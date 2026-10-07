@@ -111,6 +111,13 @@ def vllm_section(records: list, usage: dict[str, int]) -> list[str]:
     return lines
 
 
+def chat_section(chat: list[dict]) -> list[str]:
+    """Chat TTFT and decode rate; runs before DS-004 counted streamed chunks, not usage tokens."""
+    key, unit = ("tokens_per_s", "tokens/s") if "tokens_per_s" in chat[0] else ("chunks_per_s", "chunks/s")
+    lines = [f"| chat prompt | load | TTFT ms | {unit} |", "|---|---|---|---|"]
+    return lines + [f"| {r['prompt']} | {r['load']} | {r['ttft_ms']:.0f} | {r[key]:.1f} |" for r in chat]
+
+
 def jev_cost_line(total_tokens: int) -> str:
     cost = total_tokens * JEV_USD_PER_M_INPUT / 1e6
     return f"Jev usage: {total_tokens} input tokens, about ${cost:.2f} at ${JEV_USD_PER_M_INPUT} per million."
@@ -138,8 +145,7 @@ def summary(records: list, jev: bool = False) -> str:
             lines += ["", *calibration]
     chat = [r for r in ok if r["test"] == "chat"]
     if chat:
-        lines += ["", "| chat prompt | load | TTFT ms | chunks/s |", "|---|---|---|---|"]
-        lines += [f"| {r['prompt']} | {r['load']} | {r['ttft_ms']:.0f} | {r['chunks_per_s']:.1f} |" for r in chat]
+        lines += ["", *chat_section(chat)]
     usage: dict[str, int] = {}  # phase -> summed usage.input_tokens
     for r in ok:
         if "input_tokens" in r:

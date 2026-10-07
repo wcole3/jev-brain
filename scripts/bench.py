@@ -162,22 +162,39 @@ async def jevbench(client, rows: list[dict], records: list) -> None:
 
 
 async def chat_once(client, served: str, prompt: str) -> tuple[float, float]:
-    """(time to first token in ms, streamed chunks per second after it)."""
-    body = {"model": served, "messages": [{"role": "user", "content": prompt}], "stream": True, "max_tokens": 512}
-    start, first, chunks = time.perf_counter(), None, 0
+    """(time to first token in ms, completion tokens per second after it).
+
+    Tokens come from usage, not chunks: under MTP one chunk can carry several tokens."""
+    body = {
+        "model": served,
+        "messages": [{"role": "user", "content": prompt}],
+        "stream": True,
+        "stream_options": {"include_usage": True},
+        "max_tokens": 512,
+    }
+    start, first, tokens = time.perf_counter(), None, None
     async with client.stream("POST", "/v1/chat/completions", json=body) as r:
         async for line in r.aiter_lines():
-            if line.startswith("data: ") and line != "data: [DONE]":
-                chunks += 1
-                first = first or time.perf_counter()
+            if not line.startswith("data: ") or line == "data: [DONE]":
+                continue
+            chunk = json.loads(line.removeprefix("data: "))
+            delta = chunk["choices"][0]["delta"] if chunk.get("choices") else {}
+            # Thinking streams in "reasoning" (vLLM 0.30); either key means a token arrived.
+            if first is None and (delta.get("content") or delta.get("reasoning")):
+                first = time.perf_counter()
+            if chunk.get("usage"):
+                tokens = chunk["usage"]["completion_tokens"]
     end = time.perf_counter()
-    return (first - start) * 1000, chunks / max(end - first, 1e-9)
+    if first is None or tokens is None:
+        raise ValueError("stream ended without tokens or usage")
+    # The first token belongs to prefill, so the rate counts the rest.
+    return (first - start) * 1000, (tokens - 1) / max(end - first, 1e-9)
 
 
 async def chat_under_load(client, tok, rng, served: str, records: list) -> None:
     for label, prompt in CHAT_PROMPTS.items():
         ttft, tps = await chat_once(client, served, prompt)
-        records.append({"test": "chat", "load": "none", "prompt": label, "ttft_ms": ttft, "chunks_per_s": tps})
+        records.append({"test": "chat", "load": "none", "prompt": label, "ttft_ms": ttft, "tokens_per_s": tps})
     stop = asyncio.Event()
 
     async def decisions():
@@ -192,7 +209,7 @@ async def chat_under_load(client, tok, rng, served: str, records: list) -> None:
     load = [asyncio.create_task(decisions()) for _ in range(4)]
     for label, prompt in CHAT_PROMPTS.items():
         ttft, tps = await chat_once(client, served, prompt)
-        records.append({"test": "chat", "load": "4 systemone", "prompt": label, "ttft_ms": ttft, "chunks_per_s": tps})
+        records.append({"test": "chat", "load": "4 systemone", "prompt": label, "ttft_ms": ttft, "tokens_per_s": tps})
     stop.set()
     await asyncio.gather(*load)
 

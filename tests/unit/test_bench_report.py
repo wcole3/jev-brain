@@ -33,6 +33,14 @@ def test_summary_omits_chat_table_when_no_chat_records():
     assert "chat prompt" not in summary(records)
 
 
+def test_chat_table_shows_tokens_and_still_reads_old_chunk_runs():
+    new = [{"test": "chat", "load": "none", "prompt": "short", "ttft_ms": 120.4, "tokens_per_s": 36.04}]
+    old = [{"test": "chat", "load": "none", "prompt": "short", "ttft_ms": 120.4, "chunks_per_s": 26.6}]
+    assert "| chat prompt | load | TTFT ms | tokens/s |" in summary(new)
+    assert "| short | none | 120 | 36.0 |" in summary(new)
+    assert "| short | none | 120 | 26.6 |" in summary(old) and "chunks/s" in summary(old)
+
+
 def test_qwk_perfect_agreement_is_one():
     assert qwk([0, 1, 2, 2], [0, 1, 2, 2]) == 1.0
 

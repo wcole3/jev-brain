@@ -1,7 +1,7 @@
 {
  "format": 2,
- "version": 6,
- "date": "2026-10-03T00:39:27Z",
+ "version": 7,
+ "date": "2026-10-07T00:00:00Z",
  "comments": [
   {
    "version": 1,
@@ -32,6 +32,11 @@
    "version": 6,
    "date": "2026-10-03T00:39:27Z",
    "text": "T = 1 only when every candidate fails the gate (owner); choice: fitted T 1.648, score: pooled T 1.927, noul: fitted T 1.386, b not shipped"
+  },
+  {
+   "version": 7,
+   "date": "2026-10-07T00:00:00Z",
+   "text": "stamp prefix_block 800 for the MTP profile (DS-004); T and b unchanged, fitted at prefix_block 784 until DS-029 refits"
   }
  ],
  "stamp": {
@@ -39,7 +44,7 @@
   "layout_sha256": "b6753c3ee609bf6033c11d368b1c803e77d5a3e9ece920d4fedfc6b230852f69",
   "hf_revision": "6a9e13bd6fc8f0983b9b99948120bc37f49c13e9",
   "prefix_pad": "front",
-  "prefix_block": 784
+  "prefix_block": 800
  },
  "types": {
   "choice": {

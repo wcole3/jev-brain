@@ -33,7 +33,7 @@ if ! "$harness" -c 'import decision_index' 2> /dev/null; then
   uv run python scripts/index_suite.py setup
 fi
 # `suite verify` reports a mismatch without failing, so print its report and check the "match" field.
-"$harness" -m decision_index suite verify --edition 0.2.1 --dir .cache/decision-index/suite-0.2 | python3 -c '
+"$harness" -m decision_index suite verify --edition 0.3 --dir .cache/decision-index/suite-0.3 | python3 -c '
 import json, sys
 report = sys.stdin.read()
 print(report)

@@ -10,15 +10,16 @@ import sys
 from gateway.config import ROOT
 
 HARNESS_REPO = "https://github.com/apolinario/decision-index"
-HARNESS_SHA = "87d4650b42b377c0291a89c1f1a879f9b31082bf"
-EDITION = "0.2.1"
+HARNESS_SHA = "9eb2dbe2a358004c8782c66e40a83ac07b953fec"
+EDITION = "0.3"
 WORK = ROOT / ".cache" / "decision-index"
 SRC = WORK / "src"  # a clone: `suite import` reads hub/ relative to the repository
 VENV = ROOT / ".cache" / "decision-index-venv"
 PYTHON = VENV / "bin" / "python"
-SUITE = WORK / "suite-0.2"
+SUITE = WORK / "suite-0.3"
 EXPORT = WORK / f"rows-{EDITION}.jsonl.gz"
 REBUILT = WORK / "work" / "artifacts" / "benchmark-suite" / "release-v2-rebuilt"
+REBUILT_V3 = WORK / "work" / "artifacts" / "benchmark-suite" / "release-v3-rebuilt"
 HF_TOKEN_FILE = ROOT / "secrets" / ".hf-token"
 
 
@@ -38,12 +39,13 @@ def rebuild_commands() -> list[list[str]]:
         harness + [
             "suite", "import", "--edition", EDITION, "--dir", str(SUITE),
             "--rows", str(REBUILT / "selected-rows.jsonl.gz"), "--added-rows", str(REBUILT / "added-rows.jsonl.gz"),
+            "--gsm8k-rows", str(REBUILT_V3 / "gsm8k-rows.jsonl.gz"),
         ],
     ]
 
 
 def export_command() -> list[str]:
-    return [str(PYTHON), str(ROOT / "scripts" / "harness_export.py"), str(SUITE), str(EXPORT)]
+    return [str(PYTHON), str(ROOT / "scripts" / "harness_export.py"), str(SUITE), str(EXPORT), EDITION]
 
 
 def harness_env() -> dict[str, str]:

@@ -111,7 +111,7 @@ scripts/remote/push.sh ssh://root@HOST:PORT PROFILE [--restore] [--dry-run]
   differences and stops before the queue starts. Results the box wrote don't count, so a
   re-push mid-run works. It also adds the repo to root's git `safe.directory`.
 - Also pushes the suite export, so nothing is rebuilt on the box:
-  `.cache/decision-index/rows-0.2.1.jsonl.gz`, `.cache/decision-index/suite-0.2`,
+  `.cache/decision-index/rows-0.3.jsonl.gz`, `.cache/decision-index/suite-0.3`,
   `.cache/jevbench`.
 - `--restore` (a replacement box): see Recovery.
 - Writes `.cache/remote/profile`, then starts `start.sh` detached.
@@ -293,7 +293,7 @@ cache, write `.cache/remote/profile`, and run `start.sh`. The snippet removes an
 IMAGE=vllm/vllm-openai:v0.30.0@sha256:8a69ffad015f138d7170c4ddc429e230a3bc1c1719f67e14324749df200a4b90
 rm -rf /tmp/jev-box                                                           # a fresh clone of this commit
 git clone -q . /tmp/jev-box && mkdir -p /tmp/jev-box/.cache/decision-index   # .git: results need the commit
-cp -r .cache/decision-index/{rows-0.2.1.jsonl.gz,suite-0.2} /tmp/jev-box/.cache/decision-index/
+cp -r .cache/decision-index/{rows-0.3.jsonl.gz,suite-0.3} /tmp/jev-box/.cache/decision-index/
 cp -r .cache/jevbench /tmp/jev-box/.cache/                                    # the suite export, as push.sh sends it
 docker run --rm -it --gpus all \
   -v /tmp/jev-box:/workspace/jev-brain -v ~/.cache/huggingface:/root/.cache/huggingface \

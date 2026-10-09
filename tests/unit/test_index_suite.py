@@ -30,3 +30,20 @@ def test_rebuild_refuses_without_a_token(tmp_path, monkeypatch, capsys):
     (tmp_path / ".hf-token").write_text("hf_secret\n")
     index_suite.require_hf_token()
     assert "hf_secret" not in capsys.readouterr().out
+
+
+def test_pins_edition_0_3_suite_and_export():
+    assert index_suite.HARNESS_SHA == "9eb2dbe2a358004c8782c66e40a83ac07b953fec"
+    assert index_suite.SUITE.name == "suite-0.3"
+    assert index_suite.EXPORT.name == "rows-0.3.jsonl.gz"
+
+
+def test_import_passes_rebuilt_gsm8k_rows():
+    imp = index_suite.rebuild_commands()[1]
+    assert imp[imp.index("--edition") + 1] == "0.3"
+    assert imp[imp.index("--gsm8k-rows") + 1].endswith("release-v3-rebuilt/gsm8k-rows.jsonl.gz")
+
+
+def test_export_passes_the_pinned_edition():
+    cmd = index_suite.export_command()
+    assert cmd[-3:] == [str(index_suite.SUITE), str(index_suite.EXPORT), "0.3"]

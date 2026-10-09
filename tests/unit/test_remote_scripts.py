@@ -226,7 +226,7 @@ def bootstrap(tmp_path, harness: str | None, fetch_fails: int = 0) -> tuple[subp
         (bin_dir / tool).chmod(0o755)
     (tmp_path / "harness").write_text(HARNESS_OK)
     (tmp_path / "harness").chmod(0o755)
-    for path in (".cache/decision-index/src/partial", ".cache/decision-index/suite-0.2/keep"):
+    for path in (".cache/decision-index/src/partial", ".cache/decision-index/suite-0.3/keep"):
         (repo / path).parent.mkdir(parents=True)
         (repo / path).touch()
     if harness is not None:
@@ -250,7 +250,7 @@ def test_bootstrap_starts_over_a_harness_setup_left_half_done(tmp_path):
     out, log, repo = bootstrap(tmp_path, harness="#!/usr/bin/env bash\nexit 1\n")
     assert out.returncode == 0, out.stderr
     assert SETUP in log and not (repo / ".cache" / "decision-index" / "src" / "partial").exists()
-    assert (repo / ".cache" / "decision-index" / "suite-0.2" / "keep").exists()
+    assert (repo / ".cache" / "decision-index" / "suite-0.3" / "keep").exists()
     assert (repo / ".cache" / "remote" / "state" / "bootstrap.done").read_text() == "p\n"
 
 
@@ -372,7 +372,7 @@ def test_push_dry_run_prints_every_step(tmp_path):
     # rsync takes the first matching rule: the tracked .gitkeep goes, the rest of secrets/ stays here.
     assert code.index("--include=/secrets/.gitkeep") < code.index("--exclude=/secrets/*")
     assert code[-2:] == ["./", f"{HOST}:{BOX}/"]
-    suite = [".cache/decision-index/rows-0.2.1.jsonl.gz", ".cache/decision-index/suite-0.2", ".cache/jevbench"]
+    suite = [".cache/decision-index/rows-0.3.jsonl.gz", ".cache/decision-index/suite-0.3", ".cache/jevbench"]
     assert "--relative" in data and data[-4:] == [*suite, f"{HOST}:{BOX}/"]
     assert (repo / ".cache" / "remote-boxes" / PROFILE).is_dir()
 
@@ -408,7 +408,7 @@ def push_to_fake_box(tmp_path, *args: str, stray: str | None = None) -> tuple[su
     commit = ["-c", "user.name=t", "-c", "user.email=t@t", "-c", "commit.gpgsign=false", "commit", "-qm", "secrets"]
     for git_args in (["add", ".gitignore", "secrets/.gitkeep"], commit):
         subprocess.run(["git", *git_args], cwd=repo, check=True)
-    for path in ("decision-index/rows-0.2.1.jsonl.gz", "decision-index/suite-0.2/s", "jevbench/j",
+    for path in ("decision-index/rows-0.3.jsonl.gz", "decision-index/suite-0.3/s", "jevbench/j",
                  f"index-runs/{PROFILE}/tag/shard-0/r", f"collect/{PROFILE}/c.jsonl", f"remote-boxes/{PROFILE}/run_tag",
                  *(f"remote-boxes/{PROFILE}/state/{PROFILE}/{name}.done" for name in MIRROR_STATE)):
         (repo / ".cache" / path).parent.mkdir(parents=True, exist_ok=True)

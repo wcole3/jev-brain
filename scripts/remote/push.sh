@@ -54,7 +54,7 @@ check+=" || git config --global --add safe.directory $box_repo;"
 check+=" dirty=\$(git -C $box_repo status --porcelain -- . ':(exclude)docs/results') && [ -z \"\$dirty\" ]"
 check+=" || { echo 'box tree differs from the pushed commit; not starting:' >&2; echo \"\$dirty\" >&2; exit 1; }"
 run "${ssh[@]}" "$box" "$check"
-run "${rsync[@]}" --relative .cache/decision-index/rows-0.2.1.jsonl.gz .cache/decision-index/suite-0.2 \
+run "${rsync[@]}" --relative .cache/decision-index/rows-0.3.jsonl.gz .cache/decision-index/suite-0.3 \
   .cache/jevbench "$box:$box_repo/"
 
 # restore: a replacement box gets the pulled runs, run tag and index/collect markers before its queue starts.

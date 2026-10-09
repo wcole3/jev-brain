@@ -149,3 +149,14 @@ def test_quantized_mtp_profiles_force_bf16_kv(name):
 def test_compose_passes_deep_gemm_with_default():
     vllm_env = yaml.safe_load((ROOT / "compose.yaml").read_text())["services"]["vllm"]["environment"]
     assert vllm_env["VLLM_USE_DEEP_GEMM"] == "${VLLM_USE_DEEP_GEMM:-1}"
+
+
+QUANTIZED_CALIBRATED = ["qwen3.8-27b-nvfp4"]
+
+
+@pytest.mark.parametrize("name", QUANTIZED_CALIBRATED)
+def test_quantized_qwen_calibration_is_stamped_for_800_blocks(name):
+    s = Settings.from_profile(name)
+    for layout in ("decider_chat", "header", "question_first"):
+        stamp = json.loads(s.calibration_path(layout).read_text())["stamp"]
+        assert (stamp["prefix_block"], stamp["hf_revision"]) == (800, s.hf_revision)

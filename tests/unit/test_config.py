@@ -151,12 +151,13 @@ def test_compose_passes_deep_gemm_with_default():
     assert vllm_env["VLLM_USE_DEEP_GEMM"] == "${VLLM_USE_DEEP_GEMM:-1}"
 
 
-QUANTIZED_CALIBRATED = ["qwen3.8-27b-nvfp4", "qwen3.8-27b-fp8", "qwen3.6-27b-fp8"]
+QUANTIZED_CALIBRATED = ["qwen3.8-27b-nvfp4", "qwen3.8-27b-fp8", "qwen3.6-27b-fp8", "gemma-4-31b-fp8"]
 
 
 @pytest.mark.parametrize("name", QUANTIZED_CALIBRATED)
-def test_quantized_qwen_calibration_is_stamped_for_800_blocks(name):
+def test_quantized_calibration_is_stamped_for_its_block_and_revision(name):
     s = Settings.from_profile(name)
+    want = 0 if name.startswith("gemma") else 800
     for layout in ("decider_chat", "header", "question_first"):
         stamp = json.loads(s.calibration_path(layout).read_text())["stamp"]
-        assert (stamp["prefix_block"], stamp["hf_revision"]) == (800, s.hf_revision)
+        assert (stamp["prefix_block"], stamp["hf_revision"]) == (want, s.hf_revision)

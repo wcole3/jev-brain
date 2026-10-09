@@ -2,8 +2,8 @@
 "meta": {
 "jevbench": "fcec62f13ce961115af0d16317f0ff15986a9a25",
 "decisionbench": "071b7b2d2e1504c89e1e5a811a3f82e1bfe3aedb",
-"harness": "87d4650b42b377c0291a89c1f1a879f9b31082bf",
-"edition": "0.2.1",
+"harness": "9eb2dbe2a358004c8782c66e40a83ac07b953fec",
+"edition": "0.3",
 "seed": "phase2-v1",
 "cap_per_task": 300
 },

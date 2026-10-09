@@ -25,8 +25,8 @@ def test_scripts_parse(script):
 
 # DS-005 stage 2: quantized profiles collect calib + eval; bf16 profiles recollect the 0.3 index-dev (DS-031).
 QUANTIZED = ["gemma-4-31b-fp8", "qwen3.6-27b-fp8", "qwen3.8-27b-fp8", "qwen3.8-27b-nvfp4"]
-SPLITS = {name: ["calib", "eval"] for name in QUANTIZED} | dict.fromkeys(
-    ["gemma-4-31b", "qwen3.6-27b", "qwen3.8-27b"], ["index-dev"])
+SPLITS = {name: ("calib", "eval") for name in QUANTIZED} | dict.fromkeys(
+    ["gemma-4-31b", "qwen3.6-27b", "qwen3.8-27b"], ("index-dev",))
 
 
 def test_every_profile_has_a_job_file():

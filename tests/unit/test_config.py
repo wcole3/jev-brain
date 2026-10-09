@@ -151,7 +151,7 @@ def test_compose_passes_deep_gemm_with_default():
     assert vllm_env["VLLM_USE_DEEP_GEMM"] == "${VLLM_USE_DEEP_GEMM:-1}"
 
 
-QUANTIZED_CALIBRATED = ["qwen3.8-27b-nvfp4", "qwen3.8-27b-fp8"]
+QUANTIZED_CALIBRATED = ["qwen3.8-27b-nvfp4", "qwen3.8-27b-fp8", "qwen3.6-27b-fp8"]
 
 
 @pytest.mark.parametrize("name", QUANTIZED_CALIBRATED)

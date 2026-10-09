@@ -1,4 +1,5 @@
-# qwen3.8-27b-nvfp4 box queue (DS-005 stage 2): one `name: command` per line, run in order from the repo root by queue.sh.
+# qwen3.8-27b-nvfp4 box queue: one `name: command` per line, run in order from the repo root by queue.sh.
+# Latency on an idle stack, then the full Decision Index 0.3 with the stage 2 calibration (DS-030).
 stack: bash scripts/remote/stack.sh up qwen3.8-27b-nvfp4
-collect-calib: bash scripts/remote/stack.sh up qwen3.8-27b-nvfp4 && uv run python scripts/collect.py --profile qwen3.8-27b-nvfp4 --split calib
-collect-eval: bash scripts/remote/stack.sh up qwen3.8-27b-nvfp4 && uv run python scripts/collect.py --profile qwen3.8-27b-nvfp4 --split eval
+latency: bash scripts/remote/stack.sh up qwen3.8-27b-nvfp4 && uv run python scripts/latency.py --profile qwen3.8-27b-nvfp4
+index: bash scripts/remote/stack.sh up qwen3.8-27b-nvfp4 && uv run python scripts/evaluate.py index --profile qwen3.8-27b-nvfp4 --shards 4 --run-dir .cache/index-runs/qwen3.8-27b-nvfp4/$(cat .cache/remote/run_tag) --strict

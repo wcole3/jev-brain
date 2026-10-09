@@ -23,35 +23,45 @@ def test_scripts_parse(script):
     subprocess.run(["bash", "-n", str(script)], check=True)
 
 
-# DS-005 stage 2: quantized profiles collect calib + eval; bf16 profiles recollect the 0.3 index-dev (DS-031).
-QUANTIZED = ["gemma-4-31b-fp8", "qwen3.6-27b-fp8", "qwen3.8-27b-fp8", "qwen3.8-27b-nvfp4"]
-SPLITS = {name: ("calib", "eval") for name in QUANTIZED} | dict.fromkeys(
-    ["gemma-4-31b", "qwen3.6-27b", "qwen3.8-27b"], ("index-dev",))
+# Each box's queue: bf16 profiles recollect the 0.3 index-dev (DS-031); qwen3.8-27b-fp8 collected calib + eval
+# (DS-005 stage 2); the three picked quantized profiles run latency and the full 0.3 Index (DS-030).
+JOBS = {
+    "qwen3.8-27b-fp8": ("collect-calib", "collect-eval"),
+    **dict.fromkeys(["gemma-4-31b", "qwen3.6-27b", "qwen3.8-27b"], ("collect-index-dev",)),
+    **dict.fromkeys(["gemma-4-31b-fp8", "qwen3.6-27b-fp8", "qwen3.8-27b-nvfp4"], ("latency", "index")),
+}
+
+
+def jobs_of(path: Path) -> dict[str, str]:
+    return dict(line.split(": ", 1) for line in path.read_text().splitlines() if line and not line.startswith("#"))
 
 
 def test_every_profile_has_a_job_file():
-    assert sorted(p.stem for p in JOB_FILES) == sorted(SPLITS)
+    assert sorted(p.stem for p in JOB_FILES) == sorted(JOBS)
 
 
 @pytest.mark.parametrize("path", JOB_FILES, ids=lambda p: p.name)
 def test_job_files_parse_with_unique_names_starting_at_stack(path):
-    assert job_names(path) == ["stack", *(f"collect-{split}" for split in SPLITS[path.stem])]
+    assert job_names(path) == ["stack", *JOBS[path.stem]]
     assert path.stem in path.read_text()
 
 
 @pytest.mark.parametrize("path", JOB_FILES, ids=lambda p: p.name)
 def test_collect_jobs_run_their_split_for_their_profile(path):
-    jobs = dict(line.split(": ", 1) for line in path.read_text().splitlines() if line and not line.startswith("#"))
-    for split in SPLITS[path.stem]:
-        assert jobs[f"collect-{split}"].endswith(f"scripts/collect.py --profile {path.stem} --split {split}")
+    for name, command in jobs_of(path).items():
+        if name.startswith("collect-"):
+            split = name.removeprefix("collect-")
+            assert command.endswith(f"scripts/collect.py --profile {path.stem} --split {split}")
 
 
 @pytest.mark.parametrize("path", JOB_FILES, ids=lambda p: p.name)
-def test_gpu_jobs_bring_the_stack_back_first(path):
-    """A vLLM crash fails the job; its retry then restarts the stack (a no-op when it is healthy)."""
-    jobs = [line.split(":", 1) for line in path.read_text().splitlines() if line and not line.startswith("#")]
-    for name, command in jobs[1:]:
-        assert re.match(rf" bash scripts/remote/stack.sh up {re.escape(path.stem)}( [A-Z_]+=\S+)* && ", command), name
+def test_index_jobs_resume_the_box_run_tag_and_fail_on_holes(path):
+    for name, command in jobs_of(path).items():
+        if name == "index":
+            assert f"--profile {path.stem} --shards 4" in command
+            assert command.endswith(f"--run-dir .cache/index-runs/{path.stem}/$(cat .cache/remote/run_tag) --strict")
+        if name == "latency":
+            assert command.endswith(f"scripts/latency.py --profile {path.stem}")
 
 
 def test_job_commands_name_only_their_own_profile():

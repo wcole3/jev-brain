@@ -211,7 +211,8 @@ vastai destroy instance ID
 
 | Profile | Jobs |
 |---|---|
-| `qwen3.6-27b-fp8`, `qwen3.8-27b-fp8`, `qwen3.8-27b-nvfp4`, `gemma-4-31b-fp8` | stack, collect-calib, collect-eval (DS-005 stage 2) |
+| `qwen3.8-27b-fp8` | stack, collect-calib, collect-eval (DS-005 stage 2) |
+| `qwen3.6-27b-fp8`, `qwen3.8-27b-nvfp4`, `gemma-4-31b-fp8` | stack, latency, index (full 0.3 Index, 4 shards; DS-030) |
 | `qwen3.6-27b`, `qwen3.8-27b`, `gemma-4-31b` | stack, collect-index-dev (the 0.3 index-dev, DS-031) |
 
 Earlier queues (host-compare, latency, Index runs) are in git history.

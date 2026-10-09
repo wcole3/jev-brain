@@ -151,9 +151,9 @@ request × `max_model_len`, not token slots. The worked checks are in
 **Gemma is KV-bound, and there are two levers:**
 - **fp8 KV cache (DS-005, measured 2026-10-08).** Weights take ~57 GiB (30.7B × 2 bytes); the pool is
   ~24 GiB. Plain `fp8` doubles the reported tokens (86,955 → 174,147 at `MAX_MODEL_LEN`
-  65,536); `fp8_per_token_head` gives 1.55× (its scales cost space) but skips the fp8 query
+  65,536); `fp8_per_token_head` gives 1.55× (cause not measured) but skips the fp8 query
   cast. FP8 weights free ~27 GiB more: FP8 + `fp8_per_token_head` reaches 284,529 (3.3×).
-  It needs its own calibration, which lands within ~0.01 of bf16
+  It needs its own calibration, which lands within ~0.01 ECE of bf16
   ([ds-005 results](../results/ds-005/README.md)).
 - **Smaller prefill chunks.** The DS-007 `--max-num-batched-tokens` lever also shrinks
   the sliding-window reservation. At 2,048 it would be ~205 KiB per reported token,

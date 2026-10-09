@@ -77,7 +77,7 @@ Each model is a profile in `profiles/`. Only one runs at a time.
 | `qwen3.8-27b-nvfp4` | RadixArk/Qwen3.8-27B-NVFP4 (NVFP4) |
 | `gemma-4-31b-fp8` | RedHatAI/gemma-4-31B-it-FP8-block (FP8, fp8 KV) |
 
-Quantized profiles ship uncalibrated until DS-005 Stage 2 commits their calibration.
+Quantized profiles carry their own calibration (DS-005 Stage 2); bf16 stays the default.
 
 ```bash
 uv run python scripts/fetch_model.py --profile qwen3.6-27b        # once per model: the pinned revision, ~55–60 GB

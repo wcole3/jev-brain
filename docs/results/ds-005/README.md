@@ -25,8 +25,9 @@ v0.30.0. This report gives the Stage 1 screen and the Stage 2 calibration of the
 - **fp8 KV alone on Gemma moves probabilities least** (mean |Δp| ≤ 0.001, 0.7% flips), but
   each fp8-KV arm has a few flips whose bf16 top-two gap was near 1.0.
 - **Calibrated (Stage 2, below):** on the shipped `header` layout, every quantized profile
-  refits to choice and noul temperatures within 0.06 of its bf16 base. Eval accuracy is
-  within 0.008 per type and choice/noul ECE within about 0.01. Two gate outcomes differ (below).
+  refits to choice and noul temperatures within about 0.06 of its bf16 base. Eval accuracy
+  is within 0.008 per type, and choice and noul ECE are within about 0.01. One exception:
+  NVFP4's choice ECE fits to 0.026, against bf16's 0.045. Two gate outcomes differ (below).
 - **Not measured yet:** the bf16 restart-noise floor (DS-028) and full Index runs on the
   quantized profiles.
 
@@ -152,9 +153,10 @@ Gemma, 262,144 for Qwen).
   0.008 per type.
 - **Gemma FP8, decider_chat:** the gate picked the pooled T (5.36) for choice where bf16 Gemma
   ships its fitted T (4.12). ECE and accuracy there match bf16 within 0.01.
-- **Score T on Qwen3.8 FP8 stays at 1.** The gate found that neither the fitted nor the
-  pooled T improved eval ECE (0.149 either way). The bf16 base ships its pooled T 1.775,
-  which raises eval ECE from 0.135 to 0.182 under the same rule.
+- **Score T on Qwen3.8 FP8 stays at 1** (eval ECE 0.149). The fitted T worsened eval ECE by
+  +0.169, and the pooled T by +0.040 [+0.002, +0.075], so the gate kept T = 1. This was
+  borderline: bf16's pooled T came out at +0.046 [−0.001, +0.071], its interval touched 0,
+  and it shipped (ECE 0.135 → 0.182).
 - **Noul offset b in other layouts:**
   - Gemma FP8 ships b in decider_chat (−0.66) and question_first (−0.51), as bf16 Gemma does
     (−0.64, −0.46).

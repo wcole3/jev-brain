@@ -366,8 +366,9 @@ Items 2, 3 and 5 are done ([report](../results/archive/qwen3.6-27b/2026-10-03T00
 
 **Refit after any model, precision or layout change.** NVFP4 made reflex's calibration ~50%
 worse ([5-combined-server.md](../5-combined-server.md)). Our FP8/NVFP4 profiles (DS-005) each
-have their own fit; on `header` their temperatures land within 0.06 of bf16 and eval ECE
-within ~0.01 ([results](../results/ds-005/README.md)). DS-008's prompt padding needed its own
+have their own fit; on `header` their temperatures land within about 0.06 of bf16 and eval ECE
+within ~0.01. NVFP4's choice ECE is the exception, fitting better: 0.026 vs 0.045
+([results](../results/ds-005/README.md)). DS-008's prompt padding needed its own
 fit too (DS-029).
 
 ## Caveats

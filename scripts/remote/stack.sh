@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Box stack: the image's own vLLM, then the gateway, both on 127.0.0.1 (reach them with ssh -L).
-# usage: stack.sh up PROFILE [K=V ...] | down | status
+# usage: stack.sh up PROFILE [K=V ...] | down | status | patch-vllm
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 remote=.cache/remote
@@ -59,6 +59,13 @@ wait_for() {
 vllm_ok() { curl -sf -m 10 "$vllm/health" > /dev/null 2>&1; }
 gateway_ok() { [[ -n $(gateway_profile) ]]; }
 
+# Compose mounts our fixed rejection sampler over the image's (DS-004); boxes run the image's vLLM, so copy it in.
+patch_vllm() {
+  local dir
+  dir=$(python3 -c 'import os, vllm; print(os.path.dirname(vllm.__file__))')
+  cp docker/vllm/rejection_sampler.py "$dir/v1/worker/gpu/spec_decode/rejection_sampler.py"
+}
+
 up() {
   local profile=$1 envs
   shift
@@ -70,6 +77,7 @@ up() {
   envs=$(uv run python scripts/profile_env.py "$profile" \
     VLLM_HOST=127.0.0.1 VLLM_URL=http://127.0.0.1:8000 HF_HUB_OFFLINE=1 "$@")
   eval "$envs"
+  patch_vllm
   start vllm bash docker/vllm-entrypoint.sh
   wait_for vllm 1800 vllm_ok
   start gateway uv run --frozen uvicorn gateway.app:app --host 127.0.0.1 --port 9000
@@ -90,5 +98,6 @@ case ${1:-} in
   up) [[ $# -ge 2 ]] || { echo "usage: stack.sh up PROFILE [K=V ...]" >&2; exit 2; }; shift; up "$@" ;;
   down) down ;;
   status) status ;;
-  *) echo "usage: stack.sh up PROFILE [K=V ...] | down | status" >&2; exit 2 ;;
+  patch-vllm) patch_vllm ;;
+  *) echo "usage: stack.sh up PROFILE [K=V ...] | down | status | patch-vllm" >&2; exit 2 ;;
 esac

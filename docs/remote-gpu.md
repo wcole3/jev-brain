@@ -211,10 +211,14 @@ vastai destroy instance ID
 
 | Profile | Jobs |
 |---|---|
-| `qwen3.6-27b` | stack, host-compare, collect-calib, collect-eval, collect-index-dev |
-| `qwen3.8-27b`, `gemma-4-31b` | stack, host-compare, index (4 shards), collect-calib, collect-eval, collect-index-dev |
+| `qwen3.6-27b-fp8`, `qwen3.8-27b-fp8`, `qwen3.8-27b-nvfp4`, `gemma-4-31b-fp8` | stack, collect-calib, collect-eval (DS-005 stage 2) |
+| `qwen3.6-27b`, `qwen3.8-27b`, `gemma-4-31b` | stack, collect-index-dev (the 0.3 index-dev, DS-031) |
 
-- Collect runs with `--concurrency 4`.
+Earlier queues (host-compare, latency, Index runs) are in git history.
+
+- Collect runs at its default `--concurrency 8`, like the local collects.
+- `stack.sh up` first copies `docker/vllm/rejection_sampler.py` over the image's file, as compose
+  mounts it (DS-004); `stack.sh patch-vllm` does only that.
 - Index runs use `--run-dir .cache/index-runs/PROFILE/$(cat .cache/remote/run_tag)`, so a
   restart resumes the same run.
 - Index runs use `--strict`: after writing the summary, the job fails if any row is an

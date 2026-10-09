@@ -23,21 +23,27 @@ def test_scripts_parse(script):
     subprocess.run(["bash", "-n", str(script)], check=True)
 
 
+# DS-005 stage 2: quantized profiles collect calib + eval; bf16 profiles recollect the 0.3 index-dev (DS-031).
+QUANTIZED = ["gemma-4-31b-fp8", "qwen3.6-27b-fp8", "qwen3.8-27b-fp8", "qwen3.8-27b-nvfp4"]
+SPLITS = {name: ["calib", "eval"] for name in QUANTIZED} | dict.fromkeys(
+    ["gemma-4-31b", "qwen3.6-27b", "qwen3.8-27b"], ["index-dev"])
+
+
 def test_every_profile_has_a_job_file():
-    assert [p.stem for p in JOB_FILES] == ["gemma-4-31b", "qwen3.6-27b", "qwen3.8-27b"]
+    assert sorted(p.stem for p in JOB_FILES) == sorted(SPLITS)
 
 
 @pytest.mark.parametrize("path", JOB_FILES, ids=lambda p: p.name)
 def test_job_files_parse_with_unique_names_starting_at_stack(path):
-    assert job_names(path) == ["stack", "latency", "index"]  # final phase-2 run
+    assert job_names(path) == ["stack", *(f"collect-{split}" for split in SPLITS[path.stem])]
     assert path.stem in path.read_text()
 
 
-@pytest.mark.parametrize("profile", ["qwen3.6-27b", "qwen3.8-27b", "gemma-4-31b"])
-def test_index_job_resumes_the_box_run_tag_and_fails_on_holes(profile):
-    index = [line for line in (REMOTE / "jobs" / f"{profile}.txt").read_text().splitlines() if line.startswith("index:")]
-    assert f"--run-dir .cache/index-runs/{profile}/$(cat .cache/remote/run_tag)" in index[0]
-    assert " --strict" in index[0]
+@pytest.mark.parametrize("path", JOB_FILES, ids=lambda p: p.name)
+def test_collect_jobs_run_their_split_for_their_profile(path):
+    jobs = dict(line.split(": ", 1) for line in path.read_text().splitlines() if line and not line.startswith("#"))
+    for split in SPLITS[path.stem]:
+        assert jobs[f"collect-{split}"].endswith(f"scripts/collect.py --profile {path.stem} --split {split}")
 
 
 @pytest.mark.parametrize("path", JOB_FILES, ids=lambda p: p.name)
@@ -50,8 +56,20 @@ def test_gpu_jobs_bring_the_stack_back_first(path):
 
 def test_job_commands_name_only_their_own_profile():
     for path in JOB_FILES:
-        others = [p.stem for p in JOB_FILES if p != path]
-        assert not [o for o in others if o in path.read_text()], path
+        named = set(re.findall(r"(?:qwen|gemma)[\w.-]*\w", path.read_text()))
+        assert named == {path.stem}, path
+
+
+def test_stack_patch_installs_the_rejection_sampler(tmp_path):
+    """Compose mounts docker/vllm/rejection_sampler.py over the image's file; boxes copy it the same way."""
+    target = tmp_path / "vllm" / "v1" / "worker" / "gpu" / "spec_decode"
+    target.mkdir(parents=True)
+    (tmp_path / "vllm" / "__init__.py").write_text("")
+    (target / "rejection_sampler.py").write_text("stock\n")
+    env = os.environ | {"PYTHONPATH": str(tmp_path)}
+    subprocess.run(["bash", str(REMOTE / "stack.sh"), "patch-vllm"], env=env, check=True, capture_output=True)
+    patched = REMOTE.parents[1] / "docker" / "vllm" / "rejection_sampler.py"
+    assert (target / "rejection_sampler.py").read_text() == patched.read_text()
 
 
 def queue(tmp_path, jobs: str, name: str = "p") -> subprocess.CompletedProcess:

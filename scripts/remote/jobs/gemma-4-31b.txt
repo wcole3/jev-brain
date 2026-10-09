@@ -1,5 +1,4 @@
 # gemma-4-31b box queue: one `name: command` per line, run in order from the repo root by queue.sh.
-# Final phase-2 run: latency at the shipped defaults on an idle stack, then the full Index (stack up is a no-op when healthy).
+# DS-031 recut index-dev on 0.3; recollected with DS-005 stage 2.
 stack: bash scripts/remote/stack.sh up gemma-4-31b
-latency: bash scripts/remote/stack.sh up gemma-4-31b && uv run python scripts/latency.py --profile gemma-4-31b
-index: bash scripts/remote/stack.sh up gemma-4-31b && uv run python scripts/evaluate.py index --profile gemma-4-31b --shards 4 --run-dir .cache/index-runs/gemma-4-31b/$(cat .cache/remote/run_tag) --strict
+collect-index-dev: bash scripts/remote/stack.sh up gemma-4-31b && uv run python scripts/collect.py --profile gemma-4-31b --split index-dev

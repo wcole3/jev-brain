@@ -1,6 +1,7 @@
 import json
 
 import pytest
+import yaml
 
 from gateway.config import ROOT, Settings, read_env_file
 from tests.helpers import PROFILES
@@ -132,3 +133,19 @@ def test_shipped_qwen_calibration_is_stamped_for_the_profiles_block(name, block)
     for layout in ("decider_chat", "header", "question_first"):
         stamp = json.loads(s.calibration_path(layout).read_text())["stamp"]
         assert stamp["prefix_block"] == s.prefix_block
+
+
+QUANTIZED_QWEN = ["qwen3.8-27b-fp8", "qwen3.8-27b-nvfp4", "qwen3.6-27b-fp8"]
+
+
+@pytest.mark.parametrize("name", QUANTIZED_QWEN)
+def test_quantized_mtp_profiles_force_bf16_kv(name):
+    env = read_env_file(ROOT / "profiles" / f"{name}.env")
+    assert '"method":"mtp"' in env["EXTRA_ARGS"]
+    assert "--kv-cache-dtype bfloat16" in env["EXTRA_ARGS"]
+    assert env["VLLM_USE_DEEP_GEMM"] == "0"
+
+
+def test_compose_passes_deep_gemm_with_default():
+    vllm_env = yaml.safe_load((ROOT / "compose.yaml").read_text())["services"]["vllm"]["environment"]
+    assert vllm_env["VLLM_USE_DEEP_GEMM"] == "${VLLM_USE_DEEP_GEMM:-1}"

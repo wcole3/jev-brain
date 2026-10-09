@@ -23,6 +23,8 @@ services:
       CHAT_TEMPLATE: ${CHAT_TEMPLATE:-}
       CHAT_TEMPLATE_KWARGS: ${CHAT_TEMPLATE_KWARGS:-}
       EXTRA_ARGS: ${EXTRA_ARGS:-}
+      # 0 in quantized profiles (DeepGEMM crashes on sm_120).
+      VLLM_USE_DEEP_GEMM: ${VLLM_USE_DEEP_GEMM:-1}
       VLLM_API_KEY: ${VLLM_API_KEY:-}
       HF_HUB_OFFLINE: "1"
     volumes:

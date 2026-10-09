@@ -365,8 +365,10 @@ Items 2, 3 and 5 are done ([report](../results/archive/qwen3.6-27b/2026-10-03T00
 ([1-what-is-jev.md](../1-what-is-jev.md)). Jev's per-row answers stay in `.cache/jev-results/`.
 
 **Refit after any model, precision or layout change.** NVFP4 made reflex's calibration ~50%
-worse ([5-combined-server.md](../5-combined-server.md)), so FP8/NVFP4 profiles (DS-005) or
-DS-008's prompt padding would each need their own fit.
+worse ([5-combined-server.md](../5-combined-server.md)). Our FP8/NVFP4 profiles (DS-005) each
+have their own fit; on `header` their temperatures land within 0.06 of bf16 and eval ECE
+within ~0.01 ([results](../results/ds-005/README.md)). DS-008's prompt padding needed its own
+fit too (DS-029).
 
 ## Caveats
 

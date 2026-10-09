@@ -3,9 +3,9 @@
 What does quantizing the weights or the KV cache cost `/v1/systemone` in accuracy and
 calibration, and what does it buy? Owner goals: **Gemma KV headroom** and **Qwen decision
 latency and throughput**. Measured 2026-10-08/09 on one RTX PRO 6000 (sm_120) with vLLM
-v0.30.0. This report gives the Stage 1 screen; Stage 2 (collect + calibrate per picked
-profile) is planned in
-[2026-10-09-ds-005-stage2.md](../../superpowers/plans/2026-10-09-ds-005-stage2.md).
+v0.30.0. This report gives the Stage 1 screen and the Stage 2 calibration of the picked profiles
+(plan:
+[2026-10-09-ds-005-stage2.md](../../superpowers/plans/2026-10-09-ds-005-stage2.md)).
 
 ## Short answer (Stage 1 screen, all arms at T = 1)
 
@@ -24,7 +24,11 @@ profile) is planned in
     24/100 rows), a systematic tilt rather than a general gain.
 - **fp8 KV alone on Gemma moves probabilities least** (mean |Δp| ≤ 0.001, 0.7% flips), but
   each fp8-KV arm has a few flips whose bf16 top-two gap was near 1.0.
-- **Not measured yet:** calibrated ECE (Stage 2) and the bf16 restart-noise floor (DS-028).
+- **Calibrated (Stage 2, below):** on the shipped `header` layout, every quantized profile
+  refits to choice and noul temperatures within 0.06 of its bf16 base. Eval accuracy is
+  within 0.008 per type and choice/noul ECE within about 0.01. Two gate outcomes differ (below).
+- **Not measured yet:** the bf16 restart-noise floor (DS-028) and full Index runs on the
+  quantized profiles.
 
 ## Setup
 
@@ -118,11 +122,82 @@ setting (DS-026), so it compares arms, not real maximum context.
 - Label tables match the bf16 tables exactly. The FP8 checkpoint also quantizes the MTP
   head, which costs ~2 points of draft acceptance.
 
+## Stage 2: calibrated profiles (2026-10-09)
+
+The four arms the owner picked became profiles (`qwen3.8-27b-fp8`, `qwen3.8-27b-nvfp4`,
+`qwen3.6-27b-fp8`, `gemma-4-31b-fp8`).
+- **Collection:** each collected the calib (5,547) and eval (8,517) splits on its own
+  rented vast.ai RTX PRO 6000 box, with the same ok/unsupported counts as bf16.
+- **Fit:** `scripts/calibrate.py` fitted the temperatures on calib and judged them on eval.
+- **Table:** shows the shipped `header` layout. The other layouts are in each calibration
+  summary.
+- **Columns:** accuracy is per question type on eval. ECE is eval, before the fit (T = 1) →
+  after.
+
+| profile | choice acc | choice ECE | choice T | score ECE | score T | noul acc | noul ECE | noul T | b | JevBench p50 / p95 ms* | weights / KV GiB* | KV tokens* |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| qwen3.8-27b (bf16) | 0.824 | 0.041 → 0.045 | 1.536 | 0.135 → 0.182 | 1.775 pooled | 0.889 | 0.035 → 0.029 | 0.963 | 0 | 99 / 279 | 51.0 / 29.6 | 436,397 |
+| qwen3.8-27b-fp8 | 0.822 | 0.047 → 0.044 | 1.517 | 0.149 → 0.149 | 1.000 (gate: none) | 0.890 | 0.031 → 0.027 | 0.959 | 0 | 93 / 222 | 28.1 / 52.6 | 774,967 |
+| qwen3.8-27b-nvfp4 | 0.816 | 0.063 → 0.026 | 1.597 | 0.133 → 0.163 | 1.830 pooled | 0.892 | 0.036 → 0.033 | 0.963 | 0 | 93 / 343 | 19.8 / 60.3 | 888,079 |
+| qwen3.6-27b (bf16) | 0.817 | 0.079 → 0.033 | 1.627 | 0.181 → 0.199 | 1.957 pooled | 0.895 | 0.040 → 0.024 | 1.281 | 0 | 107 / 289 | 51.0 / 29.6 | 436,397 |
+| qwen3.6-27b-fp8 | 0.812 | 0.087 → 0.034 | 1.632 | 0.189 → 0.209 | 1.974 pooled | 0.892 | 0.039 → 0.027 | 1.286 | 0 | 104 / 250 | 28.1 / 52.6 | 774,967 |
+| gemma-4-31b (bf16) | 0.830 | 0.167 → 0.079 | 4.263 | 0.324 → 0.170 | 5.603 pooled | 0.884 | 0.115 → 0.051 | 7.609 | 0 | 60 / 300 | 59.0 / 24.3 | 86,955 |
+| gemma-4-31b-fp8 | 0.832 | 0.165 → 0.076 | 4.269 | 0.322 → 0.178 | 5.570 pooled | 0.886 | 0.111 → 0.053 | 7.571 | 0 | 43 / 207 | 31.7 / 51.4 | 284,529 |
+
+\* Stage 1 screen, uncalibrated; KV tokens at each profile's `MAX_MODEL_LEN` (65,536 for
+Gemma, 262,144 for Qwen).
+
+- **Quantization barely changes the fit on `header`.** Choice T moves by at most 0.06 and
+  noul T by at most 0.04, against each profile's bf16 base. Eval accuracy moves by at most
+  0.008 per type.
+- **Gemma FP8, decider_chat:** the gate picked the pooled T (5.36) for choice where bf16 Gemma
+  ships its fitted T (4.12). ECE and accuracy there match bf16 within 0.01.
+- **Score T on Qwen3.8 FP8 stays at 1.** The gate found that neither the fitted nor the
+  pooled T improved eval ECE (0.149 either way). The bf16 base ships its pooled T 1.775,
+  which raises eval ECE from 0.135 to 0.182 under the same rule.
+- **Noul offset b in other layouts:**
+  - Gemma FP8 ships b in decider_chat (−0.66) and question_first (−0.51), as bf16 Gemma does
+    (−0.64, −0.46).
+  - Qwen3.6 FP8 doesn't ship b in question_first. Its accuracy gain (+0.015) has a 95%
+    interval touching 0, while bf16 Qwen3.6 ships b = 0.256 there.
+- **Calibration summaries:** `docs/results/archive/<profile>/2026-10-09T*-calibrate/summary.md`.
+
+## Recommendation
+
+The owner decides the defaults; these are the trade-offs as measured.
+
+**Gemma KV headroom: `gemma-4-31b-fp8`.**
+- **Gains:** 3.3× the KV tokens of bf16 (284,529 vs 86,955 at the same `MAX_MODEL_LEN`).
+  About 1.4× decision throughput and 1.7× chat decode. Calibration matches bf16 after its
+  own fit.
+- **Costs:** 2.6% of JevBench answers flip at T = 1. Most flips are one systematic tilt,
+  `panoramic:safety_severity` (+24 of 100 rows); elsewhere it is about neutral.
+- **Unmeasured:** the DS-017 context targets (131k / 262k), restart noise (DS-028), and a
+  full Index run. That run matters if this becomes the DS-030 submission.
+
+**Qwen decision latency: FP8 (`qwen3.8-27b-fp8`, `qwen3.6-27b-fp8`).**
+- **Gains:** about 1.4× decision throughput, a lower JevBench p95, about 1.4-1.5× chat, and
+  1.8× KV.
+- **Costs:** the smallest drift of all arms (0.6-0.7% flips, max |Δp| 0.13-0.25), and
+  calibration matches bf16. The FP8 MTP head costs about 2 points of draft acceptance
+  (Qwen3.6).
+
+**Qwen chat speed: `qwen3.8-27b-nvfp4`.**
+- **Gains:** about 2.1× chat decode and 2.0× KV. Calibrated choice ECE is the best of the
+  Qwen3.8 profiles (0.026).
+- **Costs:**
+  - the most drift (2.6% flips, max |Δp| 0.39), consistent with its NVFP4 `lm_head`;
+  - no single-worker decision speed-up, and a worse JevBench p95 (343 ms).
+- **MTP acceptance:** measured for B2 only, on a different capture from C0/C1, so not
+  comparable.
+
 ## Caveats
 
 - **One run per arm, no noise floor.** There is no bf16 restart-to-restart measurement for
   Gemma or Qwen3.8 (DS-028), so small flip counts may sit within restart noise.
-- **Uncalibrated.** ECE here is at T = 1; calibrated ECE before/after refit is Stage 2.
+- **Stage 1 is uncalibrated.** Its ECE is at T = 1; Stage 2 has the calibrated numbers.
+- **Stage 2 hosts:** collects ran on four different rented hosts. bf16 noise (~0.03) applies
+  between them and this machine.
 - **MTP acceptance:**
   - B0 and B1 counters were lost when their containers were replaced;
   - B2's 41% (mean length 2.23, 492 drafts) came from a different capture than C0/C1 and

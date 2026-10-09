@@ -28,8 +28,8 @@ vLLM v0.30.0 source, our startup logs and our bench results. Units: 1 KiB = 1,02
 - **What this means for us:**
   - Qwen has memory to spare and is limited by compute, made worse by the coarse 784-token
     sharing ([prompt-sharing.md](prompt-sharing.md)).
-  - Gemma is limited by KV memory. An fp8 KV cache (DS-005) should roughly double its
-    capacity (estimate).
+  - Gemma is limited by KV memory. fp8 KV doubles its reported capacity; FP8 weights plus
+    fp8 KV give 3.3× (DS-005, measured).
 
 ## 1. Three ways a layer remembers the past
 
@@ -149,10 +149,12 @@ request × `max_model_len`, not token slots. The worked checks are in
 | 32k-token chat requests (vLLM's figure) | 13.85× | 1.54× |
 
 **Gemma is KV-bound, and there are two levers:**
-- **fp8 KV cache (DS-005).** Weights take ~57 GiB (30.7B × 2 bytes); the pool is
-  ~24 GiB. fp8 halves every attention page (880 → 440 KiB per token), so capacity should
-  roughly double to ~100k reported tokens (estimate). It changes the logprobs, so it
-  needs a decision-drift check and a refitted temperature.
+- **fp8 KV cache (DS-005, measured 2026-10-08).** Weights take ~57 GiB (30.7B × 2 bytes); the pool is
+  ~24 GiB. Plain `fp8` doubles the reported tokens (86,955 → 174,147 at `MAX_MODEL_LEN`
+  65,536); `fp8_per_token_head` gives 1.55× (its scales cost space) but skips the fp8 query
+  cast. FP8 weights free ~27 GiB more: FP8 + `fp8_per_token_head` reaches 284,529 (3.3×).
+  It needs its own calibration, which lands within ~0.01 of bf16
+  ([ds-005 results](../results/ds-005/README.md)).
 - **Smaller prefill chunks.** The DS-007 `--max-num-batched-tokens` lever also shrinks
   the sliding-window reservation. At 2,048 it would be ~205 KiB per reported token,
   ~2.5× the capacity (formula estimate, untested).

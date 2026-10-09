@@ -271,7 +271,7 @@ boundary (estimate).
 
 | | fp8 KV effect | Status |
 |---|---|---|
-| Gemma 4 31B | Every attention page halves (880 → 440 KiB per token), so capacity should roughly double (estimate) | DS-005; needs a drift check and a refitted temperature ([calibration.md §7](calibration.md)) |
+| Gemma 4 31B | Every attention page halves (880 → 440 KiB per token): plain `fp8` 2.0× reported tokens, `fp8_per_token_head` 1.55×, 0.7% JevBench flips (measured) | DS-005: `gemma-4-31b-fp8` profile (FP8 weights + `fp8_per_token_head`, 3.3×), calibrated ([results](../results/ds-005/README.md)) |
 | Hybrid Qwen | Attention page halves but the fp32 state doesn't, so the block doubles to 1,568 tokens (formula): coarser sharing, and Qwen isn't short of memory | Only hurts, unless the state shrinks too |
 | Any profile with MTP | #49010: fp8/nvfp4 KV with MTP corrupts output on sm_120 (our GPU) | DS-004 keeps the KV cache bf16 |
 

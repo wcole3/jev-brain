@@ -129,3 +129,13 @@ def test_readme_replacement_keeps_outside_text_byte_identical():
     out = report.replace_between_markers(text, "| new |\n")
     assert out.startswith(before + report.START) and out.endswith(report.END + after)
     assert "old table" not in out and "| new |" in out
+
+
+def test_phase2_table_shows_0_3_public_and_full(tree):
+    shipped = {"layout": "header", "orders": "identity", "T": T1, "b": 0.0, "version": 3}
+    row = {"profile": "gemma-4-31b", "shipped": shipped, "index": 61.6, "ece": 0.1, "coverage": 1.0, "run": None,
+           "median_ms": None, "p95_ms": None, "latency_run": None, "latency_differs": False, "stale": False}
+    lines = report.markdown([row]).splitlines()
+    assert lines[0].startswith("| entry | Index | Full |")
+    assert lines[2].startswith("| **gemma-4-31b** | 61.60 | — |")
+    assert lines[3].startswith("| Decider chat · Gemma-4-31B | 57.79 | 57.62 |")

@@ -29,22 +29,25 @@ Choice is level with Jev; most of the gap is in noul and score. Details and cave
 [docs/results/archive/jevbench-vs-jev.md](docs/results/archive/jevbench-vs-jev.md).
 
 Phase 2, decision index. Our latest full Index and latency run per profile, next to the
-matching Decision Index 0.2.1 board entries (`scripts/phase2_report.py --readme` rebuilds
-the table). ECE and latency are measured differently from the board's; see the run summaries:
+matching Decision Index 0.3 board entries (`scripts/phase2_report.py --readme` rebuilds
+the table). Index is the 0.3 public index; Full adds the private parts only the maintainers
+run ([index-0.3-rescore.md](docs/results/index-0.3-rescore.md)). ECE and latency are measured
+differently from the board's; see the run summaries:
 
 <!-- phase2-table -->
-| entry | Index | ECE | coverage | median ms | p95 ms | run layout / orders | run calibration | shipped now | latency run |
-|---|---|---|---|---|---|---|---|---|---|
-| **qwen3.6-27b** | 55.92 | 0.042 | 1.000 | 95.7 | 583.2 | header / identity | T=1.63/1.96/1.28 | header / identity / v6 | 2026-10-03T142353Z-latency |
-| Decider chat · Qwen3.6-27B | 51.35 | 0.021 | board | 83.6 | n/a | | | | |
-| **gemma-4-31b** | 60.61 | 0.122 | 1.000 | 105.7 | 614.8 | header / identity | T=4.26/5.6/7.61 | header / identity / v3 | 2026-10-04T014354Z-latency |
-| Decider chat · Gemma-4-31B | 57.33 | 0.047 | board | 108.5 | n/a | | | | |
-| **qwen3.8-27b** | 56.01 | 0.023 | 1.000 | 94.2 | 580.3 | header / identity | T=1.54/1.78/0.963 | header / identity / v3 | 2026-10-04T024731Z-latency |
-| simple-jev · Qwen3.8-27B | 55.70 | 0.113 | board | 373.0 | n/a | | | | |
-| reflex 27B | 52.20 | 0.024 | board | 108.0 | n/a | | | | |
-| Jevfire (Qwen3.8-27B-FP8) | 49.40 | 0.052 | board | 89.6 | n/a | | | | |
+| entry | Index | Full | ECE | coverage | median ms | p95 ms | run layout / orders | run calibration | shipped now | latency run |
+|---|---|---|---|---|---|---|---|---|---|---|
+| **qwen3.6-27b** † | 56.51 | — | 0.047 | 1.000 | 103.9 | 709.5 | header / identity | T=1.63/1.96/1.28 | header / identity / v8 | 2026-10-05T064320Z-latency |
+| Decider chat · Qwen3.6-27B | 51.57 | 51.25 | 0.021 | board | 83.6 | n/a | | | | |
+| **gemma-4-31b** | 61.60 | — | 0.119 | 1.000 | 112.2 | 798.8 | header / identity | T=4.26/5.6/7.61 | header / identity / v3 | 2026-10-05T070924Z-latency |
+| Decider chat · Gemma-4-31B | 57.79 | 57.62 | 0.047 | board | 108.5 | n/a | | | | |
+| **qwen3.8-27b** † | 56.60 | — | 0.024 | 1.000 | 104.9 | 709.2 | header / identity | T=1.54/1.78/0.963 | header / identity / v5 | 2026-10-05T072716Z-latency |
+| simple-jev · Qwen3.8-27B | 56.05 | 51.79 | 0.113 | board | 373.0 | n/a | | | | |
+| reflex Qwen3.8-27B-FP8 (wide choice) | 52.27 | 51.40 | 0.024 | board | 108.3 | n/a | | | | |
+| Jevfire Qwen3.8-27B | 49.80 | 45.55 | 0.052 | board | 89.6 | n/a | | | | |
 
 - Calibration T is listed as choice/score/noul; b is the noul yes-offset.
+- † the run's layout, orders or calibration differ from what ships now (or the calibration file is newer).
 <!-- /phase2-table -->
 
 ## Requirements
@@ -272,7 +275,7 @@ To run them on a rented GPU box (vast.ai), see [docs/remote-gpu.md](docs/remote-
 ```bash
 uv run python scripts/index_suite.py setup     # pinned harness clone + venv in .cache/
 uv run python scripts/index_suite.py rebuild   # ~7 GB download, 17 GB scratch; HF token in secrets/.hf-token (HLE is gated)
-uv run python scripts/index_suite.py export    # scoreable 0.2.1 rows -> .cache/decision-index/rows-0.2.1.jsonl.gz
+uv run python scripts/index_suite.py export    # scoreable 0.3 rows -> .cache/decision-index/rows-0.3.jsonl.gz
 uv run python scripts/splits.py                # data/splits/*.json (committed)
 
 uv run python scripts/collect.py --profile qwen3.6-27b --split eval       # raw letter logprobs, stack up

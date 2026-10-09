@@ -19,3 +19,17 @@ def test_subset_and_incomplete_runs_get_no_parity_verdict():
     for reason in ("subset run", "run incomplete: 9000 rows"):
         parity = next(x for x in board.comparison("qwen3.6-27b", ours, reason) if x.startswith("Parity gate"))
         assert f"not judged ({reason})" in parity and "pass" not in parity and "MISS" not in parity
+
+
+def test_board_holds_0_3_public_index_and_full_score():
+    gemma = board.BOARD["decider-chat-gemma4-31b"]
+    assert (gemma["index"], gemma["full"]) == (57.79, 57.62)
+    assert "reflex-27b-v2" in board.MATCHES["qwen3.8-27b"]
+
+
+def test_comparison_shows_full_score_and_leaves_ours_blank():
+    lines = board.comparison("gemma-4-31b", {"index": 61.6, "ece": 0.1, "median_ms": 100.0, "coverage": 1.0})
+    head = [c.strip() for c in lines[0].strip("|").split("|")]
+    ours, entry = (dict(zip(head, [c.strip() for c in x.strip("|").split("|")])) for x in lines[2:4])
+    assert (ours["Index"], ours["Full"]) == ("61.60", "—")
+    assert (entry["Index"], entry["Full"]) == ("57.79", "57.62")

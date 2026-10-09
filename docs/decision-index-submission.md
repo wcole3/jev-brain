@@ -1,28 +1,32 @@
 # Submitting to the Decision Index
 
-Status **2026-10-04**: research done, nothing submitted. Revisit after the local JevBench and
-bench sweep. Raw scrapes of the board and methodology pages are in `.firecrawl/decision-index-submit/`
-(git-ignored).
+Status **2026-10-09**: updated for edition 0.3, nothing submitted. Preparation is tracked in DS-030
+(after DS-005 Stage 2 and DS-028). Raw scrapes are in `.firecrawl/decision-index-submit/` (0.2.1)
+and `.firecrawl/jdi/` (0.3), both git-ignored.
 
 ## Short answer
 
-- **Feasible.** Our three final 0.2.1 runs are complete:
-  - all 150,317 rows;
-  - stock runner at kit `87d4650`, which is still upstream HEAD;
+- **Feasible.** Our three final runs are complete on edition 0.3:
+  - all 140,178 rows (the 0.2.1 runs plus the 2,638 rebuilt GSM8K rows, run under each run's
+    own settings; [rescore](results/index-0.3-rescore.md));
+  - stock runner at kit `9eb2dbe` (edition 0.3);
   - suite hashes match;
   - one RTX PRO 6000, the board's card.
 - **Not ready.** Nothing is packaged or published yet. The serving code is private and has no
   licence, and the disclosures are unwritten.
-- **Timing.** Intake has been paused since 2026-09-28 for edition 0.3, which adds private held-out
-  benchmarks. On 2026-10-03 the maintainer said 0.2.1 runs will be folded into 0.3. About 35
-  submission PRs are waiting.
+- **Edition 0.3 is live (2026-10-06).** The Full score is 20% public, 50% private tests of the
+  same skills, 30% private new-domain tasks. The maintainers run the private parts on submitted
+  models, so they must be able to start our server. Stock-Qwen entries lose 8-17 points on the
+  new-domain part, Gemma ones about 7 (DS-030).
 - **Start with qwen3.6.** Its layout choice is the cleanest (see [Selection risk](#selection-risk)).
 
 | Profile | Run | Index | ECE | Single-client latency (median / p95) |
 |---|---|---|---|---|
-| qwen3.6-27b, header | [2026-10-03T140831Z-vast](results/qwen3.6-27b/2026-10-03T140831Z-vast-index/summary.md) | 55.92 | 0.042 | 95.7 / 583 ms |
-| qwen3.8-27b, header | [2026-10-04T022907Z-vast](results/qwen3.8-27b/2026-10-04T022907Z-vast-index/summary.md) | 56.01 | 0.023 | 94.2 / 580 ms |
-| gemma-4-31b, header | [2026-10-04T013002Z-vast](results/gemma-4-31b/2026-10-04T013002Z-vast-index/summary.md) | 60.61 | 0.122 | 105.7 / 615 ms |
+| qwen3.6-27b, header | [2026-10-03T140831Z-vast, 0.3](results/qwen3.6-27b/2026-10-09T164331Z-rescore-0.3-index/summary.md) | 56.51 | 0.047 | 95.7 / 583 ms |
+| qwen3.8-27b, header | [2026-10-04T022907Z-vast, 0.3](results/qwen3.8-27b/2026-10-09T164331Z-rescore-0.3-index/summary.md) | 56.60 | 0.024 | 94.2 / 580 ms |
+| gemma-4-31b, header | [2026-10-04T013002Z-vast, 0.3](results/gemma-4-31b/2026-10-09T164331Z-rescore-0.3-index/summary.md) | 61.60 | 0.119 | 105.7 / 615 ms |
+
+Index is the 0.3 public index (0.2.1: 55.92 / 56.01 / 60.61).
 
 ## How submission works
 
@@ -36,14 +40,15 @@ bench sweep. Raw scrapes of the board and methodology pages are in `.firecrawl/d
    ```
    | Model | Decision Index | Results | Engine and exact code | Hardware | Declared capacity limits |
    |---|---:|---|---|---|---|
-   | <name> (`<hf repo>` @ `<rev8>`, bf16) | **NN.NN** | [full run and scores](<dataset URL pinned to a commit>/runs/<name>/scores.json) | kit `http` engine, kit `87d4650` (edition 0.2.1); server <repo> `<commit>` | 1 x NVIDIA RTX PRO 6000 Blackwell; N runner processes against one server | Context N tokens; up to 255 options. Nothing truncated, no options removed. X of 150,317 `ok`; Y `unsupported` (...). |
+   | <name> (`<hf repo>` @ `<rev8>`, bf16) | **NN.NN** | [full run and scores](<dataset URL pinned to a commit>/runs/<name>/scores.json) | kit `http` engine, kit `9eb2dbe` (edition 0.3); server <repo> `<commit>` | 1 x NVIDIA RTX PRO 6000 Blackwell; N runner processes against one server | Context N tokens; up to 255 options. Nothing truncated, no options removed. X of 140,178 `ok`; Y `unsupported` (...). |
    ```
 
 4. **The maintainer checks it:**
    - he re-scores our files;
-   - he measures latency himself on one RTX PRO 6000, one request at a time; the median must be
-     ≤ 1,000 ms;
-   - he reruns a sample and compares answers.
+   - he measures latency himself on one RTX PRO 6000, one request at a time; the median, mean
+     and 80th percentile must each be ≤ 1,000 ms;
+   - he reruns a private held-out sample and compares answers;
+   - he runs the two private parts of the Full score himself.
 
    If it passes, he adds the entry to the board (the HF Space) and closes the PR. No PR has ever
    been merged.
@@ -84,7 +89,7 @@ bench sweep. Raw scrapes of the board and methodology pages are in `.firecrawl/d
 | HF dataset with a pinned link | missing | Token is in `secrets/.hf-token`. No dataset yet. |
 | Public serving code, pinned commit, licence | missing | `wcole3/jev-brain` is private with no LICENSE. The maintainer must run it for latency, validation and 0.3. Without this, the entry can't be checked. |
 | Exact serve commands for one RTX PRO 6000 | partial | Pieces are in the README, `compose.yaml` and `profiles/*.env`. Write one self-contained block. Keep vLLM port 8000 unpublished. |
-| Latency ≤ 1,000 ms | have | latency-v1 replica, table above. Don't quote the 329–365 ms in `scores.json`: that ran with 4 shards concurrent. |
+| Latency ≤ 1,000 ms (median, mean, p80) | have | latency-v1 replica, table above; 2026-10-05 runs: mean 264-302 ms, p80 308-383 ms. Don't quote the 329–365 ms in `scores.json`: that ran with 4 shards concurrent. |
 | Hardware | have | 1× RTX PRO 6000 Blackwell (vast), 600 W, bf16, vLLM 0.30.0, 4 kit runners against one gateway. |
 | Capacity limits | have | 32,768-token decision cap, 255 labels. Unsupported rows: qwen3.6 7, qwen3.8 7, gemma 11, all ToolRet/BRIGHT over the cap. |
 | Calibration disclosure | text to write | T fitted on our calib split only: JevBench gold `fcec62f` + DecisionBench `071b7b2`. Index states are kept out of calib. No training. No Jev outputs used. |
@@ -143,8 +148,9 @@ Background: [M3 recommendations and Index confirmation](results/archive/m3-recom
 
 1. The owner decides the items above.
 2. Gzip `merged/results.jsonl`.
-3. Re-score the gz with the pinned harness (`score --edition 0.2.1`) and confirm `scores.json` is
-   identical. CPU only.
+3. Re-score the gz with the pinned harness (`score --edition 0.3`) and confirm `scores.json` is
+   identical. CPU only. The merged file still holds the retired ForecastBench and old GSM8K rows;
+   the 0.3 scorer skips them.
 4. Assemble `runs/<name>/`:
    - the result files;
    - the 4 shards' `environment.json` and `status.json`;
@@ -160,4 +166,4 @@ Background: [M3 recommendations and Index confirmation](results/archive/m3-recom
 8. Create the HF dataset, upload, and note the commit for the pinned link.
 9. Fork, add the `submissions/README.md` row, and open the PR. This posts to GitHub, so it is the
    owner's action.
-10. Watch the PR and the Space. When 0.3 ships, check whether it needs a rerun or rescore.
+10. Watch the PR and the Space.

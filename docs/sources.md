@@ -25,7 +25,7 @@ Detailed research notes with per-claim citations are in [appendix/](appendix/).
 ## Community tracker and benchmark
 
 - Jev Decision Index (leaderboard + news): https://huggingface.co/spaces/multimodalart/jev-decision-index
-- Leaderboard data used here: `data/index.json` in that Space (edition 0.2.1)
+- Leaderboard data used here: `data/index.json` in that Space (edition 0.3 since 2026-10-06; 0.2.1 values in `data/index-v0.2.1.json`)
 - Harness: https://github.com/apolinario/decision-index
 - Awesome lists: https://github.com/AnotiaWang/awesome-jev, https://github.com/hellogumbo/awesome-jev
 

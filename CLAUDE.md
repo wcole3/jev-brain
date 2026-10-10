@@ -3,7 +3,8 @@
 **jev-brain:** one vLLM process serves OpenAI chat and a Jev-compatible `/v1/systemone`
 decision endpoint from the same model, behind a small FastAPI gateway.
 
-- **Running, testing, benchmarking, security:** `README.md`.
+- **Running, models, results, security:** `README.md`. **Tests, benchmarks, evaluation:**
+  `docs/development.md`.
 - **Deep dives** (how things work, with our measurements): `docs/background/`.
 - **Research:** `docs/README.md`. Jev wire format in `docs/1-what-is-jev.md`, answer
   semantics and `confidence` formulas in `docs/6-answer-compatibility.md`.
@@ -28,7 +29,8 @@ decision endpoint from the same model, behind a small FastAPI gateway.
 ## Commands
 
 `uv run pytest -q` (unit), `uv run pytest tests/parity -q`, `uv run pytest -m live tests/live -v`
-(stack up and idle), `uv run ruff check .`. Everything else is in `README.md`.
+(stack up and idle), `uv run ruff check .`. `make help` lists the make targets. Everything else is
+in `README.md` and `docs/development.md`.
 
 ## Architecture
 

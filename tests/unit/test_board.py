@@ -2,7 +2,8 @@ from scripts import board
 
 
 def test_every_profile_has_a_matching_entry_and_qwen36_has_the_parity_gate():
-    assert set(board.MATCHES) == {"qwen3.6-27b", "qwen3.8-27b", "gemma-4-31b"}
+    assert set(board.MATCHES) == {"qwen3.6-27b", "qwen3.8-27b", "gemma-4-31b", "qwen3.6-27b-fp8", "qwen3.8-27b-fp8",
+                                  "qwen3.8-27b-nvfp4", "gemma-4-31b-fp8"}
     assert all(e in board.BOARD for entries in board.MATCHES.values() for e in entries)
     assert board.PARITY["qwen3.6-27b"] == ("decider-chat-qwen3.6-27b", 1.5)
 
@@ -33,3 +34,10 @@ def test_comparison_shows_full_score_and_leaves_ours_blank():
     ours, entry = (dict(zip(head, [c.strip() for c in x.strip("|").split("|")])) for x in lines[2:4])
     assert (ours["Index"], ours["Full"]) == ("61.60", "—")
     assert (entry["Index"], entry["Full"]) == ("57.79", "57.62")
+
+
+def test_quantized_profiles_compare_against_their_bf16_matches():
+    ours = {"index": 55.5, "ece": 0.03, "median_ms": 80.0, "coverage": 1.0}
+    names = [line.split(" | ")[0] for line in board.comparison("qwen3.8-27b-nvfp4", ours)[3:]]
+    assert names == ["| simple-jev · Qwen3.8-27B", "| reflex Qwen3.8-27B-FP8 (wide choice)", "| Jevfire Qwen3.8-27B",
+                     "| Jev (hosted API, latency over HTTPS)"]

@@ -15,11 +15,15 @@ BOARD = {
     "jevfire-uncapped": {"name": "Jevfire Qwen3.8-27B", "index": 49.8, "full": 45.55, "ece": 0.0521,
                          "median_ms": 89.6},
 }
-MATCHES = {
+BF16_MATCHES = {
     "qwen3.6-27b": ["decider-chat-qwen3.6-27b"],
     "gemma-4-31b": ["decider-chat-gemma4-31b"],
     "qwen3.8-27b": ["simple-jev-qwen3.8-27b", "reflex-27b-v2", "jevfire-uncapped"],
 }
+# Quantized profiles (DS-005) compare against the same board entries as their bf16 base.
+QUANTIZED = {"qwen3.6-27b-fp8": "qwen3.6-27b", "qwen3.8-27b-fp8": "qwen3.8-27b", "qwen3.8-27b-nvfp4": "qwen3.8-27b",
+             "gemma-4-31b-fp8": "gemma-4-31b"}
+MATCHES = BF16_MATCHES | {name: BF16_MATCHES[base] for name, base in QUANTIZED.items()}
 PARITY = {"qwen3.6-27b": ("decider-chat-qwen3.6-27b", 1.5)}  # same prompt token for token as decider
 
 

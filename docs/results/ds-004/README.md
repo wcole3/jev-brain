@@ -61,7 +61,7 @@ streaming chats running.
 No flip in any comparison had a baseline top-two gap above 0.10. Drift across restarts
 (0.079 on stock Qwen3.6) is much larger than within one instance (0.027 under load), so
 every MTP comparison here, being across restarts, is judged against the restart figure.
-That noise is tracked in DS-028.
+That noise is measured in [DS-028](../ds-028/README.md): ~0.03 p99, up to 0.15 on rare rows, MTP on or off.
 
 ## What each finding rests on
 

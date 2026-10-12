@@ -1,5 +1,8 @@
 # jev-brain
 
+A setup specifically for users with a single gpu that want to run both chat and
+ decision APIs at the same time.
+
 One GPU, one model, two APIs. A single vLLM process serves normal OpenAI-style chat,
 and a small gateway adds a Jev-compatible `/v1/systemone` decision endpoint from the
 same loaded model.
@@ -12,6 +15,41 @@ Background research is in [docs/README.md](docs/README.md), the design in
 [docs/superpowers/specs/](docs/superpowers/specs/2026-09-28-systemone-server-design.md).
 Tests, benchmarks, evaluation and the repository map are in
 [docs/development.md](docs/development.md).
+
+<details>
+<summary><b>Design highlights:</b> how a stock model emulates Jev</summary>
+
+- **Read the answer, don't generate it.** Each question becomes a multiple-choice prompt
+  that stops at `Answer: (`. vLLM runs one token (`max_tokens=1`) and returns the
+  log-probabilities of the option letters only. The model weights are unchanged, so chat
+  still works. [Inference technique](docs/4-inference-technique.md),
+  [decision readout](docs/background/decision-readout.md).
+- **Prompt format is data, not code.** Wording and part order live in `prompts/<layout>.toml`.
+  The default `header` layout puts the question list, then the state, then one question per
+  row, so every row of a request shares one long prefix.
+  [Prompt layouts](docs/background/prompt-layouts.md).
+- **Token-exact rows.** Rows are built piecewise from token ids, and each label letter must
+  be one token in context (checked by `scripts/build_labels.py`). Identical prefixes hit the
+  prefix cache. [Decision readout](docs/background/decision-readout.md).
+- **KV cache padding.** Hybrid Qwen caches its recurrent state only at block boundaries
+  (784 tokens, 800 with MTP). The Qwen profiles pad the shared prefix to the block size
+  (`PREFIX_PAD=front`, `PREFIX_BLOCK=800`), so each question row reuses the whole state
+  instead of recomputing the tail. [KV cache](docs/background/kv-cache.md),
+  [prompt sharing](docs/background/prompt-sharing.md).
+- **Calibrated probabilities.** A softmax over the letters with a fitted temperature T per
+  question type, plus a yes/no offset b for `noul`. Fits use JevBench gold labels, never
+  Jev outputs. [Calibration](docs/background/calibration.md),
+  [yes/no bias](docs/background/noul-bias.md).
+- **Jev-shaped answers.** `choice`, `score` and `noul` with Jev's fields and `confidence`
+  formulas. [Answer compatibility](docs/6-answer-compatibility.md).
+- **Chat and decisions share one GPU.** Decisions are all prefill and can starve chat
+  decode. Every profile caps long prefills; the Qwen profiles also use priority scheduling
+  and MTP, which speeds chat and needs our patched vLLM. [Prefill and decode](docs/background/prefill-and-decode.md),
+  [speculative decoding](docs/background/speculative-decoding-and-mamba.md).
+
+All deep dives: [docs/background/](docs/background/README.md).
+
+</details>
 
 ## Quick start
 
@@ -32,8 +70,8 @@ uv sync      # install the gateway, scripts and test dependencies
 Then four commands:
 
 ```bash
-make fetch PROFILE=qwen3.6-27b   # once per model, ~20-60 GB
-make up PROFILE=qwen3.6-27b      # ~4-10 min; waits until healthy
+make fetch PROFILE=qwen3.8-27b-fp8   # once per model, ~20-60 GB
+make up PROFILE=qwen3.8-27b-fp8      # ~4-10 min; waits until healthy
 make try                         # one decision + one streaming chat
 make down
 ```
@@ -144,7 +182,7 @@ Each recipe is one command; the profile file carries the flags. Calibration file
   DS-005). DeepGEMM off on sm_120.
 - Calibration: `data/gemma-4-31b-fp8/header/calibration.json`.
 
-## Results
+## Results (last updated 10-09-26)
 
 Decision Index 0.3. Our latest full Index and latency run per profile, next to the
 matching Decision Index 0.3 board entries (`make report` rebuilds the table; the raw command is

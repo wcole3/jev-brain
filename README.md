@@ -79,7 +79,7 @@ make down
 `make help` lists every target and profile.
 
 - **Ports:** the gateway listens on `127.0.0.1:9000` and vLLM on `127.0.0.1:8000`.
-  Clients talk to the gateway.
+g  Clients talk to the gateway. To serve your LAN, see Security.
 - **Start time:** up to ~10 minutes (weight load and graph capture); about 4 when the
   weights are still in memory from a recent run.
 - **Switching models:** `make up PROFILE=<other>` replaces the running stack.
@@ -334,10 +334,15 @@ needed.
   - Both services restart on failure (up to 3 times). A clean Docker restart leaves them
     stopped, but after a crash (e.g. WSL going down mid-run) Docker brings a running stack
     back on its own. Run `make down` if you need the GPU free.
-- **Before exposing the gateway beyond localhost:**
-  - set both keys;
-  - publish only the gateway port (edit its `127.0.0.1:9000:9000` binding);
-  - put a TLS proxy in front, since the gateway speaks plain HTTP.
+- **Serving the LAN:** set `GATEWAY_BIND` (default `127.0.0.1`; `0.0.0.0` or a LAN IP) and
+  optionally `GATEWAY_PORT` (default `9000`) in `.env`. Then:
+  - `make up` refuses a non-loopback bind until `GATEWAY_API_KEY` is set;
+  - set `VLLM_API_KEY` too, and keep vLLM's port 8000 on loopback;
+  - on WSL2, the bind alone doesn't reach the LAN: turn on mirrored networking, or add a
+    Windows `netsh interface portproxy` rule and a firewall rule for the port.
+- **TLS (planned):** the gateway speaks plain HTTP, so the key and traffic cross the LAN
+  in the clear. The intent is a TLS proxy in front (e.g. a Caddy service in compose);
+  until then, only bind beyond loopback on a network you trust.
 
 ## More
 

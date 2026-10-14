@@ -5,7 +5,8 @@ PROFILE ?=
 SHARDS ?= 4
 RUN_DIR ?=
 ARGS ?=
-GATEWAY = 127.0.0.1:9000
+# Where the running gateway is published (GATEWAY_BIND / GATEWAY_PORT), loopback when down.
+GATEWAY = $(or $(shell $(COMPOSE) port gateway 9000 2>/dev/null),127.0.0.1:9000)
 
 # down/logs/ps need no PROFILE: compose only needs env vars to interpolate, so use any profile.
 COMPOSE_PROFILE = $(or $(PROFILE),$(patsubst profiles/%.env,%,$(firstword $(wildcard profiles/*.env))))
@@ -32,6 +33,7 @@ fetch: need-profile ## Download the model weights (PROFILE)
 	uv run python scripts/fetch_model.py --profile $(PROFILE)
 
 up: need-profile ## Start or switch the stack, wait until healthy (PROFILE)
+	@$(COMPOSE) config --format json | uv run python scripts/check_bind.py
 	$(COMPOSE) up -d --build --wait --wait-timeout 2400
 	@curl -s --max-time 5 $(GATEWAY)/health; echo
 

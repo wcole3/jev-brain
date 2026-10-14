@@ -68,7 +68,7 @@ services:
       - ${HOME}/.cache/huggingface:/root/.cache/huggingface:ro
       - ./prompts:/app/prompts:ro
       - ./data:/app/data:ro
-    ports: ["127.0.0.1:9000:9000"]
+    ports: ["${GATEWAY_BIND:-127.0.0.1}:${GATEWAY_PORT:-9000}:9000"]
     healthcheck:
       test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:9000/health')"]
       interval: 10s

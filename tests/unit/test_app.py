@@ -12,7 +12,7 @@ from gateway import chat
 from gateway.app import create_app, load_engine
 from gateway.calibration import UNCALIBRATED
 from gateway.governor import Governor
-from tests.helpers import QUICKSTART, SSE, STATE, fake_vllm
+from tests.helpers import QUICKSTART, SSE, STATE, fake_vllm, vision_for
 
 NOUL = {"state": "s", "questions": {"q": {"type": "noul", "instructions": "ok?"}}}
 CHAT = {"model": "qwen3.6-27b", "messages": [{"role": "user", "content": "hi"}]}
@@ -110,6 +110,38 @@ def test_health(client):
     assert body["systemone_max_len"] == s.systemone_max_len
     assert (body["governor_duty"], body["governor_wave"], body["chats_decoding"]) == (s.governor_duty, s.governor_wave, 0)
     assert body["calibration"] == {k: c.as_dict() for k, c in client.app.state.engine.calibration.items()}
+
+
+def test_health_reports_images(client):
+    body = client.get("/health").json()
+    assert (body["systemone_images"], body["mm_processor_kwargs"]) == (False, {})
+
+
+@pytest.fixture
+def seeing(qwen_settings, qwen_tok, vllm, monkeypatch):
+    """A gateway whose engine reads images (qwen's placeholder, 100 soft tokens per image)."""
+    monkeypatch.setattr(gateway.app, "load_vision", lambda s: vision_for(qwen_tok))
+    with TestClient(create_app(qwen_settings, vllm)) as c:
+        yield c
+
+
+def test_url_images_are_400(seeing):
+    r = seeing.post("/v1/systemone", json=NOUL | {"images": ["https://x/a.png"]})
+    assert r.status_code == 400
+    assert "images[0]" in r.json()["error"]["message"]
+
+
+def test_images_on_a_text_profile_are_400(client):
+    r = client.post("/v1/systemone", json=NOUL | {"images": ["https://x/a.png"]})
+    assert r.status_code == 400
+    assert r.json() == {"error": {"message": "this profile serves text only"}}
+
+
+def test_bodies_over_20_mb_are_400(client, sent):
+    r = client.post("/v1/systemone", content=b" " * 20_000_001, headers={"content-type": "application/json"})
+    assert r.status_code == 400
+    assert r.json() == {"error": {"message": "request body over 20 MB"}}
+    assert sent == []
 
 
 CHUNKS = [b'data: {"choices": []}\n\n'] * 3

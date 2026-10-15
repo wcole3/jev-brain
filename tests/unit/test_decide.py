@@ -1,18 +1,36 @@
+import base64
 import dataclasses
+import io
 import math
+import threading
 
+import PIL.Image
 import pytest
 
+import gateway.decide
 from gateway.calibration import Calibration, softmax
 from gateway.decide import answers_for, blend, build_batch, decide, probabilities, read_rows
+from gateway.images import decode_image
 from gateway.orders import option_orders
 from gateway.padding import Padding, newline_token
-from gateway.schema import RequestError, SystemOneRequest
-from tests.helpers import QUICKSTART, STATE
+from gateway.schema import ImageError, RequestError, SystemOneRequest
+from tests.helpers import QUICKSTART, STATE, vision_for
 
 
 def request(**kw):
     return SystemOneRequest.model_validate({"state": STATE, "questions": QUICKSTART} | kw)
+
+
+def png_b64(w=64, h=32) -> str:
+    buf = io.BytesIO()
+    PIL.Image.new("RGB", (w, h)).save(buf, format="PNG")
+    return base64.b64encode(buf.getvalue()).decode()
+
+
+@pytest.fixture
+def seeing(engine, qwen_tok):
+    """The test engine with qwen's image placeholder and 100 soft tokens per image."""
+    return dataclasses.replace(engine, vision=vision_for(qwen_tok))
 
 
 async def test_quickstart_answers_have_jev_shapes(engine):
@@ -120,3 +138,56 @@ def test_offset_is_ignored_for_choice_and_zero_keeps_old_math():
     cal = Calibration({"choice": 1.0, "score": 1.0, "noul": 1.0}, b=3.0)
     assert probabilities(reads, "choice", cal) == pytest.approx(softmax([0.0, -1.0, -2.0], 1.0))
     assert probabilities(reads, "noul", Calibration(cal.T, b=0.0)) == pytest.approx(blend(reads, 1.0))
+
+
+@pytest.mark.parametrize("body", [{"images": ["https://x/a.png"]}, {"state": [{"image": "not decoded"}, STATE]}])
+async def test_images_on_a_text_profile_are_refused(engine, body):
+    with pytest.raises(ImageError, match="this profile serves text only"):
+        await decide(engine, request(**body))
+    assert engine.readout.calls == engine.readout.image_calls == []
+
+
+async def test_image_requests_read_through_the_image_path(seeing):
+    src = png_b64()
+    await decide(seeing, request(images=[src], layout="header"))
+    _, _, shared_len, shared_tokens, parts, prefix_parts = seeing.readout.image_calls[0]
+    assert parts == [decode_image(src, "images[0]").part()]
+    assert prefix_parts == parts
+    assert shared_tokens == shared_len + 99  # 100 soft tokens + 2 marks - 3 placeholder ids
+    assert seeing.readout.calls == []
+    await decide(seeing, request())
+    assert len(seeing.readout.calls) == 1 and len(seeing.readout.image_calls) == 1
+
+
+async def test_images_decode_once_off_the_event_loop(seeing, qwen_tok, monkeypatch):
+    threads, decode = [], gateway.decide.context_items
+
+    def recording(*args):
+        threads.append(threading.current_thread())
+        return decode(*args)
+
+    monkeypatch.setattr(gateway.decide, "context_items", recording)
+    small = dataclasses.replace(seeing.settings, systemone_max_len=500)  # fits unpadded, not padded to 784
+    padded = dataclasses.replace(seeing, settings=small, padding=Padding("end", 784, True, newline_token(qwen_tok)))
+    await decide(padded, request(images=[png_b64()]))
+    assert seeing.readout.image_calls[0][3] < 784  # shared_tokens: padded, they would end on 784
+    assert len(threads) == 1 and threads[0] is not threading.main_thread()
+
+
+async def test_expanded_image_prompts_over_the_cap_are_refused(seeing):
+    req = request(images=[png_b64()])
+    _, _, batch = await build_batch(seeing, req)
+    unexpanded = max(len(r.ids) for r in batch.rows)
+    s = dataclasses.replace(seeing.settings, systemone_max_len=unexpanded + 1)  # fits until the image expands
+    with pytest.raises(RequestError, match="maximum context length"):
+        await decide(dataclasses.replace(seeing, settings=s), req)
+    assert seeing.readout.image_calls == []
+
+
+async def test_usage_counts_image_tokens(seeing):
+    req = request(images=[png_b64()])
+    _, _, batch = await build_batch(seeing, req)
+    text = batch.unpadded_len + sum(len(r.ids) - batch.shared_len for r in batch.rows)
+    usage = (await decide(seeing, req))["usage"]
+    assert usage["input_tokens"] == batch.input_tokens == text + batch.added
+    assert batch.added == 99

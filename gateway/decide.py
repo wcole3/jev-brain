@@ -10,13 +10,15 @@ from gateway.answers import answer
 from gateway.calibration import Calibration, softmax
 from gateway.config import Settings
 from gateway.governor import Governor
+from gateway.images import context_items, image_items
 from gateway.labels import Labels
 from gateway.layouts import Layout
 from gateway.orders import average_back, option_orders
 from gateway.padding import OFF, Padding
-from gateway.prompts import ChatFrame, build_rows
+from gateway.prompts import Batch, ChatFrame, build_rows, image_context
 from gateway.questions import Rendered, render_question, render_state
-from gateway.schema import RequestError, SystemOneRequest
+from gateway.schema import ImageError, RequestError, SystemOneRequest
+from gateway.vision import Vision
 
 
 @dataclass(frozen=True)
@@ -32,6 +34,7 @@ class Engine:
     readout: Any
     padding: Padding = OFF
     governor: Governor = field(default_factory=Governor)
+    vision: Vision | None = None  # None: the profile serves text only
 
 
 OrderFn = Callable[[int], list[list[int]]]
@@ -43,6 +46,23 @@ class Reads:
     questions: dict[str, Rendered]
     reads: dict[str, list[tuple[list[float], list[int]]]]  # per question: (raw letter logprobs, perm) per order
     input_tokens: int
+
+
+def has_images(request: SystemOneRequest) -> bool:
+    return bool(request.images) or bool(image_items(request.state))
+
+
+def decode_then_build(
+    engine: Engine,
+    layout: Layout,
+    request: SystemOneRequest,
+    rows: Callable[..., Batch],
+    padding: Padding,
+    pad_rows: int | None,
+) -> Batch:
+    """Decode the images and build the rows: seconds of CPU for big images, so it runs off the event loop."""
+    items = context_items(request.state, request.images)
+    return rows(padding, pad_rows, images=image_context(engine.tokenizer, layout, items, engine.vision))
 
 
 async def build_batch(
@@ -63,15 +83,29 @@ async def build_batch(
         perms = {qid: orders(len(q.options)) for qid, q in questions.items()}
     except ValueError as e:
         raise RequestError(str(e)) from e
-    state = render_state(request.state)
+    images = has_images(request)
+    if images and engine.vision is None:
+        raise ImageError("this profile serves text only")
+    state = "" if images else render_state(request.state)  # image rows take the state from their image context
     rows = functools.partial(
         build_rows, engine.tokenizer, engine.frames[name], layout, engine.labels[name], state, questions, perms
     )
-    batch = await asyncio.to_thread(rows, engine.padding, pad_rows)
+    first = functools.partial(decode_then_build, engine, layout, request, rows) if images else rows
+    batch = await asyncio.to_thread(first, engine.padding, pad_rows)
     if batch.longest >= s.systemone_max_len and engine.padding.enabled:
-        # the pad must never refuse a request that fits without it
-        batch = await asyncio.to_thread(rows, OFF, pad_rows)
+        # the pad must never refuse a request that fits without it; decoded images are reused
+        batch = await asyncio.to_thread(rows, OFF, pad_rows, images=batch.images)
     return name, questions, batch
+
+
+async def read_batch(readout, batch: Batch) -> list[list[float]]:
+    """Text rows read as before; image rows go through the image path with their images attached."""
+    ids, labels = [r.ids for r in batch.rows], [r.label_ids for r in batch.rows]
+    if batch.images is None:
+        return await readout.letter_logprobs(ids, labels, batch.shared_len)
+    parts = [image.part() for image in batch.images.images]
+    prefix_parts = parts if batch.images_shared else []
+    return await readout.image_logprobs(ids, labels, batch.shared_len, batch.shared_tokens, parts, prefix_parts)
 
 
 async def read_rows(
@@ -81,9 +115,7 @@ async def read_rows(
     limit = engine.settings.systemone_max_len
     if batch.longest >= limit:
         raise RequestError(f"prompt is longer than the maximum context length ({batch.longest} >= {limit} tokens)")
-    logprobs = await engine.readout.letter_logprobs(
-        [r.ids for r in batch.rows], [r.label_ids for r in batch.rows], batch.shared_len
-    )
+    logprobs = await read_batch(engine.readout, batch)
     reads: dict[str, list] = {qid: [] for qid in questions}
     for row, lp in zip(batch.rows, logprobs, strict=True):
         reads[row.question_id].append((lp, row.perm))

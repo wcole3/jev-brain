@@ -82,13 +82,19 @@ def image_batch(tok, layout_name, questions=1, padding=OFF, instructions=None, v
 
 
 class FavourFirstLabel:
-    """Fake readout: label A always most likely (logprobs 0, -1, -2, ...)."""
+    """Fake readout: label A always most likely (logprobs 0, -1, -2, ...). Text reads land in calls, image reads
+    in image_calls."""
 
     def __init__(self):
         self.calls = []
+        self.image_calls = []
 
     async def letter_logprobs(self, prompts, label_ids, shared_len):
         self.calls.append((prompts, label_ids, shared_len))
+        return [[-float(j) for j in range(len(ids))] for ids in label_ids]
+
+    async def image_logprobs(self, prompts, label_ids, shared_len, shared_tokens, parts, prefix_parts):
+        self.image_calls.append((prompts, label_ids, shared_len, shared_tokens, parts, prefix_parts))
         return [[-float(j) for j in range(len(ids))] for ids in label_ids]
 
 

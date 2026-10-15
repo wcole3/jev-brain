@@ -14,17 +14,20 @@ from starlette.exceptions import HTTPException
 from transformers import AutoTokenizer
 
 from gateway import chat
+from gateway.body_limit import BodyLimit
 from gateway.calibration import UNCALIBRATED, load_calibration, orders_warning, stamp_for
 from gateway.config import Settings
 from gateway.decide import Engine, decide
 from gateway.disconnect import unless_disconnected
 from gateway.governor import Governor
+from gateway.images import MAX_BODY_BYTES
 from gateway.labels import load_labels
 from gateway.layouts import load_layouts
 from gateway.padding import load_padding
 from gateway.prompts import chat_frame
 from gateway.readout import Readout
-from gateway.schema import RequestError, SystemOneRequest
+from gateway.schema import ImageError, RequestError, SystemOneRequest
+from gateway.vision import load_vision
 
 # uvicorn's logger is the one configured in the container, so INFO lines reach its log.
 log = logging.getLogger("uvicorn.error")
@@ -65,6 +68,7 @@ def load_engine(s: Settings, client: httpx.AsyncClient, calibrated: bool = True)
         readout=Readout(client, s.served_model, s.warm_min_prefix_tokens, s.warm_up, s.systemone_priority, governor),
         padding=load_padding(s, tok),
         governor=governor,
+        vision=load_vision(s),
     )
 
 
@@ -122,6 +126,7 @@ def create_app(settings: Settings | None = None, transport: httpx.AsyncBaseTrans
             yield
 
     app = FastAPI(title="jev-brain gateway", lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)
+    app.add_middleware(BodyLimit, path="/v1/systemone", limit=MAX_BODY_BYTES)
     auth = [Depends(require_key)]
 
     @app.exception_handler(HTTPException)
@@ -135,6 +140,10 @@ def create_app(settings: Settings | None = None, transport: httpx.AsyncBaseTrans
     @app.exception_handler(RequestError)
     async def refused(request: Request, exc: RequestError):
         return error(422, str(exc))
+
+    @app.exception_handler(ImageError)
+    async def bad_image(request: Request, exc: ImageError):
+        return error(400, str(exc))
 
     @app.exception_handler(httpx.TransportError)
     async def vllm_down(request: Request, exc: httpx.TransportError):
@@ -172,6 +181,8 @@ def create_app(settings: Settings | None = None, transport: httpx.AsyncBaseTrans
             "prefix_pad_always": s.prefix_pad_always,
             "systemone_max_len": s.systemone_max_len,
             "systemone_priority": s.systemone_priority,
+            "systemone_images": s.systemone_images,
+            "mm_processor_kwargs": s.mm_processor_kwargs,
             "warm_min_prefix_tokens": s.warm_min_prefix_tokens,
             "warm_up": s.warm_up,
             "governor_duty": s.governor_duty,

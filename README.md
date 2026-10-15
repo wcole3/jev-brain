@@ -281,6 +281,23 @@ The Decision Index kit's `http` engine takes `base_url=http://127.0.0.1:9000` an
 - **Abandoned requests:** when a client gives up, the gateway cancels its work and vLLM
   stops too, so retries don't pile up on the GPU.
 
+### Images
+
+Profiles with `SYSTEMONE_IMAGES=1` (gemma-4-31b and qwen3.8-27b) answer questions about
+images. Both formats give the same prompt, with the images inside `Context:`:
+
+- top-level `"images": ["data:image/png;base64,..."]`, shown before the `state`;
+- `{"image": "..."}` items in a list `state`, to mix text and images:
+  `"state": ["Step 3 of checkout", {"image": "data:image/png;base64,..."}]`.
+
+- **Sources:** `data:` URLs or raw base64 of a PNG, JPEG, WEBP or GIF. The gateway never
+  fetches a URL.
+- **Limits:** 4 images and a 20 MB body per request. Images over 1,638,400 pixels are
+  downscaled, keeping the aspect ratio.
+- **Errors:** a URL, an undecodable image, more than 4 images, a body over 20 MB, or images
+  sent to a text-only profile give 400. A prompt over `SYSTEMONE_MAX_LEN` once the images
+  are counted gives 422.
+
 ## Settings
 
 - **Decision length cap:** `SYSTEMONE_MAX_LEN` (default 32,768, or `MAX_MODEL_LEN` if smaller)
@@ -301,7 +318,7 @@ Every error body is `{"error": {"message": "..."}}`.
 
 | Status | When |
 |---|---|
-| 400 | Chat body is not a JSON object |
+| 400 | Chat body is not a JSON object; a bad image or too many; a decision body over 20 MB; images on a text-only profile |
 | 401 | Missing or wrong gateway key (with `WWW-Authenticate: Bearer`) |
 | 404 / 405 | Unknown path or method |
 | 422 | Invalid request, or over a capacity limit (too many options, levels or tokens) |

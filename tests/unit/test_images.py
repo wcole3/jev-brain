@@ -63,6 +63,12 @@ def test_undecodable_image_is_refused():
         decode_image(b64(b"not an image"), "images[0]")
 
 
+@pytest.mark.parametrize("fmt", ["BMP", "TIFF"])
+def test_formats_outside_the_allowlist_are_refused(fmt):
+    with pytest.raises(ImageError, match=r"images\[0\]: images must be PNG, JPEG, WEBP or GIF"):
+        decode_image(b64(encoded(8, 8, fmt)), "images[0]")
+
+
 def test_small_images_pass_through_unchanged():
     raw = png(640, 480)
     assert decode_image(b64(raw), "images[0]").data == raw

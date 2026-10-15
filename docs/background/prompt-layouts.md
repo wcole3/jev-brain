@@ -11,10 +11,10 @@ the same method as [prompt-sharing.md](prompt-sharing.md) §4: it rebuilds the r
 - **A layout is the order of the pieces in the prompt.** We ship three: `decider_chat`
   (state, then question), `header` (question list, state, question; the default) and
   `question_first` (question, then state).
-- **The order decides how much prefix sharing survives.** For one 2,048-token-state,
-  16-question, 26-option request on qwen3.6-27b, vLLM computes 12,877 tokens under
-  `decider_chat`, 15,789 under `header` (+23%) and 36,397 under `question_first`
-  (2.8x `decider_chat`), which shares nothing.
+- **The order decides how much prefix sharing survives.** `decider_chat` and `header` keep each
+  row's question outside the shared prefix; `question_first` shares nothing. With today's padding
+  and warm-up, `header` computes 1.02–1.09× the minimum on Qwen (1.34 for a tiny 256-token × 4 request: the pad) and ~1.0× on gemma for multi-question
+  requests (§3, measured 2026-10-15). Before padding it cost +23% over `decider_chat` (§3, replay).
 - **Literature is split on where the question belongs.** Anthropic and Google say query last, OpenAI
   says both ends. For lookup-style tasks question-first can be more accurate, but it costs
   a full state prefill per question.
@@ -109,6 +109,33 @@ profile and testing it per question type before making it default.
 
 ## 3. What each layout costs in prefix sharing
 
+### Measured with today's settings (2026-10-15)
+
+Fresh requests (`synthetic_request`, 26 options, mixed types, a new state per request), `header`, rows built by
+gateway code and sent straight to vLLM; 3 repeats per cell (`share_probe.py`, raw data in `.cache/share-spike/`).
+Computed ÷ usage, where usage is the state once plus each question once:
+
+| State × questions | qwen3.8-27b (pad to 800, row warm-up, MTP) | gemma-4-31b, all rows together | gemma-4-31b, prefix alone first |
+|---|---|---|---|
+| 256 × 4 | 1.34 (the pad itself) | 1.00 | 0.98 |
+| 256 × 16 | 1.09 | 0.92 | 0.92 |
+| 2,048 × 4 | 1.09 | 1.22 | 0.99 |
+| 2,048 × 16 | 1.03 | 1.07 | 0.95 |
+| 8,000 × 4 | 1.02 | **2.78** (5,976 ms) | **1.00** (2,312 ms) |
+| 8,000 × 16 | 1.05 | **2.90** (8,201 ms) | **0.99** (3,112 ms) |
+
+- **Qwen:** with front padding each row's question starts a fresh block, so `header` shares almost everything.
+  Live benches agree: 1.02 in the throughput phases (2026-10-04, both Qwen profiles). Sending the prefix alone
+  first is worse on Qwen in every cell (1.03–1.92), as DS-008 found.
+- **Gemma:** with `--long-prefill-token-threshold 1024` (DS-025) every prefill advances 1,024 tokens a step, so rows
+  sent together prefill side by side and each computes its own copy of the state. Sending the shared prefix alone
+  first fixes it; for short prefixes it only adds a round trip (+60 ms at 256 × 4). Gemma now uses
+  `WARM_UP=prefix` with `WARM_MIN_PREFIX_TOKENS=4096`, where the gain is large (prompt-sharing.md §7). Ratios below 1 come from template text cached by earlier
+  requests.
+
+### Before padding: the 2026-09-29 replay
+
+This replay predates front padding and explains why Qwen needs it; its `header` cost is no longer current.
 Same request as in prompt-sharing.md: `synthetic_request` with a 2,048-token state, 16 questions, 26 options
 (mixed choice, score, noul types). The replay applies the same rules as before: only whole 784-token
 blocks are reused, rows sent together cannot reuse each other, and row 1 goes first alone when the shared prefix is at

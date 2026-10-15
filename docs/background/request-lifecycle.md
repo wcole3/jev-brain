@@ -60,8 +60,8 @@ sequenceDiagram
 
 - **Auth and validation come first**, before any GPU work. `require_key` is a route
   dependency; a bad body becomes a 422.
-- **Warm-up call** (only with `WARM_UP=row`, the Qwen profiles; gemma skips it, see
-  [prompt-sharing.md §7](prompt-sharing.md)): with more than one row and a shared prefix of at least 512 tokens
+- **Warm-up call** (`WARM_UP=row`, the Qwen profiles; gemma's `WARM_UP=prefix` sends the shared prefix
+  alone instead, from 4,096 tokens, see [prompt-sharing.md §7](prompt-sharing.md)): with more than one row and a shared prefix of at least 512 tokens
   (`WARM_MIN_PREFIX_TOKENS`), row 1 goes alone so the others hit vLLM's prefix cache. See
   [prompt-sharing.md](prompt-sharing.md). Otherwise all rows go in one call.
 - **Batch calls:** each vLLM call can score at most 128 label ids

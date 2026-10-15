@@ -76,8 +76,9 @@ POST /v1/systemone {state, questions, images?}
 - **Readout** (`gateway/readout.py`). For image rows, one `/inference/v1/generate` call per row with
   `content_parts` (data URLs), `max_tokens=1`, `logprob_token_ids = labels + [one extra id]` and
   `logprobs = len(labels) + 1`, so the response cut keeps every label. Warm-up follows the profile:
-  gemma sends all rows at once (`WARM_UP=off`), qwen sends row 1 then the rest. `priority` and the
-  DS-007 governor apply as for text.
+  gemma sends the shared prefix, images included, alone first and then all rows (`WARM_UP=prefix`;
+  rows sent together under chunked prefill each recompute the prefix, 2026-10-15 probe); qwen sends
+  row 1 then the rest. `priority` and the DS-007 governor apply as for text.
 - **Route** (`gateway/decide.py`). A request goes the image path only when it has images.
 
 ## 2. Profiles

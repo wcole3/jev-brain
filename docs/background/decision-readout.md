@@ -192,8 +192,8 @@ probabilities back in the caller's positions and takes the mean; for
   sorted by `index` so rows stay aligned.
 - **Chunks of 128.** vLLM caps `logprob_token_ids` at 128 per request
   (`MAX_LABEL_IDS`). A 255-option question makes two calls with the same prompts.
-- **Warm-up row** (profiles with `WARM_UP=row`, i.e. Qwen; gemma sends all rows at once, see
-  [prompt-sharing.md §7](prompt-sharing.md)). If there is more than one row and `shared_len >= 512`
+- **Warm-up** (`WARM_UP=row` on Qwen; gemma uses `WARM_UP=prefix` and sends the shared prefix alone first,
+  see [prompt-sharing.md §7](prompt-sharing.md)). If there is more than one row and `shared_len >= 512`
   (`WARM_MIN_PREFIX_TOKENS`), row 1 goes alone first, so its prefix is cached, then the
   rest go together and reuse it. Details and limits of that cache:
   [prompt-sharing.md](prompt-sharing.md); model-specific reasons:

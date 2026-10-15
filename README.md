@@ -143,7 +143,8 @@ Each recipe is one command; the profile file carries the flags. Calibration file
 
 - Vision is kept for image chat; video is off (a video item of 2,496 tokens never fits, images do).
 - Sliding-window layers hash blocks densely only with `--prefix-cache-retention-interval 32`;
-  with it, no warm-up is best (DS-015). No MTP.
+  the shared prefix goes alone first when it is ≥ 4,096 tokens (`WARM_UP=prefix`), since chunked
+  prefill otherwise makes each row recompute it (2026-10-15). No MTP.
 - Calibration: `data/gemma-4-31b/header/calibration.json`.
 
 ### qwen3.6-27b-fp8

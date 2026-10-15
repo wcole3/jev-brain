@@ -276,7 +276,7 @@ the shared prefix is at least `WARM_MIN_PREFIX_TOKENS` long.
 | Profile | Setting | Why |
 |---|---|---|
 | qwen3.6 / qwen3.8 | `WARM_UP=row`, threshold 784, front padding | Recurrent layers need a saved state at the prefix end |
-| gemma-4-31b | `WARM_UP=off` plus vLLM `--prefix-cache-retention-interval 32` | Sliding-window blocks must be hashed densely; then no warm-up is fastest |
+| gemma-4-31b | `WARM_UP=prefix`, threshold 4,096, plus vLLM `--prefix-cache-retention-interval 32` | Sliding-window blocks must be hashed densely; under chunked prefill the shared prefix must also be computed before the rows arrive (update below) |
 
 **Qwen (hybrid, recurrent layers).** vLLM keeps a recurrent-state checkpoint only at the last
 784-token boundary of a prefill ([kv-cache.md §6](kv-cache.md)). Row 1 is the padded prefix plus its question (~480 tokens,
@@ -299,6 +299,23 @@ call can already share the prefix. The extra serial warm-up call then only adds 
 | Prefix-only warm-up | 1.55 | 0.5 | 1,305 ms |
 | Retention 32 + prefix / row warm-up | 1.36 / 1.38 | 0.6 | ~1,350 ms |
 | **Retention 32, no warm-up (adopted)** | **1.00** | **0.8** | **1,286 ms** |
+
+**Update 2026-10-15: the table above was measured before `--long-prefill-token-threshold 1024`
+(DS-025).** That flag makes every prefill advance 1,024 tokens a step. Rows sent together then prefill
+side by side, none finishes the shared blocks before the others look them up, and each computes its own
+copy of the state. The table's 1.00 came from the throughput phase, where the same request repeats and
+copies reuse each other; fresh requests show the loss:
+
+| Gemma, fresh `header` requests | All rows together | Shared prefix alone first, then all rows |
+|---|---|---|
+| 2,048-token state × 16 questions | 1.07, 1,299 ms | 0.95, 1,254 ms |
+| 8,000-token state × 16 questions | **2.90, 8,201 ms** | **0.99, 3,112 ms** |
+| 256-token state × 4 questions | 1.00, 280 ms | 0.98, 348 ms |
+
+So gemma now sends the shared prefix alone first (`WARM_UP=prefix`) when it is at least 4,096 tokens.
+At 1,024 it also fired on 2,048-token states, where it gains little and cost req/s at 16 clients
+(0.7 to 0.6; KV peak 52% to 82%, likely the warmed prefix evicted while its rows queue). Full table and method:
+[prompt-layouts.md §3](prompt-layouts.md).
 
 **Rule of thumb for a new model:** measure, don't guess. Send one multi-question request
 straight to vLLM and read `vllm:prompt_tokens_cached_total` around each call: does row 2 reuse

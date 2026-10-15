@@ -196,3 +196,99 @@ async def test_no_waves_when_no_chat():
     r = readout(fake_vllm(seen, by_prompt), warm_up="off", governor=Governor(duty=0.5, wave=2))
     await r.letter_logprobs(PROMPTS, [[5]] * 5, shared_len=0)
     assert [len(b["prompt"]) for b in seen] == [5]
+
+
+PARTS = [{"type": "image_url", "url": "data:image/png;base64,AAAA", "uuid": "abc"}]
+
+
+def fake_generate(seen: list, drop: int | None = None):
+    """Answers each label id in the request with its negated id; `drop` is left out of the answer."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        seen.append((request.url.path, body))
+        ids = body["sampling_params"].get("logprob_token_ids", [])  # the warm-up call reads no labels
+        assert len(ids) <= MAX_LABEL_IDS
+        top = [{"token": f"token_id:{t}", "logprob": -float(t)} for t in ids if t != drop]
+        return httpx.Response(200, json={"choices": [{"logprobs": {"content": [{"top_logprobs": top}]}}]})
+
+    return handler
+
+
+async def test_image_rows_go_one_per_call_with_their_images():
+    seen = []
+    out = await readout(fake_generate(seen)).image_logprobs([[1, 2], [1, 3]], [[30, 10], [20]], 1, 1, PARTS, PARTS)
+    assert out == [[-30.0, -10.0], [-20.0]]
+    assert [p for p, _ in seen] == ["/inference/v1/generate"] * 2
+    body = next(b for _, b in seen if b["token_ids"] == [1, 2])
+    assert body["content_parts"] == PARTS and body["sampling_params"]["logprob_token_ids"] == [10, 30, 0]
+    assert body["sampling_params"]["logprobs"] == 3 and body["sampling_params"]["max_tokens"] == 1
+
+
+async def test_the_spare_id_is_never_a_label():
+    seen = []
+    await readout(fake_generate(seen)).image_logprobs([[1]], [[0, 1, 2]], 1, 1, PARTS, PARTS)
+    assert seen[0][1]["sampling_params"]["logprob_token_ids"] == [0, 1, 2, 3]
+
+
+async def test_prefix_warm_up_sends_the_shared_images_first():
+    seen = []
+    rows = [[5] * 20 + [k] for k in range(3)]
+    await readout(fake_generate(seen), warm_up="prefix").image_logprobs(rows, [[10]] * 3, 20, 600, PARTS, PARTS)
+    first = seen[0][1]
+    assert first["token_ids"] == [5] * 20 and first["content_parts"] == PARTS
+    assert "logprob_token_ids" not in first["sampling_params"] and first["sampling_params"]["max_tokens"] == 1
+    assert len(seen) == 4
+
+
+async def test_warm_up_threshold_counts_expanded_tokens():
+    seen = []
+    rows = [[5, 1], [5, 2]]
+    await readout(fake_generate(seen), warm_up="prefix").image_logprobs(rows, [[10]] * 2, 1, 100, PARTS, PARTS)
+    assert len(seen) == 2  # 100 < 512: no warm-up
+
+
+async def test_row_warm_up_reads_row_one_first():
+    seen = []
+    rows = [[5] * 20 + [k] for k in range(3)]
+    await readout(fake_generate(seen), warm_up="row").image_logprobs(rows, [[10]] * 3, 20, 600, PARTS, PARTS)
+    assert seen[0][1]["token_ids"] == rows[0] and len(seen) == 3
+
+
+async def test_more_than_127_labels_split_across_calls():
+    seen = []
+    labels = list(range(1, 201))
+    out = await readout(fake_generate(seen)).image_logprobs([[1]], [labels], 1, 1, PARTS, PARTS)
+    assert out == [[-float(i) for i in labels]] and len(seen) == 2
+    assert all(len(b["sampling_params"]["logprob_token_ids"]) <= MAX_LABEL_IDS for _, b in seen)
+
+
+async def test_a_missing_label_is_an_error():
+    with pytest.raises(RuntimeError, match="30"):
+        await readout(fake_generate([], drop=30)).image_logprobs([[1]], [[30, 10]], 1, 1, PARTS, PARTS)
+
+
+async def test_image_rows_carry_priority_only_when_set():
+    seen = []
+    await readout(fake_generate(seen)).image_logprobs([[1]], [[10]], 1, 1, PARTS, PARTS)
+    assert "priority" not in seen[0][1]
+    client = httpx.AsyncClient(base_url="http://vllm", transport=httpx.MockTransport(fake_generate(seen)))
+    await Readout(client, "m", priority=1).image_logprobs([[1]], [[10]], 1, 1, PARTS, PARTS)
+    assert seen[1][1]["priority"] == 1
+
+
+class CountingGovernor(Governor):
+    calls = 0
+
+    async def call(self, fn):
+        self.calls += 1
+        return await super().call(fn)
+
+
+async def test_image_calls_go_through_the_governor():
+    seen, governor = [], CountingGovernor(duty=0.5, wave=1)
+    governor.chat_started()
+    rows = [[5] * 20 + [k] for k in range(2)]
+    r = readout(fake_generate(seen), warm_up="prefix", governor=governor)
+    await r.image_logprobs(rows, [[10]] * 2, 20, 600, PARTS, PARTS)
+    assert len(seen) == 3 and governor.calls == 3  # warm-up, then one call per row

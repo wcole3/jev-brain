@@ -99,8 +99,8 @@ make down
 ## Pick a model
 
 Seven profiles, none of them a default: pick one with `PROFILE=`. Quantized profiles carry
-their own calibration (DS-005 Stage 2). Decisions are capped at 32,768 tokens for every profile (`SYSTEMONE_MAX_LEN`);
-the chat context differs.
+their own calibration (DS-005 Stage 2). Decisions are capped at 32,768 tokens (`SYSTEMONE_MAX_LEN`),
+except `gemma-4-31b` at 65,536 so every Decision Index request fits; the chat context differs.
 
 | Profile | Weights (HF repo @ revision) | Precision (weights / KV cache) | Weights on disk | Chat context | Best for |
 |---|---|---|---|---|---|

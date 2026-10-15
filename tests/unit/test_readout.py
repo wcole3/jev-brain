@@ -93,8 +93,51 @@ async def test_warm_up_off_sends_every_row_at_once():
 
 
 def test_unknown_warm_up_is_refused():
-    with pytest.raises(ValueError):
-        Readout(httpx.AsyncClient(), "m", warm_up="both")
+    with pytest.raises(ValueError, match="'row', 'prefix' or 'off'"):
+        Readout(httpx.AsyncClient(), "m", warm_up="bogus")
+
+
+async def test_prefix_warm_up_sends_the_shared_prefix_alone_then_all_rows():
+    seen, prompts = [], [[7] * 600 + [1], [7] * 600 + [2], [7] * 600 + [3]]
+    out = await readout(fake_vllm(seen, by_prompt), warm_up="prefix").letter_logprobs(
+        prompts, [[5], [5], [5]], shared_len=600
+    )
+    warm, read = seen
+    assert warm["prompt"] == [[7] * 600] and warm["max_tokens"] == 1 and warm["add_special_tokens"] is False
+    assert "logprob_token_ids" not in warm and "logprobs" not in warm
+    assert read["prompt"] == prompts and read["logprob_token_ids"] == [5]
+    assert out == [[by_prompt(p, 5)] for p in prompts]
+
+
+@pytest.mark.parametrize(("prompts", "shared_len"), [([[7] * 600 + [1], [7] * 600 + [2]], 511), ([[7] * 600], 600)])
+async def test_prefix_warm_up_is_skipped_for_a_short_prefix_or_one_row(prompts, shared_len):
+    seen = []
+    await readout(fake_vllm(seen), warm_up="prefix").letter_logprobs(prompts, [[5]] * len(prompts), shared_len)
+    assert [b["prompt"] for b in seen] == [prompts]
+
+
+async def test_prefix_warm_up_carries_priority_only_when_set():
+    seen, prompts = [], [[7] * 600 + [1], [7] * 600 + [2]]
+    for priority in (0, 1):
+        client = httpx.AsyncClient(base_url="http://vllm", transport=httpx.MockTransport(fake_vllm(seen)))
+        r = Readout(client, "m", warm_min_prefix_tokens=512, warm_up="prefix", priority=priority)
+        await r.letter_logprobs(prompts, [[5], [5]], shared_len=600)
+    assert ["priority" in b for b in seen] == [False, False, True, True]
+
+
+async def test_prefix_warm_up_goes_through_the_governor():
+    seen, prompts = [], [[7] * 600 + [1], [7] * 600 + [2]]
+    r = readout(fake_vllm(seen), warm_up="prefix", governor=decoding(0.5, wave=1))
+    await r.letter_logprobs(prompts, [[5], [5]], shared_len=600)
+    assert [len(b["prompt"]) for b in seen] == [1, 1, 1]  # warm-up, then one row per wave
+
+
+async def test_prefix_warm_up_too_long_becomes_a_refusal():
+    def handler(request):
+        return httpx.Response(400, text="This model's maximum context length is 32768 tokens.")
+
+    with pytest.raises(RequestError, match="maximum context length"):
+        await readout(handler, warm_up="prefix").letter_logprobs([[7] * 600, [7] * 600], [[5], [5]], shared_len=600)
 
 
 async def test_context_too_long_becomes_a_refusal():

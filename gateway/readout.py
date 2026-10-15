@@ -21,8 +21,8 @@ class Readout:
         self.client = client
         self.model = model
         self.warm_min_prefix_tokens = warm_min_prefix_tokens
-        if warm_up not in ("row", "off"):
-            raise ValueError(f"WARM_UP must be 'row' or 'off', not {warm_up!r}")
+        if warm_up not in ("row", "prefix", "off"):
+            raise ValueError(f"WARM_UP must be 'row', 'prefix' or 'off', not {warm_up!r}")
         self.warm_up = warm_up
         self.priority = priority
         self.governor = governor or Governor()
@@ -31,10 +31,13 @@ class Readout:
         self, prompts: list[list[int]], label_ids: list[list[int]], shared_len: int
     ) -> list[list[float]]:
         """One list per prompt, in the order of that prompt's label_ids."""
-        if self.warm_up == "row" and len(prompts) > 1 and shared_len >= self.warm_min_prefix_tokens:
+        warm = len(prompts) > 1 and shared_len >= self.warm_min_prefix_tokens
+        if warm and self.warm_up == "row":
             # compute the long shared prefix once (with row 1) so the other rows hit vLLM's prefix cache
             first = await self._read(prompts[:1], label_ids[:1])
             return first + await self._read(prompts[1:], label_ids[1:])
+        if warm and self.warm_up == "prefix":
+            await self.governor.call(lambda: self._warm_prefix(prompts[0][:shared_len]))
         return await self._read(prompts, label_ids)
 
     async def _read(self, prompts: list[list[int]], label_ids: list[list[int]]) -> list[list[float]]:
@@ -54,6 +57,11 @@ class Readout:
                     found[k].update(logprobs)
         return [[row[i] for i in ids] for row, ids in zip(found, label_ids)]
 
+    async def _warm_prefix(self, prefix: list[int]) -> None:
+        """Send the shared prefix alone, so it is cached before the rows that need it arrive."""
+        payload = {"model": self.model, "prompt": [prefix], "max_tokens": 1, "temperature": 0, "add_special_tokens": False}
+        await self._post(payload)
+
     async def _call(self, prompts: list[list[int]], ids: list[int]) -> list[dict[int, float]]:
         payload = {
             "model": self.model,
@@ -65,13 +73,16 @@ class Readout:
             "return_tokens_as_token_ids": True,
             "add_special_tokens": False,
         }
+        choices = sorted((await self._post(payload)).json()["choices"], key=lambda c: c["index"])
+        return [
+            {int(k.removeprefix("token_id:")): v for k, v in c["logprobs"]["top_logprobs"][0].items()} for c in choices
+        ]
+
+    async def _post(self, payload: dict) -> httpx.Response:
         if self.priority:
             payload["priority"] = self.priority  # only sent when set: vLLM refuses it without --scheduling-policy priority
         r = await self.client.post("/v1/completions", json=payload)
         if r.status_code == 400 and "maximum context length" in r.text:
             raise RequestError("prompt is longer than the maximum context length")
         r.raise_for_status()
-        choices = sorted(r.json()["choices"], key=lambda c: c["index"])
-        return [
-            {int(k.removeprefix("token_id:")): v for k, v in c["logprobs"]["top_logprobs"][0].items()} for c in choices
-        ]
+        return r

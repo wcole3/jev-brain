@@ -40,7 +40,7 @@ class Settings:
     api_key: str | None = field(default=None, repr=False)  # keys never show in logs or tracebacks
     vllm_api_key: str | None = field(default=None, repr=False)
     warm_min_prefix_tokens: int = 512
-    warm_up: str = "row"  # row: send row 1 first so siblings reuse its prefix (hybrid Qwen); off: send all at once
+    warm_up: str = "row"  # row: row 1 first (hybrid Qwen); prefix: shared prefix alone first (gemma); off: all at once
     prefix_pad: str = "off"  # where to pad the shared prefix: off | end | front | middle
     prefix_block: int = 0  # pad it to a multiple of this many tokens; 0 never pads
     prefix_pad_always: bool = False  # pad even when it does not pay (fidelity experiments)

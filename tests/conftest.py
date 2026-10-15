@@ -16,6 +16,11 @@ def qwen_tok():
     return tokenizer_for("qwen3.6-27b")
 
 
+@pytest.fixture(scope="session")
+def gemma_tok():
+    return tokenizer_for("gemma-4-31b")
+
+
 @pytest.fixture
 def qwen_settings(tmp_path, qwen_tok):
     """qwen3.6-27b settings on decider_chat (pinned, so profile defaults can move) with fresh label tables."""

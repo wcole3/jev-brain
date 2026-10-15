@@ -3,10 +3,14 @@ from pathlib import Path
 import pytest
 
 from gateway.labels import label_table
-from gateway.prompts import chat_frame, encode, encode_each
-from tests.helpers import LAYOUTS, PROFILES, batch_for, tokenizer_for
+from gateway.padding import Padding, newline_token
+from gateway.prompts import chat_frame, encode, encode_each, image_context
+from gateway.schema import ImageError
+from gateway.vision import Vision
+from tests.helpers import LAYOUTS, PROFILES, batch_for, image_batch, img, tokenizer_for
 
 GOLDEN = Path(__file__).parent / "golden"
+GEMMA_VISION = Vision(placeholder=(258880,), soft_tokens=lambda w, h: 100)
 
 
 def assert_golden(name: str, text: str) -> None:
@@ -68,3 +72,50 @@ def test_encode_each_matches_one_encode_per_text(profile):
     tok = tokenizer_for(profile)
     texts = [") billing", ")  two  spaces", ") naïve café ☕", ") \n", ') code_7: {"a": 1}', ")", ") 東京"]
     assert encode_each(tok, texts) == [encode(tok, t) for t in texts]
+
+
+def test_image_context_keeps_item_order(gemma_tok):
+    ctx = image_context(gemma_tok, LAYOUTS["header"], [img(), "Pick the red one", img()], GEMMA_VISION)
+    expected = encode(gemma_tok, "Context:\n") + [258880] + encode(gemma_tok, "\nPick the red one\n") + [258880]
+    assert ctx.ids == expected
+    assert ctx.added == 2 * 101 and len(ctx.images) == 2
+
+
+def test_image_rows_count_expanded_tokens(gemma_tok):
+    b = image_batch(gemma_tok, "header", questions=2)  # one image, added 101
+    assert b.images_shared and b.shared_tokens == b.shared_len + 101
+    assert b.longest == max(len(r.ids) for r in b.rows) + 101
+    assert b.input_tokens == b.unpadded_len + sum(len(r.ids) - b.shared_len for r in b.rows) + 101
+
+
+def test_images_after_the_question_count_per_row(gemma_tok):
+    b = image_batch(gemma_tok, "question_first", questions=2)
+    once = b.unpadded_len + sum(len(r.ids) - b.shared_len for r in b.rows)
+    assert not b.images_shared and b.input_tokens == once + 101 * len(b.rows)
+
+
+def test_qwen_pads_on_expanded_lengths(qwen_tok):
+    pad = Padding("front", 800, always=True, token=newline_token(qwen_tok))
+    b = image_batch(qwen_tok, "header", questions=8, padding=pad)
+    assert (b.shared_len + b.images.added) % 800 == 0
+
+
+def test_middle_padding_skips_image_rows(qwen_tok):
+    pad = Padding("middle", 800, always=True, token=newline_token(qwen_tok))
+    b = image_batch(qwen_tok, "header", questions=8, padding=pad)
+    assert b.shared_len == b.unpadded_len
+
+
+def test_placeholder_text_in_an_image_request_is_refused(gemma_tok):
+    with pytest.raises(ImageError, match="placeholder"):
+        image_batch(gemma_tok, "header", questions=1, instructions="Is <|image|> blue?")
+
+
+def test_qwen_placeholder_text_in_an_image_request_is_refused(qwen_tok):
+    with pytest.raises(ImageError, match="placeholder"):
+        image_batch(qwen_tok, "decider_chat", questions=1, instructions="Is <|image_pad|> blue?")
+
+
+def test_the_same_image_twice_gets_two_placeholders(gemma_tok):
+    ctx = image_context(gemma_tok, LAYOUTS["header"], [img(), img()], GEMMA_VISION)
+    assert ctx.ids.count(258880) == 2

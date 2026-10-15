@@ -1,18 +1,21 @@
 """Values shared by tests. Import from here, not from conftest or other test modules."""
 
 import functools
+import hashlib
 import json
 
 import httpx
 from transformers import AutoTokenizer
 
 from gateway.config import Settings
+from gateway.images import Image
 from gateway.labels import label_table
 from gateway.layouts import load_layouts
 from gateway.padding import OFF
-from gateway.prompts import build_rows, chat_frame
+from gateway.prompts import build_rows, chat_frame, image_context
 from gateway.questions import render_question
 from gateway.schema import Question
+from gateway.vision import Vision
 
 PROFILES = ["qwen3.8-27b", "qwen3.6-27b", "gemma-4-31b"]
 
@@ -45,12 +48,37 @@ STATE = "Hi, my Stripe integration keeps failing and I'm losing sales. Please he
 LAYOUTS = load_layouts()
 
 
-def batch_for(tok, layout_name, questions=QUICKSTART, orders=None, padding=OFF):
+def batch_for(tok, layout_name, questions=QUICKSTART, orders=None, padding=OFF, images=None):
     """build_rows for STATE, one row per question (or per order in `orders`)."""
     layout = LAYOUTS[layout_name]
     rendered = {k: render_question(Question(**v), layout) for k, v in questions.items()}
     perms = {k: orders or [list(range(len(r.options)))] for k, r in rendered.items()}
-    return build_rows(tok, chat_frame(tok, layout), layout, label_table(tok), STATE, rendered, perms, padding)
+    return build_rows(
+        tok, chat_frame(tok, layout), layout, label_table(tok), STATE, rendered, perms, padding, images=images
+    )
+
+
+def img() -> Image:
+    """A stand-in image: prompts only read its size, and vision_for counts 100 soft tokens for any size."""
+    data = b"stand-in image"
+    return Image(data, "image/png", 64, 64, hashlib.sha256(data).hexdigest())
+
+
+GEMMA_IMAGE = ["<|image|>"]
+QWEN_IMAGE = ["<|vision_start|>", "<|image_pad|>", "<|vision_end|>"]
+
+
+def vision_for(tok) -> Vision:
+    """The tokenizer's own image placeholder (gemma or qwen) and 100 soft tokens per image."""
+    marks = GEMMA_IMAGE if GEMMA_IMAGE[0] in tok.get_added_vocab() else QWEN_IMAGE
+    return Vision(tuple(tok.convert_tokens_to_ids(marks)), lambda w, h: 100)
+
+
+def image_batch(tok, layout_name, questions=1, padding=OFF, instructions=None, vision=None):
+    """batch_for with one image before STATE and `questions` yes/no questions."""
+    asked = {f"q{k}": {"type": "noul", "instructions": instructions or f"Shape {k} is red"} for k in range(questions)}
+    images = image_context(tok, LAYOUTS[layout_name], [img(), STATE], vision or vision_for(tok))
+    return batch_for(tok, layout_name, asked, padding=padding, images=images)
 
 
 class FavourFirstLabel:

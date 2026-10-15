@@ -74,6 +74,23 @@ def test_systemone_priority_defaults_to_zero_and_reads_env():
 
 
 REQUIRED = {"PROFILE": "p", "HF_MODEL": "m", "HF_REVISION": "r", "SERVED_MODEL": "s"}
+MINIMAL_ENV = REQUIRED | {"MAX_MODEL_LEN": "1024"}
+
+
+def test_image_settings_are_off_by_default():
+    s = Settings.from_env(MINIMAL_ENV)
+    assert s.systemone_images is False and s.mm_processor_kwargs == {}
+
+
+def test_image_settings_from_env():
+    s = Settings.from_env(MINIMAL_ENV | {"SYSTEMONE_IMAGES": "1", "MM_PROCESSOR_KWARGS": '{"max_soft_tokens":560}'})
+    assert s.systemone_images is True and s.mm_processor_kwargs == {"max_soft_tokens": 560}
+
+
+@pytest.mark.parametrize("junk", ["{", "[1]", '"x"'])
+def test_bad_processor_kwargs_name_the_key(junk):
+    with pytest.raises(ValueError, match="MM_PROCESSOR_KWARGS"):
+        Settings.from_env(MINIMAL_ENV | {"MM_PROCESSOR_KWARGS": junk})
 
 
 def test_systemone_cap_defaults_to_32k_below_a_larger_model_limit():

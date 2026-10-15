@@ -10,6 +10,8 @@ args=(
   --reasoning-parser "$REASONING_PARSER" --enable-auto-tool-choice --tool-call-parser "$TOOL_PARSER"
 )
 if [[ "${LANGUAGE_MODEL_ONLY:-0}" == "1" ]]; then args+=(--language-model-only); fi
+if [[ "${SYSTEMONE_IMAGES:-0}" == "1" ]]; then args+=(--enable-scale-out); fi
+if [[ -n "${MM_PROCESSOR_KWARGS:-}" ]]; then args+=(--mm-processor-kwargs "$MM_PROCESSOR_KWARGS"); fi
 if [[ -n "${CHAT_TEMPLATE:-}" ]]; then args+=(--chat-template "$CHAT_TEMPLATE"); fi
 if [[ -n "${CHAT_TEMPLATE_KWARGS:-}" ]]; then args+=(--default-chat-template-kwargs "$CHAT_TEMPLATE_KWARGS"); fi
 # EXTRA_ARGS comes from our own profile env, so plain word splitting is intended.

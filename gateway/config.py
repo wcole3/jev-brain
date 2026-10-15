@@ -1,5 +1,6 @@
 """Settings from the environment (compose) or from a profile file (scripts, tests)."""
 
+import json
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -26,6 +27,17 @@ def number(env: dict[str, str], key: str, kind: type, default):
         raise ValueError(f"{key} must be a number, got {env[key]!r}") from None
 
 
+def json_object(env: dict[str, str], key: str) -> dict:
+    """env[key] parsed as a JSON object; empty or missing gives {}; anything else raises ValueError naming key."""
+    try:
+        value = json.loads(env.get(key) or "{}")
+    except json.JSONDecodeError:
+        value = None
+    if isinstance(value, dict):
+        return value
+    raise ValueError(f"{key} must be a JSON object, got {env[key]!r}")
+
+
 @dataclass(frozen=True)
 class Settings:
     profile: str
@@ -47,6 +59,8 @@ class Settings:
     systemone_priority: int = 0  # vLLM priority for decision requests; >0 runs them after chat (needs --scheduling-policy priority)
     governor_duty: float = 1.0  # share of time decisions keep while chat decodes; 1.0 turns the governor off (DS-007)
     governor_wave: int = 4  # prompts per decision request while throttling
+    systemone_images: bool = False  # accept images in decision requests; vision profiles only
+    mm_processor_kwargs: dict = field(default_factory=dict)  # also passed to vLLM, so both count image tokens alike
     data_root: Path = ROOT / "data"
 
     @classmethod
@@ -73,6 +87,8 @@ class Settings:
             systemone_priority=int(e.get("SYSTEMONE_PRIORITY") or 0),
             governor_duty=number(e, "GOVERNOR_DUTY", float, 1.0),
             governor_wave=number(e, "GOVERNOR_WAVE", int, 4),
+            systemone_images=e.get("SYSTEMONE_IMAGES") == "1",
+            mm_processor_kwargs=json_object(e, "MM_PROCESSOR_KWARGS"),
             data_root=Path(e.get("DATA_ROOT") or ROOT / "data"),
         )
 

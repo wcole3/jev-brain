@@ -38,3 +38,12 @@ def test_host_defaults_to_all_interfaces(tmp_path):
 
 def test_vllm_host_overrides_the_bind_address(tmp_path):
     assert "--host 127.0.0.1 " in served_args(tmp_path, VLLM_HOST="127.0.0.1")
+
+
+def test_images_turn_on_scale_out_and_processor_kwargs(tmp_path):
+    out = served_args(tmp_path, SYSTEMONE_IMAGES="1", MM_PROCESSOR_KWARGS='{"max_soft_tokens":560}')
+    assert "--enable-scale-out" in out and '--mm-processor-kwargs {"max_soft_tokens":560}' in out
+
+
+def test_text_profiles_get_no_scale_out(tmp_path):
+    assert "--enable-scale-out" not in served_args(tmp_path) and "--mm-processor-kwargs" not in served_args(tmp_path)

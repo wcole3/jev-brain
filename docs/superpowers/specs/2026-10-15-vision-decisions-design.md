@@ -1,6 +1,6 @@
 # Vision decisions design (DS-024)
 
-Date: 2026-10-15. Status: approved in brainstorming, pending spec review.
+Date: 2026-10-15. Status: approved. Plan: [2026-10-15-vision-decisions.md](../plans/2026-10-15-vision-decisions.md).
 Ticket: DS-024. Background: [prompt-sharing.md](../../background/prompt-sharing.md),
 [prompt-layouts.md](../../background/prompt-layouts.md), [decision-readout.md](../../background/decision-readout.md),
 [calibration.md](../../background/calibration.md), the kit's [docs/vision.md](https://github.com/apolinario/decision-index/blob/f5a6e4f/docs/vision.md).
@@ -39,7 +39,7 @@ Spike code is throwaway (scratchpad and `.cache/decision-index-vision/`), not pa
 |---|---|---|
 | Wire format | Accept top-level `images: [...]` **and** `{"image": ...}` parts inside `state`; normalize to one ordered context | Both are common on the board; the kit's `decide` engine sends `images`, RPA clients want text and images interleaved |
 | Image sources | `data:` URLs and raw base64 only; `https://` refused | The server must not fetch URLs a client names (SSRF) |
-| Limits | 4 images, 20 MB body; images over 1.6 MP downscaled in the gateway (aspect kept, LANCZOS) | The board's rule and the suite's maximum |
+| Limits | 4 images, 20 MB body; images over 1.6 MP (1,638,400 px) downscaled in the gateway (aspect kept, LANCZOS) | The kit's `max_images` and pixel cap; the suite has at most 2 images a row and 3.9 MB a body after the cap |
 | Layout | `header`, unchanged wording; images sit inside `Context:` | Same label tables and calibration as text; within-request sharing measured |
 | Readout path | Image rows via `/inference/v1/generate`; text rows stay on `/v1/completions` | Only path that keeps our token ids, label checks and calibration (spike) |
 | Calibration | Reuse each profile's text T and b; measure ECE on image rows, do not fit on the suite | The suite is a test set |
@@ -67,9 +67,10 @@ POST /v1/systemone {state, questions, images?}
   The ids come from the tokenizer at startup and are checked to be single tokens.
 - **Expanded length.** vLLM expands each placeholder to a size the gateway must know for
   `SYSTEMONE_MAX_LEN`, `usage.input_tokens` and Qwen's prefix padding:
-  - Gemma: `min(floor(patches / 9), max_soft_tokens) + 2`;
-  - Qwen: `(H / 32) × (W / 32)` after the processor's resize, plus 2.
-  A live test compares both formulas with vLLM's `return_token_ids` count.
+  - Gemma: vLLM's `_compute_num_soft_tokens` (rescales every image to the `max_soft_tokens` budget in
+    48-px units, then patches / 9, capped), plus 2;
+  - Qwen: `(H / 32) × (W / 32)` after transformers' `smart_resize`, plus 2. Over 200:1 is refused (400).
+  Both are ports of the source, not estimates. A live test compares them with vLLM's `return_token_ids` count.
 - **Build rows** (`gateway/prompts.py`). The context part becomes a list of segments (text ids or
   placeholder ids) encoded once and shared by every row, as today. Qwen's front padding is computed on
   expanded lengths.
@@ -85,8 +86,11 @@ POST /v1/systemone {state, questions, images?}
 
 | Profile | Changes |
 |---|---|
-| `gemma-4-31b` | `EXTRA_ARGS` + `--enable-scale-out --mm-processor-kwargs {"max_soft_tokens":560}`, `--limit-mm-per-prompt {"video":0,"image":4}` |
-| `qwen3.8-27b` | `LANGUAGE_MODEL_ONLY=0`, `--enable-scale-out`, `--mm-processor-kwargs {"max_pixels":1638400}`, `--limit-mm-per-prompt {"video":0,"image":4}` |
+| `gemma-4-31b` | `SYSTEMONE_IMAGES=1`, `MM_PROCESSOR_KWARGS={"max_soft_tokens":560}`, `--limit-mm-per-prompt {"video":0,"image":4}` |
+| `qwen3.8-27b` | `LANGUAGE_MODEL_ONLY=0`, `SYSTEMONE_IMAGES=1`, `MM_PROCESSOR_KWARGS={"max_pixels":1638400}`, `--limit-mm-per-prompt {"video":0,"image":4}` |
+
+`SYSTEMONE_IMAGES=1` adds `--enable-scale-out` and turns on the gateway's image path. `MM_PROCESSOR_KWARGS`
+feeds both vLLM's `--mm-processor-kwargs` and the gateway's expanded-length formulas, so they cannot drift.
 
 Qwen risks, measured before the gateway work depends on them:
 
@@ -104,7 +108,7 @@ Other profiles (`qwen3.6-*`, quantized ones) are out of scope for this design.
 | Undecodable image, more than 4 images, body over 20 MB | 400 |
 | Image request on a profile without vision | 400 "this profile serves text only" |
 | Expanded prompt over `SYSTEMONE_MAX_LEN` | 422, recorded by the kit as `unsupported` (as today) |
-| vLLM error on the image route | 502, as for text |
+| vLLM error on the image route | 500, as for text |
 
 ## 4. Prompt sharing with images
 
@@ -112,8 +116,8 @@ Other profiles (`qwen3.6-*`, quantized ones) are out of scope for this design.
   (spike: 544/605 tokens).
 - **Across requests:** in `header` the question list comes before `Context:`, so the same screenshot with
   a different question set is recomputed. Accepted: RPA steps usually send a new screenshot anyway.
-- **vLLM image identity:** an image's cache hash comes from its bytes, so the gateway sends the bytes it
-  decoded, unchanged, on every row of a request.
+- **vLLM image identity:** each image part carries `uuid` = the SHA-256 of the bytes the gateway sends, so every
+  row of a request names the same cache entry and vLLM skips rehashing.
 
 ## 5. Docs
 

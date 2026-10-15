@@ -59,13 +59,13 @@ def test_more_than_four_images_are_refused():
 
 
 def test_undecodable_image_is_refused():
-    with pytest.raises(ImageError, match="not a decodable image"):
+    with pytest.raises(ImageError, match="not a decodable PNG, JPEG, WEBP or GIF image"):
         decode_image(b64(b"not an image"), "images[0]")
 
 
 @pytest.mark.parametrize("fmt", ["BMP", "TIFF"])
 def test_formats_outside_the_allowlist_are_refused(fmt):
-    with pytest.raises(ImageError, match=r"images\[0\]: images must be PNG, JPEG, WEBP or GIF"):
+    with pytest.raises(ImageError, match=r"images\[0\]: not a decodable PNG, JPEG, WEBP or GIF image"):
         decode_image(b64(encoded(8, 8, fmt)), "images[0]")
 
 

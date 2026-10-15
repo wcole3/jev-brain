@@ -66,29 +66,10 @@ def too_large(size: tuple[int, int]) -> bool:
     return limit is not None and size[0] * size[1] > limit
 
 
-def other_format(raw: bytes) -> bool:
-    """True when Pillow recognizes raw as some format outside ALLOWED_FORMATS (header parse only)."""
-    try:
-        PIL.Image.open(io.BytesIO(raw)).close()
-    except (OSError, SyntaxError, ValueError, PIL.Image.DecompressionBombError):
-        return False
-    return True
-
-
-def open_allowed(raw: bytes, where: str) -> PIL.Image.Image:
-    """Open raw as PNG, JPEG, WEBP or GIF only: no other Pillow plugin ever parses the upload."""
-    try:
-        return PIL.Image.open(io.BytesIO(raw), formats=ALLOWED_FORMATS)
-    except PIL.Image.UnidentifiedImageError as e:
-        if other_format(raw):
-            raise ImageError(f"{where}: images must be PNG, JPEG, WEBP or GIF") from e
-        raise
-
-
 def open_image(raw: bytes, where: str) -> PIL.Image.Image:
-    """Open and fully decode raw, refusing oversized headers before any pixel is read."""
+    """Open raw as PNG, JPEG, WEBP or GIF only and decode it, refusing oversized headers first."""
     try:
-        im = open_allowed(raw, where)
+        im = PIL.Image.open(io.BytesIO(raw), formats=ALLOWED_FORMATS)
         if too_large(im.size):
             raise ImageError(f"{where}: image too large")
         im.load()
@@ -97,7 +78,7 @@ def open_image(raw: bytes, where: str) -> PIL.Image.Image:
     except PIL.Image.DecompressionBombError as e:
         raise ImageError(f"{where}: image too large") from e
     except (OSError, SyntaxError, ValueError) as e:
-        raise ImageError(f"{where}: not a decodable image") from e
+        raise ImageError(f"{where}: not a decodable PNG, JPEG, WEBP or GIF image") from e
     return im
 
 

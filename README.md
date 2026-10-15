@@ -79,7 +79,7 @@ make down
 `make help` lists every target and profile.
 
 - **Ports:** the gateway listens on `127.0.0.1:9000` and vLLM on `127.0.0.1:8000`.
-g  Clients talk to the gateway. To serve your LAN, see Security.
+  Clients talk to the gateway. To serve your LAN, see Security.
 - **Start time:** up to ~10 minutes (weight load and graph capture); about 4 when the
   weights are still in memory from a recent run.
 - **Switching models:** `make up PROFILE=<other>` replaces the running stack.

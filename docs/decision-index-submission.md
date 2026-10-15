@@ -1,8 +1,9 @@
 # Submitting to the Decision Index
 
-Status **2026-10-09**: updated for edition 0.3, nothing submitted. Preparation is tracked in DS-030
-(after DS-005 Stage 2 and DS-028). Raw scrapes are in `.firecrawl/decision-index-submit/` (0.2.1)
-and `.firecrawl/jdi/` (0.3), both git-ignored.
+Status **2026-10-14**: PR review refreshed (see [What the PRs show](#what-the-prs-show-2026-10-14)),
+nothing submitted. Preparation is tracked in DS-030 (after DS-005 Stage 2 and DS-028). Raw scrapes
+are in `.firecrawl/decision-index-submit/` (0.2.1), `.firecrawl/jdi/` (0.3) and
+`.firecrawl/jdi-pr-recon/` (all PRs, board JSON, 2026-10-14), all git-ignored.
 
 ## Short answer
 
@@ -77,6 +78,66 @@ Index is the 0.3 public index (0.2.1: 55.92 / 56.01 / 60.61).
 - **#15 and the board's pplx-decider entry.** Both stay listed with declared use of suite rows for
   selection.
 - **#21.** It led to the pause for 0.3. Selection on public rows is now read sceptically.
+
+## What the PRs show (2026-10-14)
+
+167 PRs to date (#2-#187). The README's submission steps are unchanged since 0.3. The only addition is a
+Vision board: mark the PR **vision** for it. Our server takes no images, so we enter the text board
+only. Kit HEAD is `f5a6e4f`; the commits after `9eb2dbe` touch vision and SGD (out of the index), and
+`9eb2dbe` runs were still being accepted on 2026-10-14.
+
+**How the maintainer works now:**
+- He never merges submission PRs. He closes the PR once the entry is on the board.
+- Since 0.3 he closes in silent batches (2026-10-07, 10-12, 10-13, 10-14). His last PR comment
+  was on 2026-10-07.
+- 48 accepted 0.3 PRs: median 3.4 days from open to close, max 7.2.
+- Validation shows up on the board, not in the PR. Methodology notes list:
+  - run-to-run agreement per entry;
+  - "lifts", where he raises author-set caps and re-answers refused rows;
+  - contamination checks that rebuild declared training data;
+  - a shuffle test.
+
+**Closed but never on the board (no reason posted):**
+
+| PR | Entry | Visible difference |
+|---|---|---|
+| #118 | Bespoke-Nimble-27B-v3, 65.33 | Hosted API only, weights not released |
+| #111 | BRREV-27B / 9B | Run on 2× H100, model parallel |
+| #90, #92, #104 | KnowLine-4B Gen1-3, 60-63 | H20 only; a 4B scoring 60+; Gen4 and a 35B still open |
+| #73, #79, #80, #132-#138 | Rev family | Resubmitted twice; open again as #173-#180 |
+| #30 | Wald-4B v2.1, 60.05 | A 4B scoring 60; its 26B sibling (#129) was accepted |
+| #101 | InferCrane Commerce-1, 61.69 | None visible |
+
+Open since 2026-09-27: mogan-decision-31B (#21, #85). It trained on benchmark train splits and
+drew public complaints.
+
+**Closest analogues, both accepted.** Each is a stock model plus a published readout:
+
+| Entry | PR | Public | Full | Rank | Body |
+|---|---|---|---|---|---|
+| MORJ 1.0.1 (stock Gemma 4 31B, own `/v1/systemone` server) | #143 | 60.24 | 60.96 | 8 | 910 chars |
+| AnyJev L0 · Gemma-4-31B | #109 | 59.79 | 60.22 | 9 | 2,139 chars |
+| Decider chat · Gemma-4-31B | #5 | 57.79 | 57.62 | 27 | – |
+| Decider chat · Qwen3.6-27B | #5 | 51.57 | 51.25 | 47 | – |
+| Jev | – | 57.96 | 60.11 | 12 | – |
+
+Stock-Gemma entries hold their public score in the Full score. Stock-Qwen entries lose ground on new
+domains (simple-jev: 56.05 public, 51.79 Full). This bears on owner decision 1.
+
+**PR format that works (MORJ, #143):**
+- **Body:** about 5 hand-written bullets:
+  1. what it is (stock weights, no training, server repo @ commit);
+  2. public score, `complete`, hardware, one request at a time;
+  3. results link pinned to a dataset commit;
+  4. how to run (`docker compose up -d` at the commit, kit commit, `http` engine, `--compact`);
+  5. limits.
+- **Row:** one row in a new `submissions/README.md`. Column headers vary between PRs (6 variants
+  accepted), so ours is fine.
+- **Long-form detail** (optional): a `submissions/<name>/README.md`, as AnyJev did.
+- **Latency:** give single-process latency apart from the concurrent `scores.json` number. Say which
+  card it was measured on.
+- **Pins:** pin every link to a commit. A 2026-09-25 maintainer comment says he can't act on
+  AI-written requests.
 
 ## What we have and what's missing
 

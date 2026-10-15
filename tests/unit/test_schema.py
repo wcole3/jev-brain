@@ -22,3 +22,7 @@ def test_extra_fields_ignored_and_overrides_parsed():
 def test_unknown_question_type_rejected():
     with pytest.raises(ValidationError):
         SystemOneRequest.model_validate({"questions": {"q": {"type": "maybe"}}})
+
+
+def test_images_field_is_optional():
+    assert SystemOneRequest(questions={}).images is None

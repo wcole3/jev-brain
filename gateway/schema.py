@@ -12,6 +12,10 @@ class RequestError(ValueError):
     """Refused with HTTP 422. Capacity messages keep the decision-index harness marker text."""
 
 
+class ImageError(RequestError):
+    """A bad image, too many images or an oversized body: refused with HTTP 400, not 422."""
+
+
 class Question(BaseModel):
     model_config = ConfigDict(extra="ignore")
     type: Literal["choice", "score", "noul"]
@@ -26,3 +30,4 @@ class SystemOneRequest(BaseModel):
     questions: dict[str, Question]
     layout: str | None = None  # experiment override, not part of Jev's API
     option_orders: str | None = None  # experiment override, not part of Jev's API
+    images: list[str] | None = None  # data: URLs or base64, shown before the state

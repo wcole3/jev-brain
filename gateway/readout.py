@@ -98,7 +98,7 @@ class Readout:
         for i in chunk:
             if i not in got:
                 raise RuntimeError(f"vLLM returned no logprob for label id {i}")
-        return got
+        return {i: got[i] for i in chunk}  # the spare may be another chunk's label
 
     async def _read(self, prompts: list[list[int]], label_ids: list[list[int]]) -> list[list[float]]:
         """Label ids go in chunks of 128; each chunk is sent only with the rows that read one of its ids."""

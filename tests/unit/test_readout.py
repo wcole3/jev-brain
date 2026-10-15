@@ -1,3 +1,4 @@
+import asyncio
 import json
 
 import httpx
@@ -249,10 +250,18 @@ async def test_warm_up_threshold_counts_expanded_tokens():
 
 
 async def test_row_warm_up_reads_row_one_first():
-    seen = []
+    log, answer = [], fake_generate([])
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        k = json.loads(request.content)["token_ids"][-1]  # the row number
+        log.append(("start", k))
+        await asyncio.sleep(0)  # lets rows sent together overlap
+        log.append(("end", k))
+        return answer(request)
+
     rows = [[5] * 20 + [k] for k in range(3)]
-    await readout(fake_generate(seen), warm_up="row").image_logprobs(rows, [[10]] * 3, 20, 600, PARTS, PARTS)
-    assert seen[0][1]["token_ids"] == rows[0] and len(seen) == 3
+    await readout(handler, warm_up="row").image_logprobs(rows, [[10]] * 3, 20, 600, PARTS, PARTS)
+    assert log.index(("end", 0)) < min(log.index(("start", k)) for k in (1, 2))
 
 
 async def test_more_than_127_labels_split_across_calls():
@@ -261,6 +270,18 @@ async def test_more_than_127_labels_split_across_calls():
     out = await readout(fake_generate(seen)).image_logprobs([[1]], [labels], 1, 1, PARTS, PARTS)
     assert out == [[-float(i) for i in labels]] and len(seen) == 2
     assert all(len(b["sampling_params"]["logprob_token_ids"]) <= MAX_LABEL_IDS for _, b in seen)
+
+
+async def test_a_later_chunks_spare_id_does_not_overwrite_an_earlier_label():
+    def handler(request: httpx.Request) -> httpx.Response:
+        ids = json.loads(request.content)["sampling_params"]["logprob_token_ids"]
+        top = [{"token": f"token_id:{t}", "logprob": -float(t)} for t in ids[:-1]]
+        top.append({"token": f"token_id:{ids[-1]}", "logprob": 999.0})  # the spare answers differently
+        return httpx.Response(200, json={"choices": [{"logprobs": {"content": [{"top_logprobs": top}]}}]})
+
+    labels = list(range(201))  # chunk 2 holds 127..200 and its spare is 0, a label of chunk 1
+    out = await readout(handler).image_logprobs([[1]], [labels], 1, 1, PARTS, PARTS)
+    assert out == [[-float(i) for i in labels]]
 
 
 async def test_a_missing_label_is_an_error():

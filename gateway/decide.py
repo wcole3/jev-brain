@@ -48,6 +48,7 @@ class Reads:
     input_tokens: int
     shared_len: int  # leading ids every row shares, pad included
     padded: bool  # the shared prefix carries a pad
+    batch: Batch  # the rows as built, for tools that need per-row token counts
 
 
 def has_images(request: SystemOneRequest) -> bool:
@@ -122,7 +123,7 @@ async def read_rows(
     for row, lp in zip(batch.rows, logprobs, strict=True):
         reads[row.question_id].append((lp, row.perm))
     padded = batch.shared_len != batch.unpadded_len
-    return Reads(name, questions, reads, batch.input_tokens, batch.shared_len, padded)
+    return Reads(name, questions, reads, batch.input_tokens, batch.shared_len, padded, batch)
 
 
 def blend(reads: list[tuple[list[float], list[int]]], temperature: float, yes_offset: float = 0.0) -> list[float]:

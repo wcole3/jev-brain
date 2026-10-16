@@ -54,8 +54,9 @@ matches the suite on disk.
 ## 3. Collect
 
 `scripts/vision_collect.py --profile P --label L` reads each split row straight from vLLM with the gateway's
-own code (`build_batch`, `read_rows`), at concurrency 8, and records every order's raw letter logprobs plus
-`input_tokens`, `shared_len` and `padded`.
+own code (`build_batch`, `read_rows`), at concurrency 8, and records every order's raw letter logprobs and
+suffix length, plus `input_tokens`, `shared_len`, `padded`, `unpadded_len`, `image_tokens` and `images_shared`.
+Offline uses these to count an arm's tokens as live would: the unpadded prefix once, the arm's reads only.
 
 - **A config** is a profile, a label, a layout, the orders to record (default `identity+reversed`, optional
   `cyclic:N`) and `--env KEY=VALUE` overrides such as `MM_PROCESSOR_KWARGS`. The label folder records the whole
@@ -109,8 +110,9 @@ collected orders plus one calibration method:
 - **Agreement** is the share of rows with the same top answer. A high-agreement, near-zero Δ config is a
   different config that does the same job.
 - **Per-benchmark Δ skill** shows where a change lands. One benchmark moving alone is a hint, not a result.
-- **ΔECE, ΔNLL** are calibration; **tokens** is the mean `input_tokens`; **latency** is p50 and p80 when
-  attached with `--latency NAME=DIR` (a dir with a latency run's `summary.json`).
+- **ΔECE, ΔNLL** are calibration. **Tokens** is the mean `input_tokens` of the arm's own reads: an identity
+  arm pays for one order, not every collected one; "—" marks an arm scored from an older collect. **Latency**
+  is p50 and p80 when attached with `--latency NAME=DIR` (a dir with a latency run's `summary.json`).
 - **Refusals:** configs that do not cover the same ids; a latency summary without a power limit at start and
   end, or with a limit that changed mid-run; summaries at different limits. Errored live rows count as wrong.
 - Output: `docs/results/vision-experiments/<UTC>-<label>/summary.md` and `summary.json`. It never picks a

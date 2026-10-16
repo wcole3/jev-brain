@@ -127,7 +127,7 @@ async def test_record_shape_and_config_json(suite, gemma_tok):
     assert n == 4 and [r["id"] for r in recs] == [r["id"] for r in ROWS]
     first = recs[0]
     keys = {"id", "benchmark", "group", "layout", "status", "names", "gold", "input_tokens", "shared_len", "padded",
-            "reads", "stamp"}
+            "unpadded_len", "image_tokens", "images_shared", "reads", "stamp"}
     assert set(first) == keys and first["padded"] is False and first["shared_len"] > 0
     assert first["status"] == "ok" and first["benchmark"] == "Bench" and first["input_tokens"] > 0
     assert [r["group"] for r in recs] == ["bench:0", "bench:0", "bench:2", "bench:3"]
@@ -135,7 +135,8 @@ async def test_record_shape_and_config_json(suite, gemma_tok):
     assert [r["gold"] for r in recs] == [0, 2, 1, None]
     label_ids = json.loads((suite / "data" / PROFILE / "header" / "labels.json").read_text())["ids"]
     want = [-0.001 * t for t in label_ids[:3]]
-    assert recs[1]["reads"] == [{"perm": [0, 1, 2], "logprobs": want}, {"perm": [2, 1, 0], "logprobs": want}]
+    assert [{k: r[k] for k in ("perm", "logprobs")} for r in recs[1]["reads"]] == [
+        {"perm": [0, 1, 2], "logprobs": want}, {"perm": [2, 1, 0], "logprobs": want}]
     config = json.loads((out_file(suite).parent / "config.json").read_text())
     assert config == {
         "profile": PROFILE,
@@ -147,6 +148,15 @@ async def test_record_shape_and_config_json(suite, gemma_tok):
         "commit": vs.commit(),
     }
     assert json.loads((out_file(suite).parent / "dev.config.json").read_text()) == config
+
+
+async def test_token_fields_reproduce_the_batch_input_tokens(suite):
+    await run(suite)
+    for rec in records(out_file(suite)):
+        suffixes = [r["suffix_len"] for r in rec["reads"]]
+        images = rec["image_tokens"] * (1 if rec["images_shared"] else len(suffixes))
+        assert rec["image_tokens"] > 0 and all(n > 0 for n in suffixes)
+        assert rec["input_tokens"] == rec["unpadded_len"] + sum(suffixes) + images
 
 
 async def test_resume_skips_done_ids_and_a_truncated_tail(suite):

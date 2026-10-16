@@ -24,10 +24,11 @@ def rec(i: int, logprobs: list[list[float]], gold: int | None, *, benchmark="B",
         perms=None, status="ok") -> dict:
     n = len(logprobs[0])
     perms = perms or [list(range(n)), list(range(n))[::-1]][: len(logprobs)]
-    reads = [{"perm": p, "logprobs": lp} for p, lp in zip(perms, logprobs, strict=True)]
+    reads = [{"perm": p, "logprobs": lp, "suffix_len": 7 + k} for k, (p, lp) in enumerate(zip(perms, logprobs, strict=True))]
     return {"id": f"r{i}", "benchmark": benchmark, "group": group or f"g{i}", "layout": "header", "status": status,
             "names": [f"o{j}" for j in range(n)], "gold": gold, "input_tokens": 10, "shared_len": 5,
-            "padded": False, "reads": reads, "stamp": {"profile": "gemma-4-31b", "layout": "header"}}
+            "padded": False, "unpadded_len": 5, "image_tokens": 100, "images_shared": False, "reads": reads,
+            "stamp": {"profile": "gemma-4-31b", "layout": "header"}}
 
 
 def planted(bases: int, seed: int, *, T: float = 1.0, bias: float = 0.0, copies: int = 10, benchmark="B") -> list[dict]:
@@ -56,7 +57,7 @@ def test_text_arm_reproduces_gateway_probabilities():
         reads = [(x["logprobs"], x["perm"]) for x in r["reads"]]
         assert s["probs"] == probabilities(reads, "choice", TEXT)
         assert s | {"probs": None} == {"id": r["id"], "benchmark": "B", "group": r["group"], "gold": r["gold"],
-                                       "probs": None, "chance": 0.2}
+                                       "probs": None, "chance": 0.2, "input_tokens": 5 + 7 + 8 + 2 * 100}
     assert report["arm"] == "text" and report["folds"] is None and report["fallbacks"] == []
 
 
@@ -69,7 +70,8 @@ def test_cross_fit_never_scores_a_row_with_its_own_fold(arm):
 
     def shaken(r: dict) -> dict:
         lp = r["reads"][0]["logprobs"]
-        return r | {"reads": [{"perm": [0, 1, 2, 3], "logprobs": [3 * x for x in lp[::-1]]}], "gold": 3 - r["gold"]}
+        read = {"perm": [0, 1, 2, 3], "logprobs": [3 * x for x in lp[::-1]], "suffix_len": 7}
+        return r | {"reads": [read], "gold": 3 - r["gold"]}
 
     same = [shaken(r) if vo.fold(r["group"]) == own and r is not target else r for r in recs]
     other = [shaken(r) if vo.fold(r["group"]) != own else r for r in recs]
@@ -99,7 +101,7 @@ def test_pride_removes_a_planted_letter_bias():
 def test_pride_k_unseen_in_the_fitting_fold_uses_no_prior():
     recs = planted(10, seed=5, bias=1.0)
     two = next(r for r in recs if vo.fold(r["group"]) == 0) | {"id": "two", "names": ["a", "b"], "gold": 0,
-                                                                  "reads": [{"perm": [0, 1], "logprobs": [0.0, -1.0]}]}
+                                                                  "reads": [{"perm": [0, 1], "logprobs": [0.0, -1.0], "suffix_len": 7}]}
     scored, report = vo.score([*recs, two], "pride", "identity", TEXT)
     assert "2" not in report["folds"]["0"]["prior"]
     assert by_id(scored)["two"]["probs"] == blend([([0.0, -1.0], [0, 1])], report["folds"]["0"]["T"])
@@ -130,6 +132,21 @@ def test_orders_subset_uses_only_collected_perms():
         vo.score([both, only], "text", "identity+reversed", TEXT)
     with pytest.raises(ValueError, match="unknown option_orders"):
         vo.score([], "text", "sideways", TEXT)
+
+
+@pytest.mark.parametrize("shared, orders, want", [
+    (False, "identity", 5 + 7 + 100), (False, "identity+reversed", 5 + 7 + 8 + 200),
+    (True, "identity", 5 + 7 + 100), (True, "identity+reversed", 5 + 7 + 8 + 100)])
+def test_input_tokens_count_only_the_arm_reads(shared, orders, want):
+    r = rec(0, [[0.0, -1.0, -2.0], [-2.0, -1.0, 0.0]], 0) | {"images_shared": shared}
+    assert vo.score([r], "text", orders, TEXT)[0][0]["input_tokens"] == want
+
+
+def test_old_records_without_token_fields_give_no_input_tokens():
+    r = rec(0, [[0.0, -1.0]], 0)
+    old = {k: v for k, v in r.items() if k not in ("unpadded_len", "image_tokens", "images_shared")}
+    old["reads"] = [{"perm": x["perm"], "logprobs": x["logprobs"]} for x in r["reads"]]
+    assert vo.score([old], "text", "identity", TEXT)[0][0]["input_tokens"] is None
 
 
 def test_unscored_rows_are_counted_per_status():

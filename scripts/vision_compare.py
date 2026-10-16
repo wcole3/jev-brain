@@ -12,7 +12,6 @@ from pathlib import Path
 
 from gateway.config import ROOT
 from scripts import vision_splits
-from scripts.collect import records
 from scripts.metrics import EPS, ece_of
 from scripts.vision_summary import last_per_run
 
@@ -129,17 +128,10 @@ def read_gz(path: Path) -> list[dict]:
         return [json.loads(line) for line in f if line.strip()]
 
 
-def collect_tokens(arm: dict) -> dict[str, int]:
-    """Input tokens per id from the collect file the arm was scored from; empty if that file is gone."""
-    path = Path(arm.get("collect", ""))
-    path = path if path.is_absolute() else ROOT / path
-    return {r["id"]: r["input_tokens"] for r in records(path)} if path.is_file() else {}
-
-
 def load_offline(path: Path) -> tuple[list[dict], dict]:
+    """Scored rows; input_tokens counts only the arm's reads, and is None for arms scored from an old collect."""
     arm = json.loads((path / "arm.json").read_text()) if (path / "arm.json").exists() else {}
-    tokens = collect_tokens(arm)
-    rows = [r | {"errored": False, "input_tokens": tokens.get(r["id"])} for r in read_gz(path / "scored.jsonl.gz")]
+    rows = [{"input_tokens": None} | r | {"errored": False} for r in read_gz(path / "scored.jsonl.gz")]
     keys = ("arm", "orders", "skipped", "fallbacks", "fit_on")
     about = {k: arm.get(k) for k in keys} | {"split": arm.get("collect_config", {}).get("split"), "errored": 0}
     return rows, about
@@ -258,6 +250,8 @@ def markdown(s: dict) -> str:
         lines.append("| " + " | ".join(cells) + " |")
     if timed:
         lines += ["", f"Latency at power limit {fmt(s['power_limit_w'], '')} W."]
+    lines += [f"\n{n}: no input tokens (scored from a collect without per-read counts; recollect to get them)."
+              for n, c in cfgs.items() if c["kind"] == "offline" and c["mean_input_tokens"] is None]
     lines += ["", "## Paired", "", "| config | agreement | d | b (base only) | c (config only) | McNemar p | ΔECE | ΔNLL |",
               "|---|---|---|---|---|---|---|---|"]
     lines += [f"| {n} | {p['agreement']:.4f} | {p['discordant_share']:.4f} | {p['b']} | {p['c']} | {p['mcnemar_p']:.4g} | "

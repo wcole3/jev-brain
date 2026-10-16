@@ -20,8 +20,9 @@ def hit(i, ok: bool, **kw) -> dict:
     return row(i, 0, [0.8, 0.2] if ok else [0.3, 0.7], **kw)
 
 
-def write_offline(path: Path, rows: list[dict]) -> Path:
+def write_offline(path: Path, rows: list[dict], tokens: int | None = 50) -> Path:
     path.mkdir(parents=True)
+    rows = [{"input_tokens": tokens} | r for r in rows]
     with gzip.open(path / "scored.jsonl.gz", "wt") as f:
         f.writelines(json.dumps(r) + "\n" for r in rows)
     (path / "arm.json").write_text(json.dumps({"arm": "text", "orders": "identity", "skipped": {}, "fallbacks": [],
@@ -159,6 +160,18 @@ def test_errored_live_rows_count_as_wrong_and_are_reported(tmp_path, monkeypatch
     assert summary["paired"]["live"]["b"] == 2 and summary["paired"]["live"]["c"] == 0
     assert summary["paired"]["live"]["agreement"] == pytest.approx(6 / 8)  # an errored row agrees with nothing
     assert summary["configs"]["live"]["mean_input_tokens"] == 100
+
+
+def test_tokens_come_from_scored_rows_and_old_arms_show_a_dash(tmp_path):
+    base = write_offline(tmp_path / "base", [hit(i, True) for i in range(6)], tokens=120)
+    old = write_offline(tmp_path / "old", [hit(i, True) for i in range(6)], tokens=None)
+    vc.main(["--baseline", f"base={base}", f"old={old}", "--out-label", "t", "--out-root", str(tmp_path / "o")])
+    summary = summary_of(tmp_path / "o")
+    assert summary["configs"]["base"]["mean_input_tokens"] == 120
+    assert summary["configs"]["old"]["mean_input_tokens"] is None
+    md = next((tmp_path / "o").iterdir()).joinpath("summary.md").read_text()
+    assert "| old | offline |" in md and "| — |" in md
+    assert "old: no input tokens" in md
 
 
 def latency_dir(path: Path, **summary) -> Path:

@@ -49,6 +49,16 @@ def chosen_reads(rec: dict, orders: str) -> Reads:
     return [(by_perm[tuple(p)], p) for p in wanted]
 
 
+def input_tokens(rec: dict, reads: Reads) -> int | None:
+    """Batch.input_tokens for these reads alone: the unpadded prefix once, their suffixes, the image tokens.
+    None for a record collected before the per-read counts."""
+    if rec.get("unpadded_len") is None:
+        return None
+    suffix = {tuple(r["perm"]): r["suffix_len"] for r in rec["reads"]}
+    images = rec["image_tokens"] * (1 if rec["images_shared"] else len(reads))
+    return rec["unpadded_len"] + sum(suffix[tuple(p)] for _, p in reads) + images
+
+
 def require_choice(rec: dict) -> None:
     """Every vision row is a choice question (string option names), so T is the choice T."""
     if rec.get("type", "choice") != "choice" or not all(isinstance(n, str) for n in rec["names"]):
@@ -142,7 +152,7 @@ def fits(arm: str, items: list[Item], text_T: float) -> dict[str, dict]:
 
 def score(recs: list[dict], arm: str, orders: str, text_cal: Calibration,
           fit_on: list[dict] | None = None) -> tuple[list[dict], dict]:
-    """Scored rows {id, benchmark, group, gold, probs, chance} and the arm's report (fitted values per fold).
+    """Scored rows {id, benchmark, group, gold, probs, chance, input_tokens} and the arm's report (fits per fold).
     With fit_on (dev records), fitted arms fit on all of those and score every row: no folds."""
     if arm not in ARMS:
         raise ValueError(f"unknown arm {arm!r}: use one of {ARMS}")
@@ -159,7 +169,8 @@ def score(recs: list[dict], arm: str, orders: str, text_cal: Calibration,
             folds = {"dev": {"fitted_on": "dev"} | fit_fold(arm, items_of(fit_on, orders)[0], items, text_T)}
         probs = [fold_probs(arm, i, folds[i.fold]) for i in items]
     rows = [{"id": i.rec["id"], "benchmark": i.rec["benchmark"], "group": i.rec["group"], "gold": i.rec["gold"],
-             "probs": p, "chance": 1 / len(i.rec["names"])} for i, p in zip(items, probs, strict=True)]
+             "probs": p, "chance": 1 / len(i.rec["names"]), "input_tokens": input_tokens(i.rec, i.reads)}
+            for i, p in zip(items, probs, strict=True)]
     report = {"arm": arm, "orders": orders, "folds": folds, "fallbacks": fallbacks(arm, folds) if folds else [],
               "skipped": skipped, "scored": len(rows)}
     return rows, report

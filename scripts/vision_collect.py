@@ -105,7 +105,8 @@ def gold_index(names: list, expected) -> int | None:
 
 async def collect_one(engine, row: dict, group: str, layout: str, orders: str, rec_stamp: dict) -> dict:
     rec = {"id": row["id"], "benchmark": row["benchmark"], "group": group, "layout": layout, "names": [],
-           "gold": None, "input_tokens": None, "shared_len": None, "padded": None, "reads": [], "stamp": rec_stamp}
+           "gold": None, "input_tokens": None, "shared_len": None, "padded": None, "unpadded_len": None,
+           "image_tokens": None, "images_shared": None, "reads": [], "stamp": rec_stamp}
     try:
         names = option_names(row, engine.layouts[layout])
         rec |= {"names": names, "gold": gold_index(names, row["expected"].get("answer"))}
@@ -119,9 +120,22 @@ async def collect_one(engine, row: dict, group: str, layout: str, orders: str, r
         return rec | {"status": "invalid", "error": str(e).splitlines()[0]}
     except RequestError as e:  # includes ImageError: a missing, unreadable or refused image
         return rec | {"status": "unsupported", "error": str(e)}
-    reads = [{"perm": perm, "logprobs": lp} for lp, perm in r.reads["answer"]]
-    read = {"input_tokens": r.input_tokens, "shared_len": r.shared_len, "padded": r.padded, "reads": reads}
-    return rec | {"status": "ok"} | read
+    return rec | {"status": "ok"} | token_fields(r) | {"reads": reads_of(r)}
+
+
+def reads_of(r) -> list[dict]:
+    """Each order's raw logprobs and its own token count past the shared prefix."""
+    batch = r.batch
+    suffixes = [len(row.ids) - batch.shared_len for row in batch.rows if row.question_id == "answer"]
+    return [{"perm": perm, "logprobs": lp, "suffix_len": n}
+            for (lp, perm), n in zip(r.reads["answer"], suffixes, strict=True)]
+
+
+def token_fields(r) -> dict:
+    """What rebuilds Batch.input_tokens for any subset of reads: unpadded prefix, suffixes and image tokens."""
+    b = r.batch
+    return {"input_tokens": r.input_tokens, "shared_len": r.shared_len, "padded": r.padded,
+            "unpadded_len": b.unpadded_len, "image_tokens": b.added, "images_shared": b.images_shared}
 
 
 async def collect_retrying(engine, *args) -> dict:

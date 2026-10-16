@@ -26,6 +26,7 @@ class Layout:
     noul_question: str
     questions: str = ""
     question_item: str = ""
+    image_label: str = ""
 
     @property
     def option_open(self) -> str:
@@ -61,6 +62,8 @@ def _check(name: str, data: dict) -> None:
             raise ValueError(f"{name}: {key} needs {placeholder}")
     if "{text}" not in data["option"].split("{label}")[-1]:
         raise ValueError(f"{name}: option needs {{text}} after {{label}}")
+    if "image_label" in data and "{n}" not in data["image_label"]:
+        raise ValueError(f"{name}: image_label needs {{n}}")
     if len(data["noul"]) != 2:
         raise ValueError(f"{name}: noul must be [false word, true word]")
 
@@ -82,6 +85,7 @@ def load_layout(path: Path) -> Layout:
         noul_question=data["noul_question"],
         questions=data.get("questions", ""),
         question_item=data.get("question_item", ""),
+        image_label=data.get("image_label", ""),
     )
 
 

@@ -3,6 +3,7 @@ from pathlib import Path
 import pytest
 
 from gateway.labels import label_table
+from gateway.layouts import PROMPTS_DIR, load_layouts
 from gateway.padding import Padding, newline_token
 from gateway.prompts import chat_frame, encode, encode_each, image_context
 from gateway.schema import ImageError
@@ -165,3 +166,18 @@ def test_placeholder_text_in_a_state_item_is_refused(gemma_tok):
     images = image_context(gemma_tok, LAYOUTS["header"], [img(), "Is <|image|> blue?"], GEMMA_VISION)
     with pytest.raises(ImageError, match="placeholder"):
         batch_for(gemma_tok, "header", images=images)
+
+
+def test_image_label_precedes_each_image(gemma_tok):
+    worded = load_layouts(PROMPTS_DIR / "experiments")["header-worded"]
+    ids = image_context(gemma_tok, worded, [img(), img()], GEMMA_VISION).ids
+    first = encode(gemma_tok, "Image 1:\n") + [258880]
+    second = encode(gemma_tok, "Image 2:\n") + [258880]
+    at = next(i for i in range(len(ids)) if ids[i : i + len(first)] == first)
+    assert any(ids[i : i + len(second)] == second for i in range(at + len(first), len(ids)))
+
+
+def test_layouts_without_image_label_keep_their_hash_and_ids(gemma_tok):
+    plain = image_context(gemma_tok, LAYOUTS["header"], [img()], GEMMA_VISION).ids
+    assert LAYOUTS["header"].image_label == ""
+    assert plain.count(258880) == 1  # the goldens pin the exact ids

@@ -34,3 +34,28 @@ def test_hash_follows_the_text(tmp_path):
     (tmp_path / "a.toml").write_text(text)
     (tmp_path / "b.toml").write_text(text.replace("Question:", "Q:"))
     assert load_layout(tmp_path / "a.toml").sha256 != load_layout(tmp_path / "b.toml").sha256
+
+
+EXPERIMENTS = PROMPTS_DIR / "experiments"
+
+
+def test_image_label_needs_n(tmp_path):
+    bad = (PROMPTS_DIR / "header.toml").read_text() + 'image_label = "Image:\\n"\n'
+    (tmp_path / "bad.toml").write_text(bad)
+    with pytest.raises(ValueError, match="image_label"):
+        load_layout(tmp_path / "bad.toml")
+
+
+def test_gateway_does_not_load_experiment_layouts():
+    assert sorted(load_layouts()) == ["decider_chat", "header", "question_first"]
+
+
+def test_experiment_layouts_load_and_share_the_header_prefix_rule():
+    from gateway.prompts import shared_parts
+
+    layouts = load_layouts(EXPERIMENTS)
+    assert sorted(layouts) == ["header-imgfirst", "header-imgfirst-worded", "header-worded"]
+    assert shared_parts(layouts["header-imgfirst"]) == ["context", "questions"]
+    assert shared_parts(layouts["header-worded"]) == ["questions", "context"]
+    assert layouts["header-worded"].image_label == "Image {n}:\n"
+    assert layouts["header-imgfirst"].image_label == ""

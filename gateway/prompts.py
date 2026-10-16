@@ -72,10 +72,12 @@ def image_context(tok, layout: Layout, items: list[str | Image], vision: Vision)
     texts = around_images(items)
     texts[0] = label + texts[0]
     texts[-1] += after
-    pieces = encode_each(tok, texts)
+    count = len(texts) - 1
+    labels = [layout.image_label.format(n=k) for k in range(1, count + 1)] if layout.image_label else []
+    pieces = encode_each(tok, texts + labels)
     ids = list(pieces[0])
-    for piece in pieces[1:]:
-        ids += list(vision.placeholder) + piece
+    for k, piece in enumerate(pieces[1 : count + 1]):
+        ids += (list(pieces[count + 1 + k]) if labels else []) + list(vision.placeholder) + piece
     images = tuple(item for item in items if isinstance(item, Image))
     return ImageContext(ids, images, vision.placeholder, sum(vision.added(image) for image in images))
 

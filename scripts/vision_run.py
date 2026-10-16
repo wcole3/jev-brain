@@ -1,6 +1,6 @@
 """Score the Decision Index Vision suite through the gateway with the kit's own runner.
 
-usage: uv run python scripts/vision_run.py --profile P --gateway URL [--sample N] [--workers 8] [--run-dir DIR]
+usage: uv run python scripts/vision_run.py --profile P --gateway URL [--sample N | --ids NAME_OR_PATH [--holdout]] [--workers 8] [--run-dir DIR]
 An existing run dir resumes. Results land in docs/results/<profile>/<UTC>-vision[-sample]/.
 """
 
@@ -9,13 +9,18 @@ import json
 import os
 import random
 import subprocess
+import sys
 from collections import defaultdict
+from contextlib import contextmanager
+from datetime import UTC, datetime
 from pathlib import Path
 
 import httpx
 
 from gateway.config import ROOT
 from scripts.evaluate import gateway_headers, now, results_dir
+from scripts.gpu_telemetry import summarize
+from scripts.vision_splits import SPLITS, load_split
 from scripts.vision_summary import read_jsonl, write_folder
 
 SEED = 24
@@ -47,6 +52,39 @@ def write_sample_dir(suite_dir: Path, rows: list[dict], out: Path) -> Path:
         if not link.is_symlink():
             link.symlink_to(suite_dir / top)
     return out
+
+
+def power_limit() -> float:
+    """Current GPU power limit in watts (first GPU); latency runs need a GPU host."""
+    try:
+        done = subprocess.run(["nvidia-smi", "--query-gpu=power.limit", "--format=csv,noheader,nounits"],
+                              capture_output=True, text=True, check=True)
+    except (FileNotFoundError, subprocess.CalledProcessError) as e:
+        raise SystemExit(f"cannot read the GPU power limit ({e}); latency runs must be on a GPU host")
+    return float(done.stdout.splitlines()[0])
+
+
+def utc() -> str:
+    return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S")
+
+
+@contextmanager
+def telemetry(csv_path: Path):
+    """Run gpu_telemetry sample as a child for the block; stop it by its own pid."""
+    child = subprocess.Popen([sys.executable, "-m", "scripts.gpu_telemetry", "sample", "--out", str(csv_path)], cwd=ROOT)
+    try:
+        yield
+    finally:
+        child.terminate()
+        child.wait(timeout=10)
+
+
+def manifest_ids(ids: str, holdout: bool) -> tuple[list[dict], set[str]]:
+    """Rows of a manifest (name or path) in order, and its warm-up ids."""
+    name = Path(ids).stem
+    rows = load_split(name, holdout=holdout, tool="vision_run", label=name)
+    warmup = json.loads((SPLITS / f"{name}.json").read_text())["meta"].get("warmup", 0)
+    return rows, {r["id"] for r in rows[:warmup]}
 
 
 def check_health(gateway: str, profile: str) -> dict:
@@ -83,11 +121,15 @@ def parse_args(argv=None) -> argparse.Namespace:
     p.add_argument("--profile", required=True)
     p.add_argument("--gateway", required=True)
     p.add_argument("--sample", type=int, help="seeded sample stratified by benchmark")
+    p.add_argument("--ids", help="manifest name or path (e.g. vision-latency); rows run in manifest order")
+    p.add_argument("--holdout", action="store_true", help="allow reading vision-holdout (logged)")
     p.add_argument("--workers", type=int, default=8)
     p.add_argument("--kit-dir", type=Path, default=DEFAULT_KIT)
     p.add_argument("--kit-python")
     p.add_argument("--run-dir", type=Path, help="resumes when it exists (default .cache/vision-runs/<profile>/<UTC>)")
     args = p.parse_args(argv)
+    if args.ids and args.sample:
+        p.error("--ids and --sample are mutually exclusive")
     kit_venv = args.kit_dir / "venv" / "bin" / "python"
     args.kit_python = args.kit_python or str(kit_venv if kit_venv.exists() else "python3")
     args.suite_dir = (args.kit_dir / "work" / "vision").resolve()
@@ -99,16 +141,24 @@ def parse_args(argv=None) -> argparse.Namespace:
 def main(args) -> None:
     health = check_health(args.gateway, args.profile)
     args.run_dir.mkdir(parents=True, exist_ok=True)
-    suite = args.suite_dir
-    if args.sample:
+    suite, warmup = args.suite_dir, set()
+    if args.ids:
+        rows, warmup = manifest_ids(args.ids, args.holdout)
+        suite = write_sample_dir(args.suite_dir, rows, args.run_dir / "sample-suite")
+    elif args.sample:
         sample = stratified_sample(read_jsonl(args.suite_dir / "vision-rows.jsonl"), args.sample)
         suite = write_sample_dir(args.suite_dir, sample, args.run_dir / "sample-suite")
-    for cmd in (run_command(args, health, args.run_dir, suite), score_command(args, args.run_dir, suite)):
-        subprocess.run(cmd, cwd=args.kit_src, env=kit_env(), check=True)
-    name = f"{now()}-vision" + ("-sample" if args.sample else "")
+    start, power_start = utc(), power_limit()
+    csv_path = args.run_dir / "telemetry.csv"
+    with telemetry(csv_path):
+        subprocess.run(run_command(args, health, args.run_dir, suite), cwd=args.kit_src, env=kit_env(), check=True)
+    subprocess.run(score_command(args, args.run_dir, suite), cwd=args.kit_src, env=kit_env(), check=True)
+    extra = {"power_limit_w": power_start, "power_limit_w_end": power_limit(),
+             "telemetry": summarize(csv_path, since=start, until=utc())}
+    name = f"{now()}-vision" + ("-sample" if args.sample else "-ids" if args.ids else "")
     out = results_dir(args.profile, name)
     (out / "health.json").write_text(json.dumps(health, indent=2) + "\n")
-    summary = write_folder(args.run_dir, suite, out, f"Vision suite, {args.profile} via gateway")
+    summary = write_folder(args.run_dir, suite, out, f"Vision suite, {args.profile} via gateway", warmup, extra)
     print(out, json.dumps(summary))
 
 

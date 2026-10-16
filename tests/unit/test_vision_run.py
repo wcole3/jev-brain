@@ -72,3 +72,64 @@ def test_sample_dir_holds_only_the_rows_and_links_image_dirs(tmp_path):
     assert [json.loads(line)["id"] for line in lines] == ["x:1", "x:2"]
     assert (out / "full").resolve() == (suite / "full").resolve()
     assert (out / "extra").is_symlink()
+
+
+def test_ids_manifest_orders_the_sample_suite(tmp_path, monkeypatch):
+    rows = [{"id": "x:2", "images": ["full/b.jpg"]}, {"id": "x:1", "images": ["full/a.jpg"]}]
+    monkeypatch.setattr(vision_run, "load_split", lambda name, **kw: rows)
+    monkeypatch.setattr(vision_run, "SPLITS", tmp_path)
+    (tmp_path / "vision-latency.json").write_text(json.dumps({"meta": {"warmup": 1}, "ids": ["x:2", "x:1"]}))
+    picked, warmup = vision_run.manifest_ids("vision-latency", False)
+    assert warmup == {"x:2"}
+    suite = tmp_path / "suite"
+    (suite / "full").mkdir(parents=True)
+    out = vision_run.write_sample_dir(suite, picked, tmp_path / "sample")
+    ids = [json.loads(line)["id"] for line in (out / "vision-rows.jsonl").read_text().splitlines()]
+    assert ids == ["x:2", "x:1"]
+
+
+def test_warmup_ids_are_dropped_from_latency():
+    assert vision_summary.latency(ROWS, {"a"}) == {"median": 250.0, "mean": 250.0, "p80": 300.0}
+
+
+def fake_nvidia_smi(tmp_path, monkeypatch, body):
+    exe = tmp_path / "bin" / "nvidia-smi"
+    exe.parent.mkdir()
+    exe.write_text(f"#!/bin/sh\n{body}\n")
+    exe.chmod(0o755)
+    monkeypatch.setenv("PATH", str(exe.parent))
+
+
+def test_power_limit_is_recorded(tmp_path, monkeypatch):
+    fake_nvidia_smi(tmp_path, monkeypatch, "echo 510.00; echo 300.00")
+    assert vision_run.power_limit() == 510.0
+
+
+def test_missing_nvidia_smi_exits(tmp_path, monkeypatch):
+    monkeypatch.setenv("PATH", str(tmp_path))
+    with pytest.raises(SystemExit, match="GPU host"):
+        vision_run.power_limit()
+
+
+def test_summary_carries_skip_and_extra(tmp_path):
+    run, suite = tmp_path / "run", tmp_path / "suite"
+    run.mkdir()
+    suite.mkdir()
+    (run / "results.jsonl").write_text("".join(json.dumps(r) + "\n" for r in ROWS))
+    (run / "vision-scores.json").write_text(json.dumps({"public_vision_index": 1.0, "complete": True, "benchmarks": {}}))
+    (suite / "vision-rows.jsonl").write_text("")
+    extra = {"power_limit_w": 510.0, "power_limit_w_end": 510.0, "telemetry": {"samples": 0}}
+    vision_summary.write_folder(run, suite, tmp_path / "out", "t", {"a"}, extra)
+    saved = json.loads((tmp_path / "out" / "summary.json").read_text())
+    assert saved["warmup_skipped"] == 1 and saved["power_limit_w_end"] == 510.0
+    assert saved["latency_ms"]["median"] == 250.0
+
+
+def test_holdout_manifest_needs_the_flag(monkeypatch):
+    with pytest.raises(SystemExit, match="holdout"):
+        vision_run.manifest_ids("vision-holdout", False)
+
+
+def test_ids_and_sample_are_exclusive():
+    with pytest.raises(SystemExit):
+        vision_run.parse_args(["--profile", "p", "--gateway", "g", "--ids", "vision-latency", "--sample", "5"])

@@ -24,9 +24,9 @@ def ok_rows(rows: list[dict]) -> list[dict]:
     return [r for r in rows if r["status"] == "ok"]
 
 
-def latency(rows: list[dict]) -> dict | None:
-    """Median, mean and p80 of model_request_wall_ms over ok rows; None without any."""
-    ms = [r["model_request_wall_ms"] for r in ok_rows(rows)]
+def latency(rows: list[dict], skip: frozenset[str] | set[str] = frozenset()) -> dict | None:
+    """Median, mean and p80 of model_request_wall_ms over ok rows not in skip; None without any."""
+    ms = [r["model_request_wall_ms"] for r in ok_rows(rows) if r["run_id"] not in skip]
     if not ms:
         return None
     return {"median": statistics.median(ms), "mean": statistics.fmean(ms), "p80": percentile(ms, 0.8)}
@@ -70,13 +70,16 @@ def summary_markdown(title: str, summary: dict, scores: dict) -> str:
     return "\n".join(lines) + "\n"
 
 
-def write_folder(run_dir: Path, suite_dir: Path, out: Path, title: str) -> dict:
-    """results.jsonl.gz, vision-scores.json, summary.json and summary.md in out."""
+def write_folder(run_dir: Path, suite_dir: Path, out: Path, title: str, skip: set[str] = frozenset(), extra: dict | None = None) -> dict:
+    """results.jsonl.gz, vision-scores.json, summary.json and summary.md in out; skip = warm-up ids."""
     out.mkdir(parents=True, exist_ok=True)
     rows = last_per_run(read_jsonl(run_dir / "results.jsonl"))
     expected = {r["id"]: r["expected"]["answer"] for r in read_jsonl(suite_dir / "vision-rows.jsonl")}
     scores = json.loads((run_dir / "vision-scores.json").read_text())
-    summary = {"status": status_counts(rows), "latency_ms": latency(rows), "calibration": calibration(rows, expected)}
+    summary = {"status": status_counts(rows), "latency_ms": latency(rows, skip), "calibration": calibration(rows, expected)}
+    if skip:
+        summary["warmup_skipped"] = len(skip)
+    summary |= extra or {}
     with (run_dir / "results.jsonl").open("rb") as src, gzip.open(out / "results.jsonl.gz", "wb") as dst:
         shutil.copyfileobj(src, dst)
     shutil.copy(run_dir / "vision-scores.json", out / "vision-scores.json")

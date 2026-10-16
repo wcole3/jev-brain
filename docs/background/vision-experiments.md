@@ -178,6 +178,101 @@ GPU jobs over 10 minutes need the owner's ok.
 | Temperature scaling calibrates VLMs with few samples | Tu et al. 2024 | Offline `fit-T` and `fit-T-bench` arms, cross-fitted |
 | Latency tails need hundreds of samples; drift biases back-to-back runs | general practice | 300 timed rows, warm-up dropped, A–B–A runs, power limit recorded |
 
+## 9. Round 1 results (gemma-4-31b)
+
+Design: [the campaign spec](../superpowers/specs/2026-10-16-vision-campaign-1-design.md). This section reports; the
+owner picks.
+
+- **Rows and date.** Dev split, 1,462 rows, 2026-10-16.
+- **Power limit.** 510 W, local, so latency is relative.
+- **Scope.** qwen3.8-27b's round 1 is not run yet.
+
+### Factorial (E2-E4)
+
+12 cells: budget {280, 560, 1120} x placement {current, imgfirst} x wording {none, worded}. Reference is
+`budget=560 placement=current wording=none` (index 77.21). Results:
+[`2026-10-16T223858Z-r1-gemma-factorial`](../results/vision-experiments/2026-10-16T223858Z-r1-gemma-factorial/summary.md).
+
+| factor | level | Δ index [95% CI] |
+|---|---|---|
+| budget | 280 | -3.50 [-5.25, -1.81] |
+| budget | 1120 | +1.01 [-0.53, +2.53] |
+| placement | imgfirst | -0.06 [-1.03, +0.92] |
+| wording | worded | +0.03 [-0.61, +0.66] |
+
+| factors | levels | interaction [95% CI] |
+|---|---|---|
+| budget x placement | 280 x imgfirst | +0.17 [-1.66, +1.99] |
+| budget x placement | 1120 x imgfirst | -0.78 [-2.64, +1.15] |
+| budget x wording | 280 x worded | -0.24 [-1.69, +1.21] |
+| budget x wording | 1120 x worded | +0.84 [-0.59, +2.29] |
+| placement x wording | imgfirst x worded | +0.43 [-0.66, +1.59] |
+
+- **Per benchmark.** At budget 280, CharXiv, InfographicVQA, Mind2Web and RealWorldQA fall with a CI that
+  excludes 0. At budget 1120 only RealWorldQA moves (+0.075 skill [+0.018, +0.136]). Placement and wording have
+  no benchmark with a CI that excludes 0.
+- **Detectability.** The minimum detectable Δ index on dev is about 3.5 points. The CIs are unadjusted for
+  multiple comparisons (9 index effects, 44 per-benchmark).
+
+Latency per budget level (510 W; placement and wording change tokens, not timed separately) and mean input tokens:
+
+| budget | p50 ms | p80 ms | mean input tokens (range over the 4 placement/wording cells) |
+|---|---|---|---|
+| 280 | 237 | 281 | 431-444 |
+| 560 | 323 | 377 | 719-733 |
+| 1120 | 712 | 766 | 1,295-1,308 |
+
+Wording adds 13-14 tokens at every budget; placement adds none. Cell index, ECE and NLL are in the summary.
+
+### T_image (E1)
+
+Results: [`2026-10-16T223905Z-r1-gemma-t-image`](../results/vision-experiments/2026-10-16T223905Z-r1-gemma-t-image/dev.json).
+One image temperature fitted on 1,800 non-suite rows (AI2D 900, A-OKVQA 900; identity orders): T_image 4.106
+against the text T 4.263.
+
+| set | rows | ECE text T -> T_image | NLL text T -> T_image | accuracy |
+|---|---|---|---|---|
+| calibration (non-suite) | 1,800 | 0.0166 -> 0.0125 | 0.2190 -> 0.2186 | n/a |
+| dev | 1,462 | 0.0768 -> 0.0825 | 0.6079 -> 0.6165 | 0.8030 -> 0.8030 |
+
+The non-suite set is much easier (calibration ECE 0.017) than dev (0.077), so its temperature may not transfer.
+That is an observation, not a decision.
+
+### Orders and PriDe (E5)
+
+Baseline `fitT_id`, dev, 1,462 rows. Results:
+[`2026-10-16T223919Z-r1-gemma-orders`](../results/vision-experiments/2026-10-16T223919Z-r1-gemma-orders/summary.md).
+
+| config | index | Δ index [95% CI] | ECE | NLL | mean input tokens |
+|---|---|---|---|---|---|
+| fitT_id | 77.02 | baseline | 0.0407 | 0.5742 | 719 |
+| pride_id | 76.76 | -0.26 [-1.07, +0.54] | 0.0406 | 0.5740 | 719 |
+| fitT_cyc | 77.00 | -0.02 [-1.23, +1.21] | 0.0340 | 0.5783 | 966 |
+| pride_cyc | 76.93 | -0.09 [-1.30, +1.15] | 0.0362 | 0.5776 | 966 |
+
+Cyclic orders read 966 tokens per row against 719 (+247, about +34%). No arm separates from the baseline.
+
+### Latency probes (E6)
+
+- **Image sharing.** Results:
+  [`image-sharing`](../results/archive/gemma-4-31b/2026-10-16T203121Z-image-sharing/summary.md). Gemma shares
+  images across rows without warm-up: computed/usage token ratio (medians over 3 reps) is 0.96 / 0.98 / 0.95
+  for the `all` / `prefix` / `row` arms at 4 questions and 0.84 / 0.86 / 0.84 at 16.
+- **Image resend.** Results:
+  [`image-resend`](../results/archive/gemma-4-31b/2026-10-16T203402Z-image-resend/summary.md). uuid-only image
+  references were accepted on 300/300 requests with the same answer, at 70 ms (full) vs 59 ms (uuid) per row.
+  Building and serializing the rows' JSON costs 0.8 ms and 0.32 MB per request.
+
+### Open for the owner
+
+- **Budget 560 vs 1120.** 1120 is +1.01 index points [-0.53, +2.53] (CI includes 0) at about 2.2x latency
+  (p50 712 vs 323 ms). 280 loses 3.50 points for 237 ms.
+- **T_image.** Ship the 4.106 fit from this set, or keep the text T: it improves calibration-set ECE but
+  worsens dev ECE and NLL, with accuracy unchanged.
+- **uuid-only image reuse.** Building it saves about 11 ms per row (70 vs 59 ms) in this probe, at the cost of a
+  new gateway path.
+- **qwen3.8-27b round 1.** Not run; it costs GPU time and needs the owner's ok.
+
 ## Caveats
 
 - **Dev is not untouched.** Many configs are compared on it; the holdout is what guards against that.

@@ -292,11 +292,13 @@ images. Both formats give the same prompt, with the images inside `Context:`:
 
 - **Sources:** `data:` URLs or raw base64 of a PNG, JPEG, WEBP or GIF. The gateway never
   fetches a URL.
-- **Limits:** 4 images and a 20 MB body per request. Images over 1,638,400 pixels are
+- **Limits:** 4 images and a 20 MB body per request; at most 50 MP per image and 100 MP per
+  request, read from the headers before decoding. Images over 1,638,400 pixels are
   downscaled, keeping the aspect ratio.
-- **Errors:** a URL, an undecodable image, more than 4 images, a body over 20 MB, text that
-  contains image placeholder tokens, or images sent to a text-only profile give 400. A prompt over `SYSTEMONE_MAX_LEN` once the images
-  are counted gives 422.
+- **Errors:** a URL, an undecodable image, more than 4 images, an image over 50 MP or
+  100 MP in total, a body over 20 MB, text that contains image placeholder tokens, or
+  images sent to a text-only profile give 400. A prompt over `SYSTEMONE_MAX_LEN` once the
+  images are counted gives 422.
 
 How it works: [Images](docs/background/images.md).
 

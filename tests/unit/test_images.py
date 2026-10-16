@@ -1,5 +1,7 @@
 import base64
 import io
+import struct
+import zlib
 
 import PIL.Image
 import pytest
@@ -23,6 +25,17 @@ def png(w, h, mode="RGB"):
 
 def b64(raw):
     return base64.b64encode(raw).decode()
+
+
+def chunk(kind: bytes, data: bytes) -> bytes:
+    return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data))
+
+
+def png_header(w, h):
+    """A PNG whose IHDR claims w x h, with a stub IDAT: Pillow reads the size without decoding pixels."""
+    ihdr = struct.pack(">IIBBBBB", w, h, 8, 2, 0, 0, 0)
+    stub = zlib.compress(b"\0")
+    return b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", ihdr) + chunk(b"IDAT", stub) + chunk(b"IEND", b"")
 
 
 def test_both_wire_formats_give_the_same_context():
@@ -102,3 +115,17 @@ def test_decompression_bombs_are_refused_before_decoding(monkeypatch):
 def test_downscale_handles_image_modes(mode, fmt, out_mode):
     img = decode_image(b64(encoded(2000, 1000, fmt, mode)), "images[0]")
     assert PIL.Image.open(io.BytesIO(img.data)).mode == out_mode
+
+
+def test_an_image_over_50_mp_is_refused_from_its_header():
+    with pytest.raises(ImageError, match=r"images\[0\]: image over 50 MP"):
+        context_items("", [b64(png_header(8000, 8000))])
+
+
+def test_images_over_100_mp_in_total_are_refused():
+    with pytest.raises(ImageError, match="images over 100 MP in total"):
+        context_items("", [b64(png_header(6000, 5000))] * 4)
+
+
+def test_a_one_pixel_image_still_passes():
+    assert context_items("", [b64(png(1, 1))])[0].width == 1

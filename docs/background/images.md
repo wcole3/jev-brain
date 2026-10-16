@@ -41,7 +41,7 @@ Both formats become one ordered list of context items ([`context_items`](../../g
 |---|---|---|
 | Source | `data:` URLs (base64) or raw base64 only. Any other string, including `https://`, is refused; the gateway never fetches | 400 |
 | Format | PNG, JPEG, WEBP, GIF only (Pillow `formats=`; an open-ended open would accept EPS, which can invoke Ghostscript) | 400 |
-| Header size | Width × height checked against Pillow's `MAX_IMAGE_PIXELS` before the pixels are decoded | 400 |
+| Header size | Width × height from the header: over 50,000,000 pixels per image, or 100,000,000 for all of a request's images, is refused before any pixel is decoded. Pillow's own `DecompressionBombError` is refused too | 400 |
 | Count | At most 4 images per request | 400 |
 | Body | At most 20,000,000 bytes, checked on `Content-Length` by a plain ASGI middleware ([`body_limit.py`](../../gateway/body_limit.py)) before the body is read | 400 |
 | Aspect (Qwen) | Over 200:1 refused, as transformers does | 400 |

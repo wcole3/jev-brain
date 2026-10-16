@@ -5,6 +5,7 @@ usage: uv run python scripts/vision_splits.py write
 
 import hashlib
 import json
+import re
 import subprocess
 import sys
 from collections import defaultdict
@@ -22,6 +23,8 @@ LATENCY_ROWS, WARMUP = 320, 20
 MAX_HOLDOUT_LABELS = 5  # distinct experiments on the holdout before it warns
 MAX_PER_GROUP = 10  # one big group (a 70-row FUNSD document) must not dominate a benchmark's split
 LOG_HEADER = "| UTC | tool | label | commit |\n|---|---|---|---|\n"
+CELL = re.compile(r"(?<!\\)\|")  # a cell border: a pipe not escaped as \|
+STAMP = re.compile(r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ")
 RULE = ("Image groups per benchmark by seeded hash, each capped at 10 rows chosen by sha256(seed:row_id); "
         "dev min(136, 40%), holdout min(218, 40%), the rest of each group and of each benchmark reserve.")
 
@@ -102,6 +105,8 @@ def cut(rows: list[dict], seed: int = SEED) -> dict[str, list[str]]:
 
 
 def suite_hash() -> str:
+    if not SUITE.exists():
+        raise SystemExit(f"{SUITE}: the vision suite file is missing; split manifests are checked against it")
     return hashlib.sha256(SUITE.read_bytes()).hexdigest()
 
 
@@ -117,18 +122,20 @@ def commit() -> str:
 
 
 def logged_labels(log_path: Path) -> set[str]:
-    """The distinct labels in the holdout log: rereading one experiment is one use."""
-    return {line.split("|")[3].strip() for line in log_path.read_text().splitlines()[2:]}
+    """The distinct labels in the holdout log: rereading one experiment is one use. Only dated rows count."""
+    rows = [CELL.split(line.strip()) for line in log_path.read_text().splitlines()]
+    return {r[3].strip().replace("\\|", "|") for r in rows if len(r) == 6 and STAMP.fullmatch(r[1].strip())}
 
 
 def log_holdout_use(tool: str, label: str, log_path: Path) -> None:
     log_path.parent.mkdir(parents=True, exist_ok=True)
     if not log_path.exists():
         log_path.write_text(LOG_HEADER)
+    labels = logged_labels(log_path) | {label}
     now = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+    cell = label.replace("|", "\\|")
     with log_path.open("a") as f:
-        f.write(f"| {now} | {tool} | {label} | {commit()} |\n")
-    labels = logged_labels(log_path)
+        f.write(f"| {now} | {tool} | {cell} | {commit()} |\n")
     if len(labels) > MAX_HOLDOUT_LABELS:
         print(f"warning: holdout read under {len(labels)} labels (log: {log_path}); stop tuning on it", file=sys.stderr)
 

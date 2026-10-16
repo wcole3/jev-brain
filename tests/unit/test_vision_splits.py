@@ -150,3 +150,24 @@ def test_holdout_warning_counts_distinct_labels_not_reads(tmp_path, capsys):
     for n in range(5):
         vs.log_holdout_use("t", f"run{n}", log)
         assert ("warning" in capsys.readouterr().err.lower()) == (n == 4)  # "same" + 5 runs: the 6th label
+
+
+def test_a_missing_suite_file_is_named(tmp_path, monkeypatch):
+    monkeypatch.setattr(vs, "SUITE", tmp_path / "gone.jsonl")
+    monkeypatch.setattr(vs, "SPLITS", tmp_path)
+    write_manifest(tmp_path, "vision-dev", ["b:0"], "x")
+    with pytest.raises(SystemExit, match="gone.jsonl"):
+        vs.read_manifest("vision-dev")
+
+
+def test_holdout_labels_survive_pipes_and_hand_edits(tmp_path, capsys, monkeypatch):
+    monkeypatch.setattr(vs, "MAX_HOLDOUT_LABELS", 2)
+    log = tmp_path / "log.md"
+    vs.log_holdout_use("t", "a|b", log)
+    log.write_text(log.read_text() + "\n   \nnot a row\n")
+    vs.log_holdout_use("t", "a|b", log)
+    assert vs.logged_labels(log) == {"a|b"}
+    vs.log_holdout_use("t", "c", log)
+    assert "warning" not in capsys.readouterr().err.lower()
+    vs.log_holdout_use("t", "d", log)
+    assert "3 labels" in capsys.readouterr().err

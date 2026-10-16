@@ -4,6 +4,7 @@ import base64
 import binascii
 import hashlib
 import io
+import warnings
 from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Any
@@ -79,12 +80,16 @@ class Opened:
         return self.im.size[0] * self.im.size[1]
 
 
+def over_cap(where: str) -> ImageError:
+    return ImageError(f"{where}: image over {MAX_DECODE_PIXELS // 1_000_000} MP")
+
+
 @contextmanager
 def pillow_errors(where: str):
     try:
         yield
-    except PIL.Image.DecompressionBombError as e:
-        raise ImageError(f"{where}: image too large") from e
+    except PIL.Image.DecompressionBombError as e:  # Pillow's own ceiling, above ours
+        raise over_cap(where) from e
     except (OSError, SyntaxError, ValueError) as e:
         raise ImageError(f"{where}: not a decodable PNG, JPEG, WEBP or GIF image") from e
 
@@ -92,11 +97,12 @@ def pillow_errors(where: str):
 def open_image(source: Any, where: str) -> Opened:
     """Open source as PNG, JPEG, WEBP or GIF only, reading the header but no pixels, and refuse it over 50 MP."""
     raw = raw_bytes(source, where)
-    with pillow_errors(where):
+    with pillow_errors(where), warnings.catch_warnings():
+        warnings.simplefilter("ignore", PIL.Image.DecompressionBombWarning)  # our cap below refuses these
         im = PIL.Image.open(io.BytesIO(raw), formats=ALLOWED_FORMATS)
     opened = Opened(raw, im, where)
     if opened.pixels > MAX_DECODE_PIXELS:
-        raise ImageError(f"{where}: image over {MAX_DECODE_PIXELS // 1_000_000} MP")
+        raise over_cap(where)
     return opened
 
 
@@ -114,14 +120,18 @@ def downscale(im: PIL.Image.Image, size: tuple[int, int]) -> tuple[str, bytes]:
 
 
 def decode(opened: Opened) -> Image:
-    """Decode the pixels, downscaling the image when it is over the image budget."""
+    """Decode the pixels, downscaling the image when it is over the image budget. The Pillow image is closed
+    after, so a request holds one image's pixels at a time."""
     raw, im = opened.raw, opened.im
-    with pillow_errors(opened.where):
-        im.load()
-    fmt, size = im.format, im.size
-    if size[0] * size[1] > MAX_PIXELS:
-        size = fit(*size, MAX_PIXELS)
-        fmt, raw = downscale(im, size)
+    try:
+        with pillow_errors(opened.where):
+            im.load()
+        fmt, size = im.format, im.size
+        if size[0] * size[1] > MAX_PIXELS:
+            size = fit(*size, MAX_PIXELS)
+            fmt, raw = downscale(im, size)
+    finally:
+        im.close()
     return Image(raw, PIL.Image.MIME[fmt], size[0], size[1], hashlib.sha256(raw).hexdigest(), opened.where)
 
 

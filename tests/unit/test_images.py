@@ -6,6 +6,7 @@ import zlib
 import PIL.Image
 import pytest
 
+import gateway.images
 from gateway.images import Image, context_items, decode_image
 from gateway.questions import render_state
 from gateway.schema import ImageError
@@ -105,7 +106,7 @@ def test_large_images_are_downscaled_keeping_aspect(fmt, mime):
 
 def test_decompression_bombs_are_refused_before_decoding(monkeypatch):
     monkeypatch.setattr(PIL.Image, "MAX_IMAGE_PIXELS", 1000)
-    with pytest.raises(ImageError, match="too large"):
+    with pytest.raises(ImageError, match="over 50 MP"):
         decode_image(b64(png(100, 100)), "images[0]")
 
 
@@ -138,3 +139,20 @@ def test_wrapped_base64_is_accepted(prefix, newline):
     wrapped = base64.encodebytes(raw).decode()  # a newline every 76 characters
     assert "\n" in wrapped.strip()
     assert decode_image(prefix + wrapped.replace("\n", newline), "images[0]").data == raw
+
+
+@pytest.mark.parametrize("w, h", [(10_000, 10_000), (20_000, 10_000)])  # Pillow warns over 89 MP, raises over 179 MP
+def test_pillow_bomb_sizes_get_our_message_and_no_warning(w, h, recwarn):
+    with pytest.raises(ImageError, match=r"images\[0\]: image over 50 MP"):
+        context_items("", [b64(png_header(w, h))])
+    assert not [x for x in recwarn if issubclass(x.category, PIL.Image.DecompressionBombWarning)]
+
+
+def test_each_pillow_image_is_closed_once_decoded(monkeypatch):
+    opened, real = [], gateway.images.open_image
+    monkeypatch.setattr(gateway.images, "open_image", lambda *a: opened.append(real(*a)) or opened[-1])
+    context_items([{"image": b64(png(8, 8))}], [b64(png(2000, 1000))])
+    assert len(opened) == 2
+    for item in opened:
+        with pytest.raises(ValueError, match="closed image"):
+            item.im.getpixel((0, 0))

@@ -181,11 +181,11 @@ GPU jobs over 10 minutes need the owner's ok.
 ## 9. Round 1 results (gemma-4-31b)
 
 Design: [the campaign spec](../superpowers/specs/2026-10-16-vision-campaign-1-design.md). This section reports; the
-owner picks.
+owner's decision closes it.
 
 - **Rows and date.** Dev split, 1,462 rows, 2026-10-16.
 - **Power limit.** 510 W, local, so latency is relative.
-- **Scope.** qwen3.8-27b's round 1 is not run yet.
+- **Scope.** gemma-4-31b only; qwen3.8-27b's round 1 was not run.
 
 ### Factorial (E2-E4)
 
@@ -263,15 +263,22 @@ Cyclic orders read 966 tokens per row against 719 (+247, about +34%). No arm sep
   references were accepted on 300/300 requests with the same answer, at 70 ms (full) vs 59 ms (uuid) per row.
   Building and serializing the rows' JSON costs 0.8 ms and 0.32 MB per request.
 
-### Open for the owner
+### What the owner weighed
 
-- **Budget 560 vs 1120.** 1120 is +1.01 index points [-0.53, +2.53] (CI includes 0) at about 2.2x latency
-  (p50 712 vs 323 ms). 280 loses 3.50 points for 237 ms.
-- **T_image.** Ship the 4.106 fit from this set, or keep the text T: it improves calibration-set ECE but
-  worsens dev ECE and NLL, with accuracy unchanged.
-- **uuid-only image reuse.** Building it saves about 11 ms per row (70 vs 59 ms) in this probe, at the cost of a
-  new gateway path.
-- **qwen3.8-27b round 1.** Not run; it costs GPU time and needs the owner's ok.
+- **Budget 560 vs 1120.** 1120 was +1.01 index points [-0.53, +2.53] (CI includes 0) at about 2.2x latency
+  (p50 712 vs 323 ms). 280 lost 3.50 points for 237 ms.
+- **T_image.** Ship the 4.106 fit from this set, or keep the text T: it improved calibration-set ECE but
+  worsened dev ECE and NLL, with accuracy unchanged.
+- **uuid-only image reuse.** Building it would have saved about 11 ms per row (70 vs 59 ms) in this probe, at
+  the cost of a new gateway path.
+- **qwen3.8-27b round 1.** Not run; it would cost GPU time.
+
+### Decision (2026-10-16)
+
+Round 1 gave no convincing reason to change anything, so the owner kept all defaults: image budget 560 (gemma) /
+max_pixels 1638400 (qwen3.8), the `header` layout, the text temperature for image rows, and identity orders.
+T_image and its calibration-set builder were removed from the code base (they are in git history). uuid-only
+image reuse was not built, and qwen3.8-27b's round 1 was not run.
 
 ## Caveats
 

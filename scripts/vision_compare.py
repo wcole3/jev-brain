@@ -9,6 +9,7 @@ import json
 import math
 import random
 from collections import Counter, defaultdict
+from collections.abc import Iterator
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -73,27 +74,36 @@ def mcnemar_p(b: int, c: int) -> float:
     return min(1.0, 2 * sum(math.comb(n, k) for k in range(min(b, c) + 1)) / 2**n)
 
 
-def group_columns(a_rows: list[dict], b_by_id: dict[str, dict]) -> dict[str, list[tuple]]:
-    """Per benchmark, per group (sorted): (rows, summed chance, hits in a, hits in b)."""
-    sums: dict[str, dict[str, list]] = defaultdict(lambda: defaultdict(lambda: [0, 0.0, 0, 0]))
+def group_columns(a_rows: list[dict], *others_by_id: dict[str, dict]) -> dict[str, list[tuple]]:
+    """Per benchmark, per group (sorted): (rows, summed chance, hits in a, hits in each other config)."""
+    sums: dict[str, dict[str, list]] = defaultdict(lambda: defaultdict(lambda: [0, 0.0] + [0] * (1 + len(others_by_id))))
     for r in a_rows:
         g = sums[r["benchmark"]][r["group"]]
-        g[0], g[1] = g[0] + 1, g[1] + r["chance"]
-        g[2], g[3] = g[2] + correct(r), g[3] + correct(b_by_id[r["id"]])
+        g[0], g[1], g[2] = g[0] + 1, g[1] + r["chance"], g[2] + correct(r)
+        for k, by_id in enumerate(others_by_id, start=3):
+            g[k] += correct(by_id[r["id"]])
     return {b: list(zip(*(gs[k] for k in sorted(gs)), strict=True)) for b, gs in sorted(sums.items())}
 
 
-def bootstrap(columns: dict[str, list[tuple]], resamples: int, seed: int) -> tuple[list[float], dict[str, list[float]]]:
-    """Index deltas and per-benchmark skill deltas over resamples of whole groups within each benchmark."""
+def resampled_skills(columns: dict[str, list[tuple]], resamples: int, seed: int) -> Iterator[list[dict[str, float]]]:
+    """Per resample of whole groups within each benchmark, every config's skills; one draw is shared by all configs."""
     rng = random.Random(seed)
-    deltas, by_bench = [], {b: [] for b in columns}
+    width = len(next(iter(columns.values()))) - 2
     for _ in range(resamples):
-        skills_a, skills_b = {}, {}
-        for b, (ns, chances, hits_a, hits_b) in columns.items():
+        skills: list[dict[str, float]] = [{} for _ in range(width)]
+        for b, (ns, chances, *hits) in columns.items():
             pick = rng.choices(range(len(ns)), k=len(ns))
             n, chance = sum(map(ns.__getitem__, pick)), sum(map(chances.__getitem__, pick))
-            skills_a[b] = skill(n, chance, sum(map(hits_a.__getitem__, pick)))
-            skills_b[b] = skill(n, chance, sum(map(hits_b.__getitem__, pick)))
+            for config, column in zip(skills, hits, strict=True):
+                config[b] = skill(n, chance, sum(map(column.__getitem__, pick)))
+        yield skills
+
+
+def bootstrap(columns: dict[str, list[tuple]], resamples: int, seed: int) -> tuple[list[float], dict[str, list[float]]]:
+    """Index deltas and per-benchmark skill deltas (b − a) over resamples of whole groups within each benchmark."""
+    deltas, by_bench = [], {b: [] for b in columns}
+    for skills_a, skills_b in resampled_skills(columns, resamples, seed):
+        for b in columns:
             by_bench[b].append(skills_b[b] - skills_a[b])
         deltas.append(combine(skills_b) - combine(skills_a))
     return deltas, by_bench

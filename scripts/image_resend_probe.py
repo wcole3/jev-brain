@@ -6,6 +6,7 @@ Writes docs/results/archive/<profile>/<UTC>-image-resend/ with results.json and 
 
 import argparse
 import asyncio
+import inspect
 import json
 import os
 import statistics
@@ -34,8 +35,9 @@ def payload(model: str, ids: list[int], parts: list[dict], labels: list[int] | N
     """A generate body; with labels it asks for their logprobs plus a spare id, as Readout._generate does."""
     sampling = {"max_tokens": 1, "temperature": 0}
     if labels is not None:
-        wanted = [*labels, next(i for i in count() if i not in labels)]
-        sampling |= {"logprobs": len(wanted), "logprob_token_ids": wanted}
+        wanted = sorted(set(labels))
+        spare = next(i for i in count() if i not in wanted)
+        sampling |= {"logprobs": len(wanted) + 1, "logprob_token_ids": [*wanted, spare]}
     return {"model": model, "token_ids": ids, "content_parts": parts, "sampling_params": sampling}
 
 
@@ -83,14 +85,18 @@ def compare(full: list[float] | None, ref: list[float] | None) -> dict:
     return {"max_abs_dlogprob": delta, "top_match": top, "uuid_same_answer": top and delta <= SAME_ANSWER_DELTA}
 
 
-async def measure(http: httpx.AsyncClient, model: str, batch) -> dict:
+async def measure(http: httpx.AsyncClient, model: str, batch, index: int = 0) -> dict:
+    """Untimed warm-up, then the full and uuid calls timed in alternating order (even index: full first)."""
     json_ms, size = json_cost(model, batch)
     ids, labels = batch.rows[0].ids, batch.rows[0].label_ids
     parts = [image.part() for image in batch.images.images]
-    full = await timed_post(http, payload(model, ids, parts, labels), labels)
-    ref = await timed_post(http, payload(model, ids, uuid_only(parts), labels), labels)
+    bodies = {"full": payload(model, ids, parts, labels), "uuid": payload(model, ids, uuid_only(parts), labels)}
+    await timed_post(http, bodies["full"], labels)
+    order = ("full", "uuid") if index % 2 == 0 else ("uuid", "full")
+    done = {name: await timed_post(http, bodies[name], labels) for name in order}
+    full, ref = done["full"], done["uuid"]
     return compare(full["logprobs"], ref["logprobs"]) | {
-            "rows": len(batch.rows), "json_ms": json_ms, "payload_bytes": size, "full_ms": full["ms"],
+            "order": "-".join(order), "rows": len(batch.rows), "json_ms": json_ms, "payload_bytes": size, "full_ms": full["ms"],
             "full_status": full["status"], "uuid_ms": ref["ms"], "uuid_status": ref["status"],
             "uuid_error": ref["error"], "uuid_accepted": ref["status"] == 200}
 
@@ -100,13 +106,13 @@ def median(values: list[float]) -> float | None:
 
 
 def summarize(records: list[dict]) -> dict:
-    """Medians per request; the uuid timing only over requests where vLLM took the uuid-only part."""
+    """Medians per request; call timings only over requests whose uuid-only call gave the same answer."""
     ok = [r for r in records if r["uuid_accepted"]]
-    return {"requests": len(records), "uuid_accepted": len(ok),
-            "uuid_same_answer": sum(r["uuid_same_answer"] for r in records),
+    same = [r for r in records if r["uuid_same_answer"]]
+    return {"requests": len(records), "uuid_accepted": len(ok), "uuid_same_answer": len(same),
             "json_ms": median([r["json_ms"] for r in records]),
             "payload_mb": median([r["payload_bytes"] / 1e6 for r in records]),
-            "full_ms": median([r["full_ms"] for r in ok]), "uuid_ms": median([r["uuid_ms"] for r in ok])}
+            "full_ms": median([r["full_ms"] for r in same]), "uuid_ms": median([r["uuid_ms"] for r in same])}
 
 
 def fmt(value: float | None, digits: int = 1) -> str:
@@ -117,7 +123,7 @@ def summary_markdown(profile: str, s: dict) -> str:
     return "\n".join([
         f"# Image resend cost, {profile}", "",
         "json_ms and payload_mb: building and serializing all rows of a request (median per request).",
-        "full_ms vs uuid_ms: row 1 with the image vs uuid only, medians over accepted requests.",
+        "full_ms vs uuid_ms: row 1 with the image vs uuid only, medians over same-answer requests.",
         "same answer: uuid-only top label equals the full call's and max |dlogprob| <= 0.5 (image really reused).", "",
         "| requests | uuid accepted | same answer | json_ms | payload_mb | full_ms | uuid_ms |", "|---|---|---|---|---|---|---|",
         "| {} | {} | {} | {} | {} | {} | {} |".format(
@@ -142,10 +148,10 @@ async def run(s: Settings, vllm: str, n_rows: int) -> list[dict]:
         if engine.vision is None:
             raise SystemExit(f"{s.profile} serves text only (SYSTEMONE_IMAGES is not 1)")
         records = []
-        for row in rows:
+        for index, row in enumerate(rows):
             request = request_of(row, s.prompt_layout, vision_splits.SUITE.parent)
             batch = (await build_batch(engine, request))[2]
-            r = {"id": row["id"], **await measure(http, s.served_model, batch)}
+            r = {"id": row["id"], **await measure(http, s.served_model, batch, index)}
             records.append(r)
             print(f"{r['id']} json {r['json_ms']:6.1f} full {r['full_ms']:6.0f} uuid {r['uuid_ms']:6.0f} "
                   f"status {r['uuid_status']}", flush=True)
@@ -161,7 +167,7 @@ def main() -> None:
     s = Settings.from_profile(args.profile)
     records = asyncio.run(run(s, args.vllm, args.rows))
     out = results_dir(args.profile, f"{now()}-image-resend", archive=True)
-    settings = {"layout": s.prompt_layout, "rows": args.rows, "split": "vision-dev", "sample": "stratified_sample seed 24", "commit": git_revision()}
+    settings = {"layout": s.prompt_layout, "rows": args.rows, "split": "vision-dev", "seed": inspect.signature(stratified_sample).parameters["seed"].default, "commit": git_revision()}
     (out / "results.json").write_text(json.dumps({"profile": args.profile, "settings": settings,
                                                   "records": records}, indent=1) + "\n")
     (out / "summary.md").write_text(summary_markdown(args.profile, summarize(records)))

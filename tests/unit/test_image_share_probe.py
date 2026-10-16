@@ -68,7 +68,8 @@ def test_row_arm_sends_row_one_first():
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler), base_url="http://v") as http:
             return await Probe(http, "m").call_set(fake_batch(), "row")
 
-    asyncio.run(go())
+    record_ = asyncio.run(go())
+    assert record_["rows"] == 3
     assert seen[0] == [1, 2, 3]
     assert sorted(seen[1:]) == [[1, 2, 4], [1, 2, 5]]
     assert ARMS == ("all", "prefix", "row")

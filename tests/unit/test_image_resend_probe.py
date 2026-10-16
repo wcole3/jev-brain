@@ -32,12 +32,12 @@ def vllm(mode: str, seen: list):
     return httpx.MockTransport(handler)
 
 
-def run_measure(mode: str):
+def run_measure(mode: str, index: int = 0):
     seen: list = []
 
     async def go():
         async with httpx.AsyncClient(transport=vllm(mode, seen), base_url="http://v") as http:
-            return await measure(http, "m", fake_batch())
+            return await measure(http, "m", fake_batch(), index)
 
     return asyncio.run(go()), seen
 
@@ -50,8 +50,8 @@ def test_resend_summary_reports_json_ms_and_uuid_outcome():
     assert ok["uuid_same_answer"] and ok["max_abs_dlogprob"] == 0
     assert dropped["uuid_accepted"] and not dropped["uuid_same_answer"] and not dropped["top_match"]
     assert not bad["uuid_same_answer"]
-    assert seen[1]["content_parts"] == [{"type": "image_url", "uuid": "abc"}]
-    assert seen[0]["token_ids"] == seen[1]["token_ids"] == [1, 2, 3]
+    assert seen[2]["content_parts"] == [{"type": "image_url", "uuid": "abc"}]
+    assert seen[0]["token_ids"] == seen[2]["token_ids"] == [1, 2, 3]
     assert seen[0]["sampling_params"]["max_tokens"] == 1 and seen[0]["sampling_params"]["temperature"] == 0
     assert ok["uuid_accepted"] and ok["json_ms"] >= 0 and ok["payload_bytes"] > 0
     assert not bad["uuid_accepted"] and bad["uuid_status"] == 400 and "missing" in bad["uuid_error"]
@@ -66,3 +66,24 @@ def test_summary_without_accepted_uuid_has_no_comparison():
     s = summarize([bad])
     assert s["uuid_accepted"] == 0 and s["full_ms"] is None
     assert "n/a" in summary_markdown("p", s)
+
+
+def kinds(seen: list) -> list[str]:
+    return ["uuid" if "url" not in b["content_parts"][0] else "full" for b in seen]
+
+
+def test_warm_up_then_alternating_order():
+    even, seen_even = run_measure("reuse", 0)
+    odd, seen_odd = run_measure("reuse", 1)
+    assert kinds(seen_even) == ["full", "full", "uuid"] and even["order"] == "full-uuid"
+    assert kinds(seen_odd) == ["full", "uuid", "full"] and odd["order"] == "uuid-full"
+
+
+def test_medians_exclude_requests_that_dropped_the_image():
+    ok, _ = run_measure("reuse")
+    dropped, _ = run_measure("drop")
+    ok |= {"full_ms": 100.0, "uuid_ms": 40.0}
+    dropped |= {"full_ms": 900.0, "uuid_ms": 1.0}
+    s = summarize([ok, dropped])
+    assert s["uuid_accepted"] == 2 and s["uuid_same_answer"] == 1
+    assert s["full_ms"] == 100.0 and s["uuid_ms"] == 40.0

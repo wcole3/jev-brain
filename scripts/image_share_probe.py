@@ -98,6 +98,7 @@ class Probe:
         """One arm's calls for one request, with the prompt-token counter deltas and wall time around them."""
         parts = [image.part() for image in batch.images.images]
         rows = [row.ids for row in batch.rows]
+        n_rows = len(rows)
         before, start = await self.metrics(), time.perf_counter()
         if arm == "prefix":
             await self.generate(rows[0][: batch.shared_len], parts if batch.images_shared else [])
@@ -109,7 +110,7 @@ class Probe:
         after = await self.metrics()
         prompt, cached = after["prompt"] - before["prompt"], after["cached"] - before["cached"]
         usage = batch.input_tokens
-        return {"rows": len(rows), "shared_len": batch.shared_len, "unpadded_len": batch.unpadded_len,
+        return {"rows": n_rows, "shared_len": batch.shared_len, "unpadded_len": batch.unpadded_len,
                 "shared_tokens": batch.shared_tokens, "images_shared": batch.images_shared, "added": batch.added,
                 "usage": usage, "prompt": prompt, "cached": cached, "computed": prompt - cached,
                 "ratio": (prompt - cached) / usage, "ms": ms}

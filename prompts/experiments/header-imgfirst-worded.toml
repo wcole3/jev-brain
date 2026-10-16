@@ -1,4 +1,5 @@
-# Experiment (never loaded by the gateway): state first, then the question list.
+# Experiment (never loaded by the gateway): header-imgfirst (context and images before the question
+# list) plus header-worded's "Image {n}:" labels and "Answer from the image(s)." hint.
 order = ["context", "questions", "question", "options"]
 questions = "Questions that will be asked about the context:\n{questions}\n\n"
 question_item = "- {question}"

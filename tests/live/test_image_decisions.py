@@ -98,6 +98,17 @@ def test_image_parts_in_state(gateway_url):
     assert r.status_code == 200, r.text
 
 
+@pytest.mark.usefixtures("settings")
+@pytest.mark.parametrize("n", [21, 130])  # past vLLM's default --max-logprobs of 20, and past one 127-id chunk
+def test_wide_image_choices(gateway_url, n):
+    options = [f"code_{i}" for i in range(n)]
+    body = {"images": [unique_png(320, 240)], "state": "code_7 applies.", "questions": {"q": choice("Which code?", options)}}
+    r = post(gateway_url, body)
+    assert r.status_code == 200, r.text
+    answer = r.json()["answers"]["q"]
+    assert answer["type"] == "choice" and set(answer["probabilities"]) == set(options)
+
+
 def batch_for(engine, body: dict) -> Batch:
     """The rows the gateway builds for this body."""
     return asyncio.run(build_batch(engine, SystemOneRequest.model_validate(body)))[2]

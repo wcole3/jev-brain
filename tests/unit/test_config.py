@@ -178,3 +178,14 @@ def test_quantized_calibration_is_stamped_for_its_block_and_revision(name):
     for layout in ("decider_chat", "header", "question_first"):
         stamp = json.loads(s.calibration_path(layout).read_text())["stamp"]
         assert (stamp["prefix_block"], stamp["hf_revision"]) == (want, s.hf_revision)
+
+
+IMAGE_PROFILES = [p.stem for p in sorted((ROOT / "profiles").glob("*.env")) if read_env_file(p).get("SYSTEMONE_IMAGES") == "1"]
+
+
+@pytest.mark.parametrize("name", IMAGE_PROFILES)
+def test_image_profiles_raise_vllms_sample_logprobs_cap(name):
+    # image rows ask for up to 128 sample logprobs; vLLM refuses more than --max-logprobs (default 20)
+    args = read_env_file(ROOT / "profiles" / f"{name}.env")["EXTRA_ARGS"].split()
+    assert "--max-logprobs" in args, "image rows need --max-logprobs 128 in EXTRA_ARGS"
+    assert int(args[args.index("--max-logprobs") + 1]) >= 128

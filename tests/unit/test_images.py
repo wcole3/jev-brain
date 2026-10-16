@@ -1,12 +1,15 @@
 import base64
 import io
 import struct
+import subprocess
+import sys
 import zlib
 
 import PIL.Image
 import pytest
 
 import gateway.images
+from gateway.config import ROOT
 from gateway.images import Image, context_items, decode_image
 from gateway.questions import render_state
 from gateway.schema import ImageError
@@ -141,11 +144,23 @@ def test_wrapped_base64_is_accepted(prefix, newline):
     assert decode_image(prefix + wrapped.replace("\n", newline), "images[0]").data == raw
 
 
+REFUSE = """
+import sys
+from gateway.images import context_items
+from gateway.schema import ImageError
+try:
+    context_items("", [sys.stdin.read()])
+except ImageError as e:
+    print(e)
+"""
+
+
 @pytest.mark.parametrize("w, h", [(10_000, 10_000), (20_000, 10_000)])  # Pillow warns over 89 MP, raises over 179 MP
-def test_pillow_bomb_sizes_get_our_message_and_no_warning(w, h, recwarn):
-    with pytest.raises(ImageError, match=r"images\[0\]: image over 50 MP"):
-        context_items("", [b64(png_header(w, h))])
-    assert not [x for x in recwarn if issubclass(x.category, PIL.Image.DecompressionBombWarning)]
+def test_pillow_bomb_sizes_get_our_message_and_no_warning(w, h):
+    # a fresh process with warnings as errors: pytest drops warning filters set at import
+    args = [sys.executable, "-W", "error::RuntimeWarning", "-c", REFUSE]
+    done = subprocess.run(args, input=b64(png_header(w, h)), capture_output=True, text=True, cwd=ROOT, check=False)
+    assert (done.stdout, done.stderr) == ("images[0]: image over 50 MP\n", "")
 
 
 def test_each_pillow_image_is_closed_once_decoded(monkeypatch):

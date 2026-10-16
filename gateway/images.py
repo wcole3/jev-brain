@@ -22,6 +22,7 @@ MAX_REQUEST_PIXELS = 100_000_000  # all images of one request, also from their h
 
 ALLOWED_FORMATS = ["PNG", "JPEG", "WEBP", "GIF"]  # the decision-index kit's pass-through set
 EMPTY_STATES = (None, "", {}, [])
+warnings.filterwarnings("ignore", category=PIL.Image.DecompressionBombWarning)  # our 50 MP check refuses first
 WRAPPING = str.maketrans("", "", " \t\r\n")  # line-wrapped base64 (MIME, encodebytes) decodes once these go
 
 
@@ -97,8 +98,7 @@ def pillow_errors(where: str):
 def open_image(source: Any, where: str) -> Opened:
     """Open source as PNG, JPEG, WEBP or GIF only, reading the header but no pixels, and refuse it over 50 MP."""
     raw = raw_bytes(source, where)
-    with pillow_errors(where), warnings.catch_warnings():
-        warnings.simplefilter("ignore", PIL.Image.DecompressionBombWarning)  # our cap below refuses these
+    with pillow_errors(where):
         im = PIL.Image.open(io.BytesIO(raw), formats=ALLOWED_FORMATS)
     opened = Opened(raw, im, where)
     if opened.pixels > MAX_DECODE_PIXELS:

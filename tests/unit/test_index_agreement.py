@@ -104,3 +104,10 @@ def test_main_exits_zero_when_flips_are_within_the_gap(tmp_path):
     before = write(tmp_path / "before.jsonl", {"r": {"q": choice(0.52, 0.48)}})
     after = write(tmp_path / "after.jsonl", {"r": {"q": choice(0.45, 0.55)}})
     assert main([before, after]) == 0
+
+
+def test_main_exits_one_when_no_question_was_compared(tmp_path, capsys):
+    before = write(tmp_path / "before.jsonl", {"a": {"q": noul(0.5)}})
+    after = write(tmp_path / "after.jsonl", {"b": {"q": noul(0.5)}})
+    assert main([before, after]) == 1
+    assert "no questions compared" in capsys.readouterr().out

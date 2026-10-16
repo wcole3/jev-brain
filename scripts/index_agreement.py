@@ -1,7 +1,7 @@
 """Answer agreement between two Index runs: top-answer flips and |dp| per question.
 
 usage: uv run python scripts/index_agreement.py BEFORE/merged/results.jsonl AFTER/merged/results.jsonl
-Exits 1 when a flip has a before top-two gap > 0.10 (the repo's stability rule).
+Exits 1 when a flip has a before top-two gap > 0.10 (the repo's stability rule), or when no question was compared.
 """
 
 import argparse
@@ -81,6 +81,9 @@ def main(argv: list[str] | None = None) -> int:
     print(f"top-answer flips: {result['flips']}")
     print(f"flips with before top-two gap > {GAP_LIMIT:.2f}: {result['flips_over_gap']}")
     print(f"|dp|: median {result['median_dp']:.4f}, max {result['max_dp']:.4f}")
+    if not result["questions"]:
+        print("FAIL: no questions compared; the runs share no ok run_id with matching options")
+        return 1
     return 1 if result["flips_over_gap"] else 0
 
 

@@ -1,8 +1,10 @@
 """Offline arms: re-score collected vision letter logprobs under one calibration method and order subset, on CPU.
 
-usage: uv run python scripts/vision_offline.py --collect FILE --arm A [--orders identity] [--fit-on DEV] --out DIR
+usage: uv run python scripts/vision_offline.py --collect FILE --arm A [--orders identity] [--fit-on DEV] [--holdout]
+       --out DIR
 Fitted arms are 2-fold cross-fitted by group: a row is scored with parameters fitted on the other fold.
 Nothing is fitted on holdout rows: on a holdout collect, fitted arms fit on a dev collect (--fit-on).
+Scoring a holdout collect needs --holdout and is logged.
 """
 
 import argparse
@@ -15,7 +17,7 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 
 from gateway.calibration import Calibration, load_calibration, orders_warning
-from gateway.config import Settings
+from gateway.config import ROOT, Settings, read_env_file
 from gateway.decide import blend, probabilities
 from gateway.orders import option_orders
 from scripts import vision_splits
@@ -176,9 +178,11 @@ def score(recs: list[dict], arm: str, orders: str, text_cal: Calibration,
     return rows, report
 
 
-def text_calibration(profile: str, layout: str) -> tuple[Calibration, Path]:
-    """The profile's shipped calibration; offline reuse skips the stamp check, and arm.json says so."""
-    path = Settings.from_profile(profile).calibration_path(layout)
+def text_calibration(profile: str, layout: str, env: dict[str, str]) -> tuple[Calibration, Path]:
+    """The profile's shipped calibration under the collect's --env (PREFIX_BLOCK picks the file); offline reuse
+    skips the stamp check, and arm.json says so."""
+    s = Settings.from_env(read_env_file(ROOT / "profiles" / f"{profile}.env") | env)
+    path = s.calibration_path(layout)
     return load_calibration(path, expect=None), path
 
 
@@ -196,7 +200,13 @@ def split_config(collect: Path) -> dict:
     return json.loads(path.read_text())
 
 
-def fit_source(args, config: dict) -> list[dict] | None:
+def bare_stamp(recs: list[dict], path: Path) -> dict:
+    """The one stamp a collect's records share, commit left out (as resume does)."""
+    stamps = {json.dumps({k: v for k, v in r["stamp"].items() if k != "commit"}, sort_keys=True) for r in recs}
+    return json.loads(only(stamps, "stamp (commit aside)", path))
+
+
+def fit_source(args, config: dict, recs: list[dict]) -> list[dict] | None:
     """Holdout rows are never fitted on: a fitted arm on a holdout collect fits on a matching dev collect."""
     holdout = config["split"] == "holdout"
     if args.fit_on is None:
@@ -211,7 +221,11 @@ def fit_source(args, config: dict) -> list[dict] | None:
     diff = [k for k in SAME_CONFIG if dev.get(k) != config.get(k)]
     if diff:
         raise SystemExit(f"--fit-on {args.fit_on} differs from {args.collect} in {diff}")
-    return list(records(args.fit_on))
+    fit_on = list(records(args.fit_on))
+    want, have = bare_stamp(recs, args.collect), bare_stamp(fit_on, args.fit_on)
+    if diff := sorted(k for k in want.keys() | have.keys() if want.get(k) != have.get(k)):
+        raise SystemExit(f"--fit-on {args.fit_on} was collected under other stamps than {args.collect}: {diff}")
+    return fit_on
 
 
 def run(args) -> dict:
@@ -219,10 +233,13 @@ def run(args) -> dict:
     if not recs:
         raise SystemExit(f"{args.collect}: no records")
     config = split_config(args.collect)
-    fit_on = fit_source(args, config)
+    holdout = config["split"] == "holdout"
+    if holdout and not args.holdout:
+        raise SystemExit(f"{args.collect} is the holdout split: pass --holdout to score it (logged)")
+    fit_on = fit_source(args, config, recs)
     profile = only({r["stamp"]["profile"] for r in recs}, "profile", args.collect)
     layout = only({r["layout"] for r in recs}, "layout", args.collect)
-    cal, cal_path = text_calibration(profile, layout)
+    cal, cal_path = text_calibration(profile, layout, config.get("env", {}))
     if warning := orders_warning(cal, args.orders):
         print(f"warning: {warning}", file=sys.stderr)
     try:
@@ -231,9 +248,12 @@ def run(args) -> dict:
         raise SystemExit(str(e)) from e
     text = {"path": str(cal_path), "source": cal.source, "T": cal.T["choice"], "orders": cal.orders,
             "stamp_checked": False}
-    fit = str(args.fit_on) if args.fit_on else None
-    arm = report | {"collect": str(args.collect), "collect_config": config, "fit_on": fit, "text_calibration": text,
-                    "commit": vision_splits.commit()}
+    fit = str(args.fit_on.resolve()) if args.fit_on else None
+    arm = report | {"collect": str(args.collect.resolve()), "collect_config": config, "fit_on": fit,
+                    "text_calibration": text, "commit": vision_splits.commit()}
+    if holdout:  # logged after every check that can refuse the run
+        vision_splits.log_holdout_use("vision_offline", f"{config['label']} {args.arm} {args.orders}",
+                                      vision_splits.HOLDOUT_LOG)
     args.out.mkdir(parents=True, exist_ok=True)
     with gzip.open(args.out / "scored.jsonl.gz", "wt", encoding="utf-8") as f:
         f.writelines(json.dumps(r) + "\n" for r in rows)
@@ -249,6 +269,7 @@ def parse_args(argv=None) -> argparse.Namespace:
     p.add_argument("--arm", required=True, choices=ARMS)
     p.add_argument("--orders", default="identity")
     p.add_argument("--fit-on", type=Path, help="dev collect that fitted arms fit on when --collect is holdout")
+    p.add_argument("--holdout", action="store_true", help="score a holdout collect (logged)")
     p.add_argument("--out", type=Path, required=True)
     return p.parse_args(argv)
 

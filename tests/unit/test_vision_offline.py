@@ -9,7 +9,16 @@ import pytest
 from gateway.calibration import Calibration
 from gateway.decide import blend, probabilities
 from scripts import vision_offline as vo
+from scripts import vision_splits as vs
 from scripts.collect import records
+
+
+@pytest.fixture(autouse=True)
+def holdout_log(tmp_path, monkeypatch):
+    """Holdout looks in tests land in tmp, never in the committed log."""
+    monkeypatch.setattr(vs, "HOLDOUT_LOG", tmp_path / "holdout-log.md")
+    return tmp_path / "holdout-log.md"
+
 
 TEXT = Calibration({"choice": 3.0, "score": 1.0, "noul": 1.0}, source="p/header/calibration.json")
 
@@ -194,8 +203,8 @@ def test_holdout_fitted_arm_needs_fit_on(tmp_path):
     holdout = write_collect(tmp_path / "x", "holdout", planted(2, seed=11, copies=5))
     for arm in ("fit-T", "fit-T-bench", "pride"):
         with pytest.raises(SystemExit, match="--fit-on"):
-            vo.main(["--collect", str(holdout), "--arm", arm, "--out", str(tmp_path / "out")])
-    vo.main(["--collect", str(holdout), "--arm", "text", "--out", str(tmp_path / "out")])
+            vo.main(["--collect", str(holdout), "--arm", arm, "--holdout", "--out", str(tmp_path / "out")])
+    vo.main(["--collect", str(holdout), "--arm", "text", "--holdout", "--out", str(tmp_path / "out")])
 
 
 def test_fit_on_scores_holdout_with_dev_fitted_values_only(tmp_path):
@@ -210,7 +219,8 @@ def test_fit_on_scores_holdout_with_dev_fitted_values_only(tmp_path):
     dev_path = write_collect(tmp_path / "x", "dev", dev, orders="identity")
     holdout_path = write_collect(tmp_path / "x", "holdout", holdout, orders="identity")
     out = tmp_path / "out"
-    arm = vo.main(["--collect", str(holdout_path), "--arm", "fit-T", "--fit-on", str(dev_path), "--out", str(out)])
+    arm = vo.main(["--collect", str(holdout_path), "--arm", "fit-T", "--fit-on", str(dev_path), "--holdout",
+                   "--out", str(out)])
     assert arm["fit_on"] == str(dev_path) and arm["folds"] == report["folds"]
 
 
@@ -223,10 +233,12 @@ def test_fit_on_refused_on_a_dev_collect_and_from_another_config(tmp_path):
                        ("env", {"MM_PROCESSOR_KWARGS": "{\"max_pixels\": 1}"})):
         other = write_collect(tmp_path / key, "dev", planted(2, seed=14, copies=5), **{key: value})
         with pytest.raises(SystemExit, match=key):
-            vo.main(["--collect", str(holdout), "--arm", "fit-T", "--fit-on", str(other), "--out", str(tmp_path / "o")])
+            vo.main(["--collect", str(holdout), "--arm", "fit-T", "--fit-on", str(other), "--holdout",
+                     "--out", str(tmp_path / "o")])
     not_dev = write_collect(tmp_path / "y", "latency", planted(2, seed=14, copies=5))
     with pytest.raises(SystemExit, match="dev"):
-        vo.main(["--collect", str(holdout), "--arm", "fit-T", "--fit-on", str(not_dev), "--out", str(tmp_path / "o")])
+        vo.main(["--collect", str(holdout), "--arm", "fit-T", "--fit-on", str(not_dev), "--holdout",
+                 "--out", str(tmp_path / "o")])
 
 
 def test_non_choice_rows_are_refused_naming_the_row():
@@ -258,3 +270,66 @@ def test_text_calibration_orders_are_recorded_and_a_mismatch_warns(tmp_path, cap
                    "--out", str(tmp_path / "b")])
     assert arm["text_calibration"]["orders"] == "identity"
     assert "fitted under option orders 'identity'" in capsys.readouterr().err
+
+
+def test_holdout_collect_needs_the_flag_and_is_logged(tmp_path, holdout_log):
+    holdout = write_collect(tmp_path / "x", "holdout", planted(2, seed=17, copies=5))
+    with pytest.raises(SystemExit, match="--holdout"):
+        vo.main(["--collect", str(holdout), "--arm", "text", "--out", str(tmp_path / "o")])
+    assert not holdout_log.exists() and not (tmp_path / "o").exists()
+    vo.main(["--collect", str(holdout), "--arm", "text", "--holdout", "--out", str(tmp_path / "o")])
+    (entry,) = holdout_log.read_text().splitlines()[2:]
+    assert "| vision_offline | x text identity |" in entry
+
+
+def test_refused_holdout_run_logs_nothing(tmp_path, holdout_log):
+    holdout = write_collect(tmp_path / "x", "holdout", planted(2, seed=18, copies=5))
+    with pytest.raises(SystemExit, match="--fit-on"):
+        vo.main(["--collect", str(holdout), "--arm", "fit-T", "--holdout", "--out", str(tmp_path / "o")])
+    assert not holdout_log.exists()
+
+
+def test_dev_collect_logs_nothing(tmp_path, holdout_log):
+    dev = write_collect(tmp_path / "x", "dev", planted(2, seed=19, copies=5))
+    vo.main(["--collect", str(dev), "--arm", "text", "--out", str(tmp_path / "o")])
+    assert not holdout_log.exists()
+
+
+def restamped(recs: list[dict], **stamp) -> list[dict]:
+    return [r | {"stamp": r["stamp"] | stamp} for r in recs]
+
+
+def test_fit_on_refuses_a_dev_collect_with_other_stamps(tmp_path):
+    holdout = write_collect(tmp_path / "h", "holdout", restamped(planted(2, seed=20, copies=5), commit="aaa"))
+    other = restamped(planted(2, seed=21, copies=5), labels_sha256="other", layout_sha256="x", commit="bbb")
+    dev = write_collect(tmp_path / "d", "dev", other)
+    with pytest.raises(SystemExit) as e:
+        vo.main(["--collect", str(holdout), "--arm", "fit-T", "--fit-on", str(dev), "--holdout",
+                 "--out", str(tmp_path / "o")])
+    assert "labels_sha256" in str(e.value) and "layout_sha256" in str(e.value) and "commit" not in str(e.value)
+    same = write_collect(tmp_path / "s", "dev", restamped(planted(2, seed=21, copies=5), commit="bbb"))
+    vo.main(["--collect", str(holdout), "--arm", "fit-T", "--fit-on", str(same), "--holdout",
+             "--out", str(tmp_path / "o")])
+
+
+def write_calibration(path, T: float) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    types = {t: {"T": T} for t in ("choice", "score", "noul")}
+    path.write_text(json.dumps({"format": 2, "stamp": {}, "types": types}))
+
+
+def test_text_calibration_follows_the_collect_env(tmp_path):
+    data = tmp_path / "data"
+    write_calibration(data / "gemma-4-31b" / "header" / "calibration.json", 2.0)
+    write_calibration(data / "gemma-4-31b" / "header" / "calibration-800.json", 5.0)
+    env = {"DATA_ROOT": str(data), "PREFIX_BLOCK": "800"}
+    collect = write_collect(tmp_path / "x", "dev", planted(1, seed=22, copies=5), env=env)
+    arm = vo.main(["--collect", str(collect), "--arm", "text", "--out", str(tmp_path / "o")])
+    assert arm["text_calibration"]["T"] == 5.0 and arm["text_calibration"]["path"].endswith("calibration-800.json")
+
+
+def test_arm_json_paths_are_absolute(tmp_path, monkeypatch):
+    collect = write_collect(tmp_path / "x", "dev", planted(1, seed=23, copies=5))
+    monkeypatch.chdir(tmp_path)
+    arm = vo.main(["--collect", "x/dev.jsonl.gz", "--arm", "text", "--out", "o"])
+    assert arm["collect"] == str(collect.resolve())

@@ -3,6 +3,7 @@
 "seed": 20261016,
 "suite_sha256": "f5f1cfb5cd92ab48d4d14919dff9c56963f4bbbed483bdd45a4f102dba87c133",
 "near_mean_abs": 2.0,
+"dedupe": "dropped when the image matches a suite image by byte sha256, by 16x16 gray thumb sha256, or by thumb mean |difference| <= near_mean_abs (exact thumbs miss JPEG re-encodes)",
 "sources": [
 {
 "name": "scienceqa",
@@ -14,7 +15,7 @@
 "skipped": {
 "repeat_image": 38
 },
-"note": "rows with an image; hint prefixed as 'Context:'"
+"note": "rows with an image; a non-empty hint is the row's state (string), else state {}"
 },
 {
 "name": "ai2d",
@@ -39,7 +40,7 @@
 "note": "multiple-choice: choices + correct_choice_idx; COCO 2017 images"
 }
 ],
-"rows_sha256": "44d9daf54822b8415d920da099e56b881a269044d04436384334e5423a058f53",
+"rows_sha256": "35957f0cd423b5a3bfdb9dbe8e9fdaecb5e3a4aee8c4ad7af74943c1b3472826",
 "count": 1800
 },
 "ids": [

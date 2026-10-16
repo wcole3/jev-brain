@@ -30,6 +30,8 @@ TOTAL = 1800
 LETTERS = "ABCDEFGHIJ"  # at most 10 options
 THUMB = (16, 16)
 NEAR = 2.0  # mean |gray difference| of the 16x16 thumbs under which a lossy copy counts as the suite image
+DEDUPE = ("dropped when the image matches a suite image by byte sha256, by 16x16 gray thumb sha256, or by thumb "
+          "mean |difference| <= near_mean_abs (exact thumbs miss JPEG re-encodes)")
 EXTENSIONS = {"PNG": "png", "JPEG": "jpg", "WEBP": "webp", "GIF": "gif"}
 assert set(EXTENSIONS) == set(ALLOWED_FORMATS)
 
@@ -156,7 +158,7 @@ def image_file(im: PIL.Image.Image, original: bytes) -> tuple[bytes, str]:
 def row(name: str, it: Item, image: str) -> dict:
     criteria = dict(zip(LETTERS, it.choices, strict=False))
     question = {"type": "choice", "instructions": it.question, "criteria": criteria}
-    return {"id": f"{name}:{it.source_id}", "benchmark": name, "images": [image], "state": {},
+    return {"id": f"{name}:{it.source_id}", "benchmark": name, "images": [image], "state": it.state,
             "questions": {"answer": question}, "expected": {"answer": LETTERS[it.answer]}}
 
 
@@ -195,7 +197,7 @@ def build(sources: list[Source], suite: SuiteIndex, out: Path = OUT, manifest: P
     allocate(pools, total)
     taken = sorted((t for p in pools.values() for t in p.taken), key=lambda t: t.row["id"])
     text = write_rows(out, taken)
-    meta = {"seed": seed, "suite_sha256": suite.suite_sha256, "near_mean_abs": NEAR,
+    meta = {"seed": seed, "suite_sha256": suite.suite_sha256, "near_mean_abs": NEAR, "dedupe": DEDUPE,
             "sources": [source_meta(s, pools.get(s.name), notes[s.name]) for s in sources],
             "rows_sha256": hashlib.sha256(text).hexdigest(), "count": len(taken)}
     doc = {"meta": meta, "ids": [t.row["id"] for t in taken], "image_sha256": {t.row["id"]: t.sha for t in taken}}

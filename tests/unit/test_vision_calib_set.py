@@ -81,6 +81,16 @@ def test_rows_are_in_suite_format_and_load_in_collect(tmp_path):
     assert manifest["meta"]["seed"] == 20261016 and manifest["meta"]["suite_sha256"] == suite.suite_sha256
 
 
+def test_a_hint_is_the_row_state_and_the_question_stays_alone(tmp_path):
+    suite = suite_of(tmp_path, [noise(99)])
+    hinted = cs.Item("0", "Which is north?", ["a", "b"], 0, noise(0), "Look at the map.")
+    rows, _ = build(tmp_path, [fake("scienceqa", [hinted, item(1, noise(1))])], suite, total=2)
+    assert [(r["state"], r["questions"]["answer"]["instructions"]) for r in rows] == [
+        ("Look at the map.", "Which is north?"),
+        ({}, "Question 1?"),
+    ]
+
+
 def test_byte_identical_suite_image_is_dropped(tmp_path):
     copy = noise(1)
     suite = suite_of(tmp_path, [copy])

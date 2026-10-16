@@ -2,8 +2,9 @@
 
 import json
 from collections.abc import Callable, Iterator
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 import pyarrow.parquet as pq
 from huggingface_hub import HfApi, hf_hub_download
@@ -28,6 +29,7 @@ class Item:
     choices: list[str]
     answer: int
     image: bytes
+    state: Any = field(default_factory=dict)  # the row's Jev state; a string renders as Context
 
 
 class Unavailable(Exception):
@@ -72,12 +74,11 @@ AOKVQA = ("HuggingFaceM4/A-OKVQA", "d1b0efa3a436e9101dfbde3752db7607da696c35")
 
 
 def scienceqa() -> Iterator[Item]:
-    """Image questions only; id is the train row index. A non-empty hint goes before the question as context."""
+    """Image questions only; id is the train row index. A non-empty hint becomes the state (the prompt's Context)."""
     rows = records(parquet_files(*SCIENCEQA, "data/train-"), ["image", "question", "choices", "answer", "hint"])
     for n, r in enumerate(rows):
         if r["image"] and r["image"]["bytes"]:
-            question = f"Context: {r['hint']}\n{r['question']}" if r["hint"] else r["question"]
-            yield Item(str(n), question, r["choices"], r["answer"], r["image"]["bytes"])
+            yield Item(str(n), r["question"], r["choices"], r["answer"], r["image"]["bytes"], r["hint"] or {})
 
 
 def ai2d() -> Iterator[Item]:
@@ -95,7 +96,7 @@ def aokvqa() -> Iterator[Item]:
 
 
 SOURCES = [
-    Source("scienceqa", *SCIENCEQA, "train", "rows with an image; hint prefixed as 'Context:'", scienceqa),
+    Source("scienceqa", *SCIENCEQA, "train", "rows with an image; a non-empty hint is the row's state (string), else state {}", scienceqa),
     Source("ai2d", *AI2D, "train", "AI2D train via HuggingFaceM4/the_cauldron@847a98a7, choices parsed by "
            "tasksource (6 ambiguous-gold questions excluded upstream)", ai2d),
     Source("aokvqa", *AOKVQA, "train", "multiple-choice: choices + correct_choice_idx; COCO 2017 images", aokvqa),

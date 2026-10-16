@@ -148,6 +148,29 @@ recollect the calib and eval splits (`collect.py` ignores calibration files), th
 `uv run python scripts/calibrate.py --profile <profile>`.
 
 
+## Run a vision experiment
+
+Method and how to read the output: [background/vision-experiments.md](background/vision-experiments.md).
+The splits (`data/splits/vision-{dev,holdout,latency}.json`) are committed; `vision_splits.py write` only
+regenerates them. Start vLLM with the config's settings, idle, then:
+
+```bash
+# 1. collect raw letter logprobs on dev (add --env KEY=VALUE for mm kwargs; --holdout only for finalists)
+uv run python scripts/vision_collect.py --profile gemma-4-31b --label base
+# 2. re-score offline (CPU); repeat per arm: text, fit-T, fit-T-bench, pride
+uv run python scripts/vision_offline.py --collect .cache/vision-collect/gemma-4-31b/base/dev.jsonl.gz \
+  --arm fit-T --orders identity --out .cache/vision-arms/gemma-4-31b/base-fit-T
+# 3. latency through the gateway (320 rows, 20 warm-up dropped; needs nvidia-smi)
+uv run python scripts/vision_run.py --profile gemma-4-31b --gateway http://127.0.0.1:9000 \
+  --ids vision-latency --workers 1
+# 4. paired compare; the first config is the baseline; reports, never picks
+uv run python scripts/vision_compare.py --baseline text=.cache/vision-arms/gemma-4-31b/base-text \
+  fitT=.cache/vision-arms/gemma-4-31b/base-fit-T --out-label gemma-base
+```
+
+On a holdout collect, fitted arms need `--fit-on <dev collect>`. Configs that need a vLLM restart get
+A-B-A latency runs, and `--latency NAME=DIR` attaches a run's `summary.json` to compare.
+
 ## Repository map
 
 | Path | What |

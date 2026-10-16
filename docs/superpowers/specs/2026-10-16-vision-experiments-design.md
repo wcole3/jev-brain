@@ -90,7 +90,7 @@ is ever fitted on holdout rows.
 carry probabilities). All configs must cover the same ids.
 
 - Skill per benchmark is (acc − chance) / (1 − chance), with chance the mean of 1/options, matching the kit.
-  The aggregate is the mean over benchmarks.
+  The index weights benchmarks as the kit does: R-Bench-M 0.5, MMMU-Pro vision 0.25, all others 1.0.
 - Per config against the baseline: Δskill with a paired-bootstrap 95% CI (10,000 resamples, groups resampled
   within each benchmark), McNemar exact p, d, ΔECE, ΔNLL, mean input tokens, and latency when attached.
 - A per-benchmark Δ table, and a frontier table (skill, ECE, latency per config).

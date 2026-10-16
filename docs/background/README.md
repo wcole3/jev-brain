@@ -10,6 +10,7 @@ the order below goes from "how a request works" to "how good the answers are".
 | [Request lifecycle](request-lifecycle.md) | Client → gateway → vLLM sequence diagrams, auth, error codes, disconnect cancellation, timeouts |
 | [Prompt layouts](prompt-layouts.md) | The three layouts, where the question should go for long documents, option-order bias, and what each costs in prefix sharing |
 | [Images](images.md) | How `/v1/systemone` decides about images: placeholders and soft-token counts per model, the token-in readout, image prompt sharing, and the vision suite (DS-024) |
+| [Vision experiments](vision-experiments.md) | The dev/holdout/latency splits of the vision suite, holdout rules, collect and offline arms, how to read the paired compare table, latency procedure (DS-034) |
 | [Prompt sharing](prompt-sharing.md) | Why hybrid Qwen reuses the shared state only in 784-token blocks, and what that costs in throughput |
 | [Model architectures](model-architectures.md) | Qwen's Gated DeltaNet hybrid vs Gemma's sliding window: memory per token, why blocks are 784 tokens, why Gemma is KV-bound |
 | [KV cache](kv-cache.md) | What K and V are, vLLM's paged blocks, block pool and prefix hashing, how hybrid Qwen's state fits the pool (784/800-token blocks), fp8 KV, `max_model_len` vs capacity |

@@ -24,15 +24,11 @@ def test_scripts_parse(script):
 
 
 # Box queues: qwen3.6-27b index-dev (DS-031); qwen3.8-27b-fp8 calib + eval (DS-005); quantized latency + full Index
-# (DS-030); gemma-4-31b and qwen3.8-27b DS-024 phase B (vision stack, live, after-runs, sharing, Vision suite, stock).
-VISION_PHASE_B = (
-    "stack-vision", "live", "jevbench-after", "index-after", "latency-after", "image-sharing",
-    "vision-latency", "vision-full", "vision-stock",
-)
+# (DS-030); gemma-4-31b and qwen3.8-27b only bring the stack up until a campaign writes their queue.
 JOBS = {
     "qwen3.8-27b-fp8": ("collect-calib", "collect-eval"),
     "qwen3.6-27b": ("collect-index-dev",),
-    **dict.fromkeys(["gemma-4-31b", "qwen3.8-27b"], VISION_PHASE_B),
+    **dict.fromkeys(["gemma-4-31b", "qwen3.8-27b"], ()),
     **dict.fromkeys(["gemma-4-31b-fp8", "qwen3.6-27b-fp8", "qwen3.8-27b-nvfp4"], ("latency", "index")),
 }
 
@@ -48,7 +44,7 @@ def test_every_profile_has_a_job_file():
 @pytest.mark.parametrize("path", JOB_FILES, ids=lambda p: p.name)
 def test_job_files_parse_with_unique_names_starting_at_stack(path):
     assert job_names(path) == ["stack", *JOBS[path.stem]]
-    assert path.stem in path.read_text()
+    assert jobs_of(path)["stack"] == f"bash scripts/remote/stack.sh up {path.stem}"
 
 
 @pytest.mark.parametrize("path", JOB_FILES, ids=lambda p: p.name)
@@ -69,50 +65,6 @@ def test_index_jobs_resume_the_box_run_tag_and_fail_on_holes(path):
             assert command.endswith(f"--run-dir .cache/index-runs/{path.stem}/{tag}$(cat .cache/remote/run_tag) --strict")
         if name.split("-")[0] == "latency":
             assert command.endswith(f"scripts/latency.py --profile {path.stem}")
-
-
-@pytest.mark.parametrize("path", [p for p in JOB_FILES if "vision-full" in jobs_of(p)], ids=lambda p: p.name)
-def test_vision_runs_resume_the_box_run_tag(path):
-    jobs = jobs_of(path)
-    for name in ("vision-latency", "vision-full"):
-        run_dir = f".cache/vision-runs/{path.stem}/{name.removeprefix('vision-')}-$(cat .cache/remote/run_tag)"
-        assert jobs[name].endswith(f"--run-dir {run_dir}")
-    assert "--sample 300 --workers 1" in jobs["vision-latency"] and "--workers" not in jobs["vision-full"]
-    # One job, so a restart (which brings the stack back) still frees the GPU, installs the kit and resumes the run.
-    down, install, run = jobs["vision-stock"].split(" && ")
-    assert down == "bash scripts/remote/stack.sh down"
-    assert install == "python3 -m pip install -q --no-deps -e .cache/decision-index-vision/src"
-    tag = "$(cat .cache/remote/run_tag)"
-    assert run == f"RUN_DIR=.cache/vision-runs/{path.stem}/stock-{tag} bash scripts/vision_baseline.sh {path.stem}"
-    assert list(jobs)[-1] == "vision-stock"
-
-
-LIVE_STACK = "#!/usr/bin/env bash\necho \"stack $*\" >> calls\nexit ${STACK_EXIT:-0}\n"
-LIVE_UV = "#!/usr/bin/env bash\necho \"uv $*\" >> calls\nexit 3\n"
-
-
-@pytest.mark.parametrize("path", [p for p in JOB_FILES if "live" in jobs_of(p)], ids=lambda p: p.name)
-@pytest.mark.parametrize("stack_exit", [0, 1])
-def test_live_job_records_pytest_exit_and_never_stops_the_queue(tmp_path, path, stack_exit):
-    """Controller ruling: a failing live run is read later from junit and pytest-exit.txt; the queue goes on."""
-    (tmp_path / "scripts" / "remote").mkdir(parents=True)
-    (tmp_path / "scripts" / "remote" / "stack.sh").write_text(LIVE_STACK)
-    (tmp_path / ".cache" / "remote").mkdir(parents=True)
-    (tmp_path / ".cache" / "remote" / "run_tag").write_text("T-vast\n")
-    (tmp_path / "bin").mkdir()
-    (tmp_path / "bin" / "uv").write_text(LIVE_UV)
-    (tmp_path / "bin" / "uv").chmod(0o755)
-    env = os.environ | {"PATH": f"{tmp_path / 'bin'}:{os.environ['PATH']}", "STACK_EXIT": str(stack_exit)}
-    out = subprocess.run(["bash", "-c", jobs_of(path)["live"]], cwd=tmp_path, env=env, check=False)
-    assert out.returncode == 0
-    run = tmp_path / "docs" / "results" / "archive" / path.stem / "T-vast-live"
-    assert run.is_dir()
-    if stack_exit:  # no stack: pytest never ran, so no exit file
-        assert not (run / "pytest-exit.txt").exists()
-        return
-    assert (run / "pytest-exit.txt").read_text() == "3\n"
-    uv = (tmp_path / "calls").read_text().splitlines()[1]
-    assert uv == f"uv run pytest -m live tests/live -v --junitxml {run.relative_to(tmp_path)}/junit.xml"
 
 
 def test_job_commands_name_only_their_own_profile():

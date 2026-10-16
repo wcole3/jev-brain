@@ -127,7 +127,7 @@ scripts/remote/push.sh ssh://root@HOST:PORT PROFILE [--restore] [--vision] [--dr
 Image decision runs (DS-024: `vision_run.py`, `vision_baseline.sh`) need the Decision Index kit
 and its Vision suite on the box. `--vision` also rsyncs, with the same relative paths:
 
-- `.cache/decision-index-vision/src`, the kit source; the `vision-stock` job pip-installs it
+- `.cache/decision-index-vision/src`, the kit source; a stock-baseline job pip-installs it
   (`--no-deps -e`) into the image's `python3`;
 - `.cache/decision-index-vision/work/vision`, the suite: about 4.3 GB of images, so the first
   push takes a while. Later pushes send only changes.
@@ -226,15 +226,10 @@ vastai destroy instance ID
 | `qwen3.8-27b-fp8` | stack, collect-calib, collect-eval (DS-005 stage 2) |
 | `qwen3.6-27b-fp8`, `qwen3.8-27b-nvfp4`, `gemma-4-31b-fp8` | stack, latency, index (full 0.3 Index, 4 shards; DS-030) |
 | `qwen3.6-27b` | stack, collect-index-dev (the 0.3 index-dev, DS-031) |
-| `qwen3.8-27b`, `gemma-4-31b` | DS-024 phase B (push with `--vision`): stack, stack-vision, live, jevbench/index/latency-after, image-sharing, vision-latency, vision-full, vision-stock |
+| `qwen3.8-27b`, `gemma-4-31b` | stack only; each campaign writes its own queue |
 
-Earlier queues (host-compare, latency, Index runs) are in git history.
+Earlier queues (host-compare, latency, Index runs, DS-024 phase B) are in git history.
 
-- The `live` job never stops the queue: it writes `junit.xml` and `pytest-exit.txt` to
-  `docs/results/archive/PROFILE/<run tag>-live/` and exits 0. No `pytest-exit.txt` means the stack
-  did not come up (see the job log).
-- `vision-stock` is one job (`stack.sh down`, the kit's pip install, then `vision_baseline.sh` with
-  `RUN_DIR=.cache/vision-runs/PROFILE/stock-<run tag>`), so a restart frees the GPU again and resumes.
 - Collect runs at its default `--concurrency 8`, like the local collects.
 - `stack.sh up` first copies `docker/vllm/rejection_sampler.py` over the image's file, as compose
   mounts it (DS-004); `stack.sh patch-vllm` does only that.

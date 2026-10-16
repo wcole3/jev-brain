@@ -27,7 +27,8 @@ def test_scripts_parse(script):
 # (DS-005 stage 2); the three picked quantized profiles run latency and the full 0.3 Index (DS-030).
 JOBS = {
     "qwen3.8-27b-fp8": ("collect-calib", "collect-eval"),
-    **dict.fromkeys(["gemma-4-31b", "qwen3.6-27b", "qwen3.8-27b"], ("collect-index-dev",)),
+    "qwen3.6-27b": ("collect-index-dev",),
+    **dict.fromkeys(["gemma-4-31b", "qwen3.8-27b"], ("jevbench-before", "index-before", "latency-before")),
     **dict.fromkeys(["gemma-4-31b-fp8", "qwen3.6-27b-fp8", "qwen3.8-27b-nvfp4"], ("latency", "index")),
 }
 

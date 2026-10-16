@@ -1,3 +1,4 @@
+import dataclasses
 import gzip
 import json
 
@@ -41,7 +42,9 @@ def setup(tmp_path, monkeypatch):
                                "stamp": STAMP, "types": {"choice": {"T": 1.0}, "score": {"T": 1.0},
                                                          "noul": {"T": 1.0, "b": 0.0}}, "fit": {}}))
     monkeypatch.setattr(fit_image_t, "MANIFEST", manifest)
-    monkeypatch.setattr(fit_image_t, "DATA", tmp_path / "data")
+    real = fit_image_t.profile_settings
+    monkeypatch.setattr(fit_image_t, "profile_settings",
+                        lambda p: dataclasses.replace(real(p), data_root=tmp_path / "data"))
     return collect, config, cal
 
 

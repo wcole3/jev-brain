@@ -13,6 +13,7 @@ TYPES = ("choice", "score", "noul")
 STAMP_KEYS = ("tokenizer_sha256", "layout_sha256", "hf_revision", "prefix_pad", "prefix_block")
 IMAGE_STAMP_KEYS = (*STAMP_KEYS, "mm_processor_kwargs")  # the image budget moves image logprobs
 STALE = "move the stale file aside (T = 1 meanwhile), recollect calib and eval, then rerun scripts/calibrate.py"
+IMAGE_STALE = "recollect vision-calib and rerun scripts/fit_image_t.py --write, or remove the image block"
 
 
 @dataclass(frozen=True)
@@ -28,7 +29,7 @@ class Calibration:
         out = {"T": dict(self.T), "b": self.b, "source": self.source, "orders": self.orders}
         if self.T_image is None:
             return out
-        return out | {"T_image": self.T_image, "image": {k: self.image.get(k) for k in ("stamp", "fit")}}
+        return out | {"T_image": self.T_image, "image": {k: (self.image or {}).get(k) for k in ("stamp", "fit")}}
 
 
 UNCALIBRATED = Calibration({t: 1.0 for t in TYPES})
@@ -66,12 +67,14 @@ def finite_number(path: Path, name: str, value, positive: bool = False) -> float
     return x
 
 
-def check_stamp(path: Path, name: str, stamp, keys: tuple[str, ...], expect: dict | None) -> None:
+def check_image_stamp(path: Path, stamp, expect: dict | None) -> None:
+    """The text keys always; mm_processor_kwargs only when expect has it (text tools never use T_image)."""
     if not isinstance(stamp, dict) or not stamp:
-        raise RuntimeError(f"{path}: {name} must be a non-empty object; rerun the fit")
-    for key in keys if expect is not None else ():
+        raise RuntimeError(f"{path}: image.stamp must be a non-empty object; {IMAGE_STALE}")
+    keys = () if expect is None else IMAGE_STAMP_KEYS if "mm_processor_kwargs" in expect else STAMP_KEYS
+    for key in keys:
         if stamp.get(key) != expect[key]:
-            raise RuntimeError(f"{path}: {name}.{key} changed ({stamp.get(key)} != {expect[key]}); {STALE}")
+            raise RuntimeError(f"{path}: image.stamp.{key} changed ({stamp.get(key)} != {expect[key]}); {IMAGE_STALE}")
 
 
 def image_block(path: Path, data: dict, expect: dict | None) -> tuple[float | None, dict | None]:
@@ -79,13 +82,12 @@ def image_block(path: Path, data: dict, expect: dict | None) -> tuple[float | No
     block = data.get("image")
     if block is None:
         return None, None
-    check_stamp(path, "image.stamp", block.get("stamp") if isinstance(block, dict) else None, IMAGE_STAMP_KEYS, expect)
+    check_image_stamp(path, block.get("stamp") if isinstance(block, dict) else None, expect)
     return finite_number(path, "image.T", block.get("T"), positive=True), block
 
 
 def load_calibration(path: Path, expect: dict | None) -> Calibration:
-    """Refuse v1, unstamped, stale or malformed files; with no file, run uncalibrated.
-    expect needs mm_processor_kwargs only when the file has an image block."""
+    """Refuse v1, unstamped, stale or malformed files; with no file, run uncalibrated."""
     if not path.exists():
         log.warning("%s missing: uncalibrated (T = 1, no yes-offset)", path)
         return UNCALIBRATED

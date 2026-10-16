@@ -110,7 +110,8 @@ def test_image_block_is_optional_and_loaded(tmp_path):
 @pytest.mark.parametrize("key, value", [("mm_processor_kwargs", {"max_pixels": 819200}), ("hf_revision", "new")])
 def test_stale_image_stamp_is_refused(tmp_path, key, value):
     path = v2(tmp_path, image=image_block(stamp=IMAGE_EXPECT | {key: value}))
-    with pytest.raises(RuntimeError, match=f"image.stamp.{key} changed .* move the stale file aside"):
+    with pytest.raises(RuntimeError, match=f"image.stamp.{key} changed .* recollect vision-calib .*"
+                                           "fit_image_t.py --write, or remove the image block"):
         load_calibration(path, IMAGE_EXPECT)
     assert load_calibration(path, None).T_image == 2.5  # no expectation: unchecked, like the text stamp
 
@@ -124,3 +125,16 @@ def test_malformed_image_block_is_refused(tmp_path, block, field):
 def test_an_image_block_that_is_not_an_object_is_refused(tmp_path):
     with pytest.raises(RuntimeError, match="image.stamp must be a non-empty object"):
         load_calibration(v2(tmp_path, image="x"), IMAGE_EXPECT)
+
+
+def test_a_text_only_expect_checks_the_image_stamp_text_keys_only(tmp_path):
+    other_budget = v2(tmp_path / "a", image=image_block(stamp=IMAGE_EXPECT | {"mm_processor_kwargs": {"x": 1}}))
+    assert load_calibration(other_budget, STAMP).T_image == 2.5  # text tools never use T_image
+    stale = v2(tmp_path / "b", image=image_block(stamp=IMAGE_EXPECT | {"hf_revision": "new"}))
+    with pytest.raises(RuntimeError, match="image.stamp.hf_revision changed"):
+        load_calibration(stale, STAMP)
+
+
+def test_as_dict_with_T_image_but_no_block():
+    shown = Calibration({"choice": 1.0, "score": 1.0, "noul": 1.0}, T_image=2.0).as_dict()
+    assert shown["T_image"] == 2.0 and shown["image"] == {"stamp": None, "fit": None}

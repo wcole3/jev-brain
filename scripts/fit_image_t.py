@@ -2,8 +2,8 @@
 
 usage: uv run python scripts/fit_image_t.py --collect FILE --profile P [--write]
 FILE is a vision_collect.py --rows collect of the vision-calib rows; suite collects are refused.
-Prints T and the NLL and ECE before (text T) and after. --write adds or replaces the image block
-of data/<P>/header/calibration.json and appends a comment; without it nothing is written.
+Prints T and the NLL and ECE before (text T) and after. --write adds or replaces the image block of the
+profile's header calibration file (Settings.calibration_path) and appends a comment; else nothing is written.
 """
 
 import argparse
@@ -20,7 +20,6 @@ from scripts.fit import fit_temperature
 from scripts.vision_offline import MIN_FIT, Item, bare_stamp, items_of, split_config
 
 MANIFEST = ROOT / "data" / "splits" / "vision-calib.json"
-DATA = ROOT / "data"
 LAYOUT = "header"  # the shipped layout whose calibration file carries the image block
 
 
@@ -39,18 +38,21 @@ def check_config(config: dict, profile: str, collect: Path) -> None:
         raise SystemExit(f"{collect}: layout {config.get('layout')!r} is not the file's layout {LAYOUT!r}")
 
 
-def check_stamp(collected: dict, file_stamp: dict, path: Path, collect: Path) -> None:
+def check_text_stamp(collected: dict, file_stamp: dict, path: Path, collect: Path) -> None:
     """The collect must match the text calibration's stamp, so both describe the same prompts and weights."""
     if diff := [k for k in STAMP_KEYS if collected.get(k) != file_stamp.get(k)]:
         raise SystemExit(f"{collect} was collected under another stamp than {path}: {diff}")
 
 
-def check_image_settings(collected: dict, profile: str, collect: Path) -> None:
+def profile_settings(profile: str) -> Settings:
+    return Settings.from_profile(profile)
+
+
+def check_image_settings(collected: dict, s: Settings, collect: Path) -> None:
     """A block stamped with other image settings than the profile runs would stop the gateway at startup."""
-    runs = Settings.from_profile(profile).mm_processor_kwargs
-    if collected.get("mm_processor_kwargs") != runs:
+    if collected.get("mm_processor_kwargs") != s.mm_processor_kwargs:
         raise SystemExit(f"{collect}: collected with mm_processor_kwargs {collected.get('mm_processor_kwargs')}, "
-                         f"profile {profile} runs {runs}")
+                         f"profile {s.profile} runs {s.mm_processor_kwargs}")
 
 
 def scored(items: list[Item], T: float) -> list[metrics.Scored]:
@@ -77,14 +79,15 @@ def run(args) -> dict:
     recs = list(records(args.collect))
     if not recs:
         raise SystemExit(f"{args.collect}: no records")
-    path = DATA / args.profile / LAYOUT / "calibration.json"
+    s = profile_settings(args.profile)
+    path = s.calibration_path(LAYOUT)
     if not path.exists():
         raise SystemExit(f"{path} missing: T_image is added to a text calibration file")
     text_T = load_calibration(path, expect=None).T["choice"]
     data = json.loads(path.read_text())
     collected = bare_stamp(recs, args.collect)
-    check_stamp(collected, data["stamp"], path, args.collect)
-    check_image_settings(collected, args.profile, args.collect)
+    check_text_stamp(collected, data["stamp"], path, args.collect)
+    check_image_settings(collected, s, args.collect)
     orders = config["orders"]
     try:
         items, skipped = items_of(recs, orders)

@@ -456,5 +456,5 @@ def test_startup_checks_the_image_stamp_against_the_running_image_settings(qwen_
     write_image_calibration(s, {"max_pixels": 1638400})
     assert load_engine(s, None).calibration["decider_chat"].T_image == 2.5
     write_image_calibration(s, {"max_pixels": 819200})
-    with pytest.raises(RuntimeError, match="image.stamp.mm_processor_kwargs changed .* move the stale file aside"):
+    with pytest.raises(RuntimeError, match="image.stamp.mm_processor_kwargs changed .*fit_image_t.py --write"):
         load_engine(s, None)

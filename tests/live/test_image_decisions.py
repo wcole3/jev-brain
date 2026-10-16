@@ -14,7 +14,8 @@ import pytest
 from gateway.app import load_engine
 from gateway.config import Settings
 from gateway.decide import build_batch
-from gateway.images import MAX_BODY_BYTES, MAX_PIXELS, decode_image
+from gateway.images import MAX_BODY_BYTES, MAX_PIXELS
+from gateway.prompts import Batch
 from gateway.schema import SystemOneRequest
 from gateway.vision import load_vision
 from tests.live.api import auth, post
@@ -55,7 +56,8 @@ def settings(health) -> Settings:
     if not health["systemone_images"]:
         pytest.skip(f"profile {health['profile']} serves text only")
     s = Settings.from_profile(health["profile"])
-    assert s.mm_processor_kwargs == health["mm_processor_kwargs"], "the stack runs other image kwargs than its profile"
+    differ = f"the gateway's MM_PROCESSOR_KWARGS differ from profiles/{health['profile']}.env"
+    assert s.mm_processor_kwargs == health["mm_processor_kwargs"], differ
     return s
 
 
@@ -96,15 +98,29 @@ def test_image_parts_in_state(gateway_url):
     assert r.status_code == 200, r.text
 
 
-def test_second_question_hits_the_image_cache(gateway_url, vllm_url, vision):
-    # the notes after the image carry the shared prefix past the image, whole cache blocks included
-    url = unique_png(512, 512)
-    state = [{"image": url}, NOTES]
-    assert post(gateway_url, {"state": state, "questions": {"a": noul("The image is bright")}}).status_code == 200
+def batch_for(engine, body: dict) -> Batch:
+    """The rows the gateway builds for this body."""
+    return asyncio.run(build_batch(engine, SystemOneRequest.model_validate(body)))[2]
+
+
+def image_end(engine, vision, body: dict) -> int:
+    """Where the request's first image ends once vLLM expands it."""
+    batch = batch_for(engine, body)
+    return batch.rows[0].ids.index(vision.placeholder[0]) + vision.expanded(batch.images.images[0])
+
+
+def test_second_question_hits_the_image_cache(gateway_url, vllm_url, settings, vision, engine):
+    # decider_chat puts the context first, so two questions share it; the notes carry it past the image
+    state = [{"image": unique_png(1024, 1024)}, NOTES]
+    first = {"layout": "decider_chat", "state": state, "questions": {"a": noul("The image is bright")}}
+    second = {"layout": "decider_chat", "state": state, "questions": {"b": noul("The image shows a person")}}
+    want = image_end(engine, vision, first)
+    if settings.prefix_block:
+        want -= want % settings.prefix_block  # hybrid Qwen reuses whole blocks only
+    assert post(gateway_url, first).status_code == 200
     before = prefix_cache_hits(vllm_url)
-    assert post(gateway_url, {"state": state, "questions": {"b": noul("The image shows a person")}}).status_code == 200
-    hits = prefix_cache_hits(vllm_url) - before
-    assert hits >= vision.expanded(decode_image(url, "test"))
+    assert post(gateway_url, second).status_code == 200
+    assert prefix_cache_hits(vllm_url) - before >= want
 
 
 def generate(vllm_url: str, model: str, ids: list[int], parts: list[dict]) -> list[int]:
@@ -140,7 +156,7 @@ def test_expanded_lengths_match_vllm(gateway_url, vllm_url, served_model, settin
         r = post(gateway_url, body)
         assert r.status_code == 400 and "200:1" in r.text, r.text
         return
-    _, _, batch = asyncio.run(build_batch(engine, SystemOneRequest.model_validate(body)))
+    batch = batch_for(engine, body)
     images = batch.images.images
     assert all(i.width * i.height <= MAX_PIXELS for i in images)
     ids = batch.rows[0].ids
@@ -157,16 +173,16 @@ def test_oversized_body_is_400(gateway_url):
     assert "request body over 20 MB" in r.text
 
 
-@pytest.mark.usefixtures("settings")
-def test_over_long_image_prompt_is_422(gateway_url, health):
-    # " word" is at least one token, so this state alone reaches the cap
-    body = {
-        "images": [unique_png(640, 480)],
-        "state": " word" * health["systemone_max_len"],
-        "questions": {"q": noul("Long")},
-    }
+def test_over_long_image_prompt_is_422(gateway_url, settings, engine):
+    # the text alone fits under the cap and only the image's expanded tokens push the prompt over it
+    limit = settings.systemone_max_len
+    body = {"images": [unique_png(640, 480)], "state": "Pictures.", "questions": {"q": noul("Long")}}
+    short = batch_for(engine, body)
+    body["state"] += " word" * (limit - len(short.rows[0].ids) - short.added // 2)  # " word" is one token
     if len(json.dumps(body)) > MAX_BODY_BYTES:
-        pytest.skip("a state that fills systemone_max_len does not fit in the 20 MB body limit")
+        pytest.skip(f"text filling {limit} tokens does not fit in the 20 MB body limit")
+    batch = batch_for(engine, body)
+    assert len(batch.rows[0].ids) < limit <= batch.longest, "the filler missed the window only the image can cross"
     r = post(gateway_url, body)
     assert r.status_code == 422
     assert "maximum context length" in r.text

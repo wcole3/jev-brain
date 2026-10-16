@@ -1,8 +1,5 @@
-"""Paired compare of scored vision configs (offline arms or live kit runs) on the same rows. It reports; it never picks.
-
-usage: uv run python scripts/vision_compare.py --baseline NAME=DIR NAME=DIR ... [--latency NAME=DIR ...] --out-label L
-A DIR with scored.jsonl.gz is an offline arm; one with results.jsonl.gz is a live kit run (joined to the suite).
-"""
+"""Paired compare of offline arms (scored.jsonl.gz) and live kit runs (results.jsonl.gz) on the same rows; no picks.
+usage: uv run python scripts/vision_compare.py --baseline NAME=DIR NAME=DIR ... [--latency NAME=DIR ...] --out-label L"""
 
 import argparse
 import gzip
@@ -21,6 +18,7 @@ from scripts.vision_summary import last_per_run
 
 OUT_ROOT = ROOT / "docs/results/vision-experiments"
 RESAMPLES, SEED, EXAMPLES = 10_000, 0, 10
+LIVE_FIRST_HINT = "; the baseline is a live run (full suite): put the offline arm first as --baseline"
 # Kit edition 0.3 weights (decision_index/vision/spec.py): 1.0 except these two; they reproduce its stored 73.70.
 WEIGHTS = {"CV-Bench": 1.0, "BLINK": 1.0, "RealWorldQA": 1.0, "CharXiv": 1.0, "InfographicVQA": 1.0, "Mind2Web": 1.0,
            "Winoground": 1.0, "KIE (CORD+FUNSD)": 1.0, "Moderation (Hateful Memes)": 1.0, "R-Bench-M": 0.5,
@@ -31,8 +29,13 @@ def top(probs: list[float]) -> int:
     return max(range(len(probs)), key=probs.__getitem__)
 
 
+def answer(row: dict) -> int | None:
+    """The top option, or None for an errored live row (no answer)."""
+    return None if row.get("errored", False) else top(row["probs"])
+
+
 def correct(row: dict) -> bool:
-    return not row.get("errored", False) and top(row["probs"]) == row["gold"]
+    return answer(row) == row["gold"]
 
 
 def skill(n: int, chance: float, hits: int) -> float:
@@ -116,6 +119,7 @@ def paired(a_rows: list[dict], b_rows: list[dict], resamples: int = RESAMPLES, s
         "delta_skill": {b: {"delta": skills_b[b] - skills_a[b], "ci": ci(by_bench[b])} for b in sorted(skills_a)},
         "b": a_only, "c": b_only, "mcnemar_p": mcnemar_p(a_only, b_only),
         "discordant_share": (a_only + b_only) / len(a_rows),
+        "agreement": sum(answer(x) == answer(y) for x, y in zip(a_rows, aligned, strict=True)) / len(a_rows),
         "delta_ece": ece(aligned) - ece(a_rows), "delta_nll": nll(aligned) - nll(a_rows),
     }
 
@@ -175,34 +179,47 @@ def kind(path: Path) -> str:
     raise SystemExit(f"{path}: neither scored.jsonl.gz (offline arm) nor results.jsonl.gz (live run)")
 
 
-def check_ids(name: str, want: set[str], have: set[str]) -> None:
+def check_ids(name: str, want: set[str], have: set[str], hint: str = "") -> None:
     missing, extra = sorted(want - have), sorted(have - want)
     if missing or extra:
         raise SystemExit(f"{name}: ids differ from the baseline: {len(missing)} missing {missing[:EXAMPLES]}, "
-                         f"{len(extra)} extra {extra[:EXAMPLES]}")
+                         f"{len(extra)} extra {extra[:EXAMPLES]}{hint}")
 
 
 def load_configs(sources: dict[str, Path]) -> dict[str, dict]:
     """Every config's rows on the baseline's ids; live runs are cut to them, anything else must match exactly."""
     suite = suite_by_id() if any(kind(p) == "live" for p in sources.values()) else {}
-    configs, want = {}, None
+    configs, want, base_kind = {}, None, kind(next(iter(sources.values())))
     for name, path in sources.items():  # the baseline is first
         rows, about = load_offline(path) if kind(path) == "offline" else load_live(path, suite, want)
         ids = {r["id"] for r in rows}
         if want is None:
             want = ids
-        check_ids(name, want, ids)
+        live_first = base_kind == "live" and kind(path) == "offline"
+        check_ids(name, want, ids, LIVE_FIRST_HINT if live_first else "")
         configs[name] = {"path": str(path), "kind": kind(path), "rows": rows, "about": about}
     return configs
 
 
+def latency_summary(path: Path) -> dict:
+    """A latency run's summary.json; refuses one without latency or with no steady power limit."""
+    s = json.loads((path / "summary.json").read_text())
+    if not s.get("latency_ms"):
+        raise SystemExit(f"{path}: summary.json has no latency (latency_ms)")
+    if s.get("power_limit_w") is None or s.get("power_limit_w_end") is None:
+        raise SystemExit(f"{path}: summary.json lacks power_limit_w / power_limit_w_end (a run from before Task 5?)")
+    if s["power_limit_w"] != s["power_limit_w_end"]:
+        raise SystemExit(f"{path}: power limit changed mid-run ({s['power_limit_w']} -> {s['power_limit_w_end']} W)")
+    return s
+
+
 def load_latency(dirs: dict[str, Path]) -> tuple[dict[str, dict], int | None]:
-    """Latency summaries by config name; refuses summaries taken at different power limits."""
-    summaries = {name: json.loads((d / "summary.json").read_text()) for name, d in dirs.items()}
-    limits = {s.get("power_limit_w") for s in summaries.values()}
+    """Latency by config name and the shared power limit; refuses summaries taken at different limits."""
+    summaries = {name: latency_summary(d) for name, d in dirs.items()}
+    limits = {s["power_limit_w"] for s in summaries.values()}
     if len(limits) > 1:
-        raise SystemExit(f"latency summaries mix power limits {sorted(limits, key=str)} W: compare like with like")
-    return {n: s.get("latency") for n, s in summaries.items()}, next(iter(limits), None)
+        raise SystemExit(f"latency summaries mix power limits {sorted(limits)} W: compare like with like")
+    return {n: s["latency_ms"] for n, s in summaries.items()}, next(iter(limits), None)
 
 
 def describe(config: dict, latency: dict | None) -> dict:
@@ -241,9 +258,9 @@ def markdown(s: dict) -> str:
         lines.append("| " + " | ".join(cells) + " |")
     if timed:
         lines += ["", f"Latency at power limit {fmt(s['power_limit_w'], '')} W."]
-    lines += ["", "## Paired", "", "| config | d | b (base only) | c (config only) | McNemar p | ΔECE | ΔNLL |",
-              "|---|---|---|---|---|---|---|"]
-    lines += [f"| {n} | {p['discordant_share']:.4f} | {p['b']} | {p['c']} | {p['mcnemar_p']:.4g} | "
+    lines += ["", "## Paired", "", "| config | agreement | d | b (base only) | c (config only) | McNemar p | ΔECE | ΔNLL |",
+              "|---|---|---|---|---|---|---|---|"]
+    lines += [f"| {n} | {p['agreement']:.4f} | {p['discordant_share']:.4f} | {p['b']} | {p['c']} | {p['mcnemar_p']:.4g} | "
               f"{p['delta_ece']:+.4f} | {p['delta_nll']:+.4f} |" for n, p in pairs.items()]
     lines += ["", "## Per-benchmark Δ skill", "", "| benchmark | rows | baseline skill | " + " | ".join(pairs) + " |",
               "|---" * (3 + len(pairs)) + "|"]

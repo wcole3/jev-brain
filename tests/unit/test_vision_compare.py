@@ -79,6 +79,7 @@ def test_mcnemar_exact_on_known_counts():
     assert (out["b"], out["c"]) == (10, 2)
     assert out["mcnemar_p"] == pytest.approx(0.0386, abs=1e-4)
     assert out["discordant_share"] == pytest.approx(12 / 14)
+    assert out["agreement"] == pytest.approx(2 / 14)  # rows 12 and 13: same top answer, both wrong
 
 
 def test_bootstrap_ci_resamples_groups_within_benchmarks():
@@ -112,7 +113,7 @@ def test_identical_configs_give_zero_delta_and_p_one():
     rows = [r | {"probs": [p / sum(r["probs"]) for p in r["probs"]]} for r in rows]
     out = vc.paired(rows, list(reversed(rows)), resamples=500)
     assert out["delta_index"] == 0.0 and out["ci"] == [0.0, 0.0]
-    assert out["mcnemar_p"] == 1.0 and out["discordant_share"] == 0.0
+    assert out["mcnemar_p"] == 1.0 and out["discordant_share"] == 0.0 and out["agreement"] == 1.0
     assert out["delta_ece"] == 0.0 and out["delta_nll"] == 0.0
     assert all(v == {"delta": 0.0, "ci": [0.0, 0.0]} for v in out["delta_skill"].values())
 
@@ -127,6 +128,14 @@ def test_different_ids_are_refused_with_examples(tmp_path, capsys):
     assert "5 missing" in msg and "15 extra" in msg
     assert "r39" in msg and "r40" not in msg  # at most 10 examples each way
     assert not (tmp_path / "o").exists()
+
+
+def test_live_baseline_against_offline_hints_the_order(tmp_path, monkeypatch):
+    fake_suite(tmp_path, monkeypatch, 8)
+    live = write_live(tmp_path / "live", [ok_result(f"r{i}", {"A": 0.9, "B": 0.1}) for i in range(8)])
+    arm = write_offline(tmp_path / "arm", [hit(i, True) for i in range(4)])
+    with pytest.raises(SystemExit, match="put the offline arm first as --baseline"):
+        vc.main(["--baseline", f"live={live}", f"arm={arm}", "--out-label", "t", "--out-root", str(tmp_path / "o")])
 
 
 def test_errored_live_rows_count_as_wrong_and_are_reported(tmp_path, monkeypatch):
@@ -148,18 +157,24 @@ def test_errored_live_rows_count_as_wrong_and_are_reported(tmp_path, monkeypatch
     assert summary["configs"]["live"]["errored"] == 2 and summary["configs"]["base"]["errored"] == 0
     assert summary["configs"]["live"]["accuracy"] == pytest.approx(6 / 8)
     assert summary["paired"]["live"]["b"] == 2 and summary["paired"]["live"]["c"] == 0
+    assert summary["paired"]["live"]["agreement"] == pytest.approx(6 / 8)  # an errored row agrees with nothing
     assert summary["configs"]["live"]["mean_input_tokens"] == 100
+
+
+def latency_dir(path: Path, **summary) -> Path:
+    """A latency run folder shaped like vision_summary's summary.json plus Task 5's power limits."""
+    path.mkdir()
+    full = {"status": {"ok": 300}, "latency_ms": {"median": 900.0, "mean": 950.0, "p80": 1000.0},
+            "calibration": {"ece": None, "accuracy": None, "n": 0}, "power_limit_w": 600, "power_limit_w_end": 600}
+    (path / "summary.json").write_text(json.dumps({k: v for k, v in (full | summary).items() if v != "drop"}))
+    return path
 
 
 def test_mixed_power_limits_are_refused(tmp_path):
     base = write_offline(tmp_path / "base", [hit(i, True) for i in range(6)])
     other = write_offline(tmp_path / "other", [hit(i, i % 2 == 0) for i in range(6)])
-    lat = {}
-    for name, watts in (("base", 600), ("other", 510)):
-        lat[name] = tmp_path / f"lat-{name}"
-        lat[name].mkdir()
-        (lat[name] / "summary.json").write_text(json.dumps(
-            {"latency": {"median": 900.0, "mean": 950.0, "p80": 1000.0}, "power_limit_w": watts}))
+    lat = {"base": latency_dir(tmp_path / "lat-base"),
+           "other": latency_dir(tmp_path / "lat-other", power_limit_w=510, power_limit_w_end=510)}
     argv = ["--baseline", f"base={base}", f"other={other}", "--out-label", "t", "--out-root", str(tmp_path / "o")]
     with pytest.raises(SystemExit, match="power limit"):
         vc.main(argv + ["--latency", f"base={lat['base']}", "--latency", f"other={lat['other']}"])
@@ -168,3 +183,23 @@ def test_mixed_power_limits_are_refused(tmp_path):
     summary = summary_of(tmp_path / "o")
     assert summary["configs"]["base"]["latency"]["p80"] == 1000.0 and summary["configs"]["other"]["latency"] is None
     assert summary["power_limit_w"] == 600
+
+
+@pytest.mark.parametrize("summary, error", [
+    ({"latency_ms": None}, "no latency"),
+    ({"latency_ms": "drop"}, "no latency"),
+    ({"power_limit_w": "drop"}, "power_limit_w"),
+    ({"power_limit_w_end": "drop"}, "power_limit_w"),
+    ({"power_limit_w_end": 510}, "changed mid-run"),
+])
+def test_latency_dir_without_latency_or_steady_power_limit_is_refused(tmp_path, summary, error):
+    lat = latency_dir(tmp_path / "lat", **summary)
+    with pytest.raises(SystemExit, match=error) as e:
+        vc.load_latency({"base": lat})
+    assert str(lat) in str(e.value)
+
+
+@pytest.mark.skipif(not STORED.exists(), reason="stored run absent")
+def test_pre_task5_live_summary_is_refused_for_lacking_a_power_limit():
+    with pytest.raises(SystemExit, match="power_limit_w"):
+        vc.load_latency({"live": STORED})

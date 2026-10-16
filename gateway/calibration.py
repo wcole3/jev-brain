@@ -11,9 +11,7 @@ from gateway.labels import tokenizer_sha256
 log = logging.getLogger(__name__)
 TYPES = ("choice", "score", "noul")
 STAMP_KEYS = ("tokenizer_sha256", "layout_sha256", "hf_revision", "prefix_pad", "prefix_block")
-IMAGE_STAMP_KEYS = (*STAMP_KEYS, "mm_processor_kwargs")  # the image budget moves image logprobs
 STALE = "move the stale file aside (T = 1 meanwhile), recollect calib and eval, then rerun scripts/calibrate.py"
-IMAGE_STALE = "recollect vision-calib and rerun scripts/fit_image_t.py --write, or remove the image block"
 
 
 @dataclass(frozen=True)
@@ -22,14 +20,9 @@ class Calibration:
     b: float = 0.0  # noul: added to the "yes" logit after dividing by T
     source: str = "uncalibrated"
     orders: str | None = None  # the option orders it was fitted under; None when not fitted
-    T_image: float | None = None  # choice questions in image requests; None: they use T["choice"]
-    image: dict | None = None  # the image block's stamp and fit, shown on /health
 
     def as_dict(self) -> dict:
-        out = {"T": dict(self.T), "b": self.b, "source": self.source, "orders": self.orders}
-        if self.T_image is None:
-            return out
-        return out | {"T_image": self.T_image, "image": {k: (self.image or {}).get(k) for k in ("stamp", "fit")}}
+        return {"T": dict(self.T), "b": self.b, "source": self.source, "orders": self.orders}
 
 
 UNCALIBRATED = Calibration({t: 1.0 for t in TYPES})
@@ -60,38 +53,11 @@ def orders_warning(cal: Calibration, orders: str) -> str | None:
     return f"{cal.source} was fitted under option orders {cal.orders!r}, used here with {orders!r}"
 
 
-def image_orders_warning(cal: Calibration, orders: str) -> str | None:
-    """T_image holds for the option orders it was fitted under, which may differ from the text fit's."""
-    fitted = ((cal.image or {}).get("fit") or {}).get("orders")
-    if cal.T_image is None or fitted is None or fitted == orders:
-        return None
-    return f"{cal.source}: T_image was fitted under option orders {fitted!r}, used here with {orders!r}"
-
-
 def finite_number(path: Path, name: str, value, positive: bool = False) -> float:
     x = float(value) if isinstance(value, int | float) else math.nan
     if not math.isfinite(x) or (positive and x <= 0):
         raise RuntimeError(f"{path}: {name} must be a finite number{' > 0' if positive else ''}, got {value!r}")
     return x
-
-
-def check_image_stamp(path: Path, stamp, expect: dict | None) -> None:
-    """The text keys always; mm_processor_kwargs only when expect has it (text tools never use T_image)."""
-    if not isinstance(stamp, dict) or not stamp:
-        raise RuntimeError(f"{path}: image.stamp must be a non-empty object; {IMAGE_STALE}")
-    keys = () if expect is None else IMAGE_STAMP_KEYS if "mm_processor_kwargs" in expect else STAMP_KEYS
-    for key in keys:
-        if stamp.get(key) != expect[key]:
-            raise RuntimeError(f"{path}: image.stamp.{key} changed ({stamp.get(key)} != {expect[key]}); {IMAGE_STALE}")
-
-
-def image_block(path: Path, data: dict, expect: dict | None) -> tuple[float | None, dict | None]:
-    """The optional image temperature; its stamp adds mm_processor_kwargs to the text stamp."""
-    block = data.get("image")
-    if block is None:
-        return None, None
-    check_image_stamp(path, block.get("stamp") if isinstance(block, dict) else None, expect)
-    return finite_number(path, "image.T", block.get("T"), positive=True), block
 
 
 def load_calibration(path: Path, expect: dict | None) -> Calibration:
@@ -106,10 +72,9 @@ def load_calibration(path: Path, expect: dict | None) -> Calibration:
         file = data["stamp"].get(key)
         if file != expect[key]:
             raise RuntimeError(f"{path}: {key} changed ({file} != {expect[key]}); {STALE}")
-    T_image, image = image_block(path, data, expect)
     types = data["types"]
     T = {t: finite_number(path, f"types.{t}.T", types[t]["T"], positive=True) for t in TYPES}
     b = finite_number(path, "types.noul.b", types["noul"].get("b", 0.0))
     # source is relative to the data root (<profile>/<layout>/calibration.json), so host and container agree
     source = path.relative_to(path.parents[2]).as_posix()
-    return Calibration(T, b, source, data.get("fit", {}).get("orders"), T_image, image)
+    return Calibration(T, b, source, data.get("fit", {}).get("orders"))

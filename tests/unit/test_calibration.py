@@ -1,4 +1,3 @@
-import dataclasses
 import json
 import math
 
@@ -8,7 +7,6 @@ from gateway.calibration import (
     STAMP_KEYS,
     UNCALIBRATED,
     Calibration,
-    image_orders_warning,
     load_calibration,
     orders_warning,
     softmax,
@@ -75,15 +73,6 @@ def test_orders_warning_only_when_a_fit_meets_other_orders():
     assert "'identity', used here with 'identity+reversed'" in orders_warning(fitted, "identity+reversed")
 
 
-def test_image_orders_warning_only_when_the_image_fit_meets_other_orders():
-    text = Calibration({"choice": 1.0, "score": 1.0, "noul": 1.0}, source="x", orders="identity")
-    assert image_orders_warning(text, "identity+reversed") is None  # no image block
-    cal = dataclasses.replace(text, T_image=2.0, image={"fit": {"orders": "identity+reversed"}})
-    assert image_orders_warning(cal, "identity+reversed") is None
-    assert "T_image was fitted under option orders 'identity+reversed', used here with 'identity'" in (
-        image_orders_warning(cal, "identity"))
-
-
 def test_no_expectation_skips_the_stamp_check(tmp_path):
     assert load_calibration(v2(tmp_path), None).b == 0.3
 
@@ -98,54 +87,3 @@ def test_collect_stamp_carries_stamp_for_exactly(engine):
     assert set(stamp) == set(STAMP_KEYS)
     collected = collect_stamp(engine, "decider_chat")
     assert {k: collected[k] for k in STAMP_KEYS} == stamp
-
-
-IMAGE_EXPECT = STAMP | {"mm_processor_kwargs": {"max_pixels": 1638400}}
-
-
-def image_block(**over):
-    return {"T": 2.5, "stamp": dict(IMAGE_EXPECT), "fit": {"source": "vision-calib", "rows": 40}} | over
-
-
-def test_image_block_is_optional_and_loaded(tmp_path):
-    text_only = load_calibration(v2(tmp_path / "a"), IMAGE_EXPECT)
-    assert text_only.T_image is None and "T_image" not in text_only.as_dict()
-    cal = load_calibration(v2(tmp_path / "b", image=image_block()), IMAGE_EXPECT)
-    assert cal.T_image == 2.5 and cal.T == text_only.T and cal.b == text_only.b
-    shown = cal.as_dict()
-    assert shown["T_image"] == 2.5 and shown["image"]["stamp"] == IMAGE_EXPECT
-    assert shown["image"]["fit"]["source"] == "vision-calib"
-    assert json.loads(json.dumps(shown)) == shown
-
-
-@pytest.mark.parametrize("key, value", [("mm_processor_kwargs", {"max_pixels": 819200}), ("hf_revision", "new")])
-def test_stale_image_stamp_is_refused(tmp_path, key, value):
-    path = v2(tmp_path, image=image_block(stamp=IMAGE_EXPECT | {key: value}))
-    with pytest.raises(RuntimeError, match=f"image.stamp.{key} changed .* recollect vision-calib .*"
-                                           "fit_image_t.py --write, or remove the image block"):
-        load_calibration(path, IMAGE_EXPECT)
-    assert load_calibration(path, None).T_image == 2.5  # no expectation: unchecked, like the text stamp
-
-
-@pytest.mark.parametrize("block, field", [({"T": 0.0}, "image.T"), ({"stamp": "x"}, "image.stamp")])
-def test_malformed_image_block_is_refused(tmp_path, block, field):
-    with pytest.raises(RuntimeError, match=field):
-        load_calibration(v2(tmp_path, image=image_block(**block)), IMAGE_EXPECT)
-
-
-def test_an_image_block_that_is_not_an_object_is_refused(tmp_path):
-    with pytest.raises(RuntimeError, match="image.stamp must be a non-empty object"):
-        load_calibration(v2(tmp_path, image="x"), IMAGE_EXPECT)
-
-
-def test_a_text_only_expect_checks_the_image_stamp_text_keys_only(tmp_path):
-    other_budget = v2(tmp_path / "a", image=image_block(stamp=IMAGE_EXPECT | {"mm_processor_kwargs": {"x": 1}}))
-    assert load_calibration(other_budget, STAMP).T_image == 2.5  # text tools never use T_image
-    stale = v2(tmp_path / "b", image=image_block(stamp=IMAGE_EXPECT | {"hf_revision": "new"}))
-    with pytest.raises(RuntimeError, match="image.stamp.hf_revision changed"):
-        load_calibration(stale, STAMP)
-
-
-def test_as_dict_with_T_image_but_no_block():
-    shown = Calibration({"choice": 1.0, "score": 1.0, "noul": 1.0}, T_image=2.0).as_dict()
-    assert shown["T_image"] == 2.0 and shown["image"] == {"stamp": None, "fit": None}

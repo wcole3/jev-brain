@@ -374,20 +374,3 @@ def test_arm_json_records_the_text_T_as_fallback(tmp_path):
     collect = write_collect(tmp_path / "x", "dev", planted(1, seed=27, copies=5))
     arm = vo.main(["--collect", str(collect), "--arm", "fit-T", "--out", str(tmp_path / "o")])
     assert arm["fallback_T"] == arm["text_calibration"]["T"]
-
-
-def test_text_arm_applies_T_image_to_image_choices_and_records_it(tmp_path):
-    recs = planted(1, seed=28, copies=5)
-    tuned = Calibration(TEXT.T, source=TEXT.source, T_image=1.7, image={"stamp": {}, "fit": {}})
-    scored, _ = vo.score(recs, "text", "identity", tuned)
-    assert [s["probs"] for s in scored] == [blend([(r["reads"][0]["logprobs"], r["reads"][0]["perm"])], 1.7)
-                                            for r in recs]
-    fitted, _ = vo.score(recs, "fit-T", "identity", tuned)
-    assert fitted == vo.score(recs, "fit-T", "identity", TEXT)[0]
-    data = tmp_path / "data"
-    write_calibration(data / "gemma-4-31b" / "header" / "calibration.json", 2.0)
-    path = data / "gemma-4-31b" / "header" / "calibration.json"
-    path.write_text(json.dumps(json.loads(path.read_text()) | {"image": {"T": 1.7, "stamp": {"x": 1}}}))
-    collect = write_collect(tmp_path / "x", "dev", recs, env={"DATA_ROOT": str(data)})
-    arm = vo.main(["--collect", str(collect), "--arm", "text", "--out", str(tmp_path / "o")])
-    assert arm["text_calibration"]["T_image"] == 1.7

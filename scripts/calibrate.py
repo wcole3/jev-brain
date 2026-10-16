@@ -127,20 +127,6 @@ def history(path: Path) -> tuple[int, list[dict]]:
     return int(data.get("version", 0)), list(data.get("comments", []))
 
 
-def kept_image(path: Path, stamp: dict) -> dict | None:
-    """The image block fit_image_t.py added, kept while its text keys match the new stamp."""
-    try:
-        image = json.loads(path.read_text()).get("image")
-    except (OSError, ValueError, AttributeError):
-        return None
-    if image is None:
-        return None
-    if {k: (image.get("stamp") or {}).get(k) for k in STAMP_KEYS} != {k: stamp.get(k) for k in STAMP_KEYS}:
-        print(f"{path}: image block dropped (its stamp no longer matches); rerun scripts/fit_image_t.py --write")
-        return None
-    return image
-
-
 def calibration_file(fit: dict, stamp: dict, orders: str, calib_n: dict, by_split: dict, decisions: dict,
                      previous: tuple[int, list[dict]], comment: str, date: str) -> dict:
     """by_split: {"calib" | "eval": {metric: {before, after}}}; the gateway reads only format, stamp and types."""
@@ -228,15 +214,10 @@ def calibrate_layout(args, s, layout, recs, rows) -> list[str]:
     r = fit_and_judge(layout, calib, held)
     b_decision = {"ship": r.ship, "acc": list(r.stats["acc"]), "ece": list(r.stats["ece"]), "b_fitted": r.b_fitted}
     path = s.calibration_path(layout)
-    image = kept_image(path, stamp)
     comment = f"{args.comment or default_comment(path, args.orders)}; {gate_outcome(r)}"
-    if image:
-        comment += f"; image block kept (T_image {image['T']:.3f})"
     data = calibration_file(r.fit, stamp, args.orders, {t: len(calib[t]) for t in TYPES},
                             {"calib": moves(r, "calib"), "eval": moves(r, "eval")},
                             {"b_decision": b_decision, "t_decision": r.gate}, history(path), comment, now_iso())
-    if image:
-        data["image"] = image
     if not args.dry_run:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(data, indent=1) + "\n")

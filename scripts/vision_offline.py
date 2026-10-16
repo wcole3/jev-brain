@@ -163,8 +163,7 @@ def score(recs: list[dict], arm: str, orders: str, text_cal: Calibration,
     items, skipped = items_of(recs, orders)
     text_T = text_cal.T["choice"]
     if arm == "text":
-        # "text" is what ships: every vision row is an image request, so T_image applies when the file has one
-        folds, probs = None, [probabilities(i.reads, "choice", text_cal, image=True) for i in items]
+        folds, probs = None, [probabilities(i.reads, "choice", text_cal) for i in items]
     else:
         if fit_on is None:
             folds = fits(arm, items, text_T)
@@ -258,7 +257,7 @@ def run(args) -> dict:
     except ValueError as e:
         raise SystemExit(str(e)) from e
     text = None if cal is None else {"path": str(cal_path), "source": cal.source, "T": cal.T["choice"],
-                                     "orders": cal.orders, "T_image": cal.T_image, "stamp_checked": False}
+                                     "orders": cal.orders, "stamp_checked": False}
     fit = str(args.fit_on.resolve()) if args.fit_on else None
     arm = report | {"collect": str(args.collect.resolve()), "collect_config": config, "fit_on": fit,
                     "text_calibration": text, "fallback_T": (cal or UNCALIBRATED).T["choice"],

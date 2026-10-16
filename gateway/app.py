@@ -15,7 +15,7 @@ from transformers import AutoTokenizer
 
 from gateway import chat
 from gateway.body_limit import BodyLimit
-from gateway.calibration import UNCALIBRATED, image_orders_warning, load_calibration, orders_warning, stamp_for
+from gateway.calibration import UNCALIBRATED, load_calibration, orders_warning, stamp_for
 from gateway.config import Settings
 from gateway.decide import Engine, decide
 from gateway.disconnect import unless_disconnected
@@ -45,11 +45,9 @@ def load_calibrations(s: Settings, tok, layouts: dict) -> dict:
     """Each layout's stamped calibration; a fit made under other option orders is used, with a warning."""
     out = {}
     for name, layout in layouts.items():
-        expect = stamp_for(tok, layout, s) | {"mm_processor_kwargs": s.mm_processor_kwargs}  # image block's stamp
-        out[name] = load_calibration(s.calibration_path(name), expect)
-        for warning in (orders_warning(out[name], s.option_orders), image_orders_warning(out[name], s.option_orders)):
-            if warning:
-                log.warning("%s", warning)
+        out[name] = load_calibration(s.calibration_path(name), stamp_for(tok, layout, s))
+        if warning := orders_warning(out[name], s.option_orders):
+            log.warning("%s", warning)
     return out
 
 

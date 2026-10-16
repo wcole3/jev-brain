@@ -106,23 +106,18 @@ def decode_image(source: Any, where: str) -> Image:
     return Image(raw, PIL.Image.MIME[fmt], size[0], size[1], hashlib.sha256(raw).hexdigest(), where)
 
 
-def is_image_item(item: Any, i: int) -> bool:
-    """A {"image": source} state item. Other keys beside "image" are refused, not rendered as megabytes of text."""
-    if not (isinstance(item, dict) and "image" in item):
-        return False
-    if len(item) > 1:
-        raise ImageError(f'state[{i}]: an image item takes only the "image" key')
-    return True
+def is_image_item(item: Any) -> bool:
+    return isinstance(item, dict) and list(item) == ["image"]
 
 
 def image_items(state: Any) -> list[Any]:
-    return [item for i, item in enumerate(state) if is_image_item(item, i)] if isinstance(state, list) else []
+    return [i for i in state if is_image_item(i)] if isinstance(state, list) else []
 
 
 def state_items(state: Any) -> list[str | Image]:
     if image_items(state):
         return [
-            decode_image(item["image"], f"state[{i}].image") if is_image_item(item, i) else render_state(item)
+            decode_image(item["image"], f"state[{i}].image") if is_image_item(item) else render_state(item)
             for i, item in enumerate(state)
         ]
     return [] if state in EMPTY_STATES else [render_state(state)]

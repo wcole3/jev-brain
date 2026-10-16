@@ -47,9 +47,9 @@ def test_list_state_without_image_items_stays_whole():
     assert items[1] == render_state([{"a": 1}])
 
 
-def test_image_items_with_extra_keys_are_refused_not_rendered():
-    with pytest.raises(ImageError, match=r'^state\[1\]: an image item takes only the "image" key'):
-        context_items(["Pick", {"image": b64(png(8, 8)), "detail": "high"}], None)
+def test_a_dict_with_an_image_field_and_other_keys_is_text():
+    state = ["Pick", {"image": "photo.jpg", "price": 10}]
+    assert context_items(state, None) == [render_state(state)]
 
 
 @pytest.mark.parametrize("src", ["https://x/a.png", "http://x/a.png", "file:///etc/passwd", "a.png", 7])

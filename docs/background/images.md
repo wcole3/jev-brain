@@ -28,6 +28,8 @@ Both formats become one ordered list of context items ([`context_items`](../../g
 
 - **Order:** top-level images first, then the state. A list `state` that holds image items is split per item; the other
   items render with `render_state`, as text state does.
+- **Image items:** Only a dict whose single key is `image` is an image; any other dict, even one with an `image` field,
+  is text.
 - **No images anywhere:** the context is exactly today's `render_state(state)`, so text requests build the same ids as
   before.
 - **Empty state** (`None`, `""`, `{}`, `[]`) adds no text next to the images. The decision-index kit sends `state: {}`
@@ -40,7 +42,6 @@ Both formats become one ordered list of context items ([`context_items`](../../g
 | Source | `data:` URLs (base64) or raw base64 only. Any other string, including `https://`, is refused; the gateway never fetches | 400 |
 | Format | PNG, JPEG, WEBP, GIF only (Pillow `formats=`; an open-ended open would accept EPS, which can invoke Ghostscript) | 400 |
 | Header size | Width × height checked against Pillow's `MAX_IMAGE_PIXELS` before the pixels are decoded | 400 |
-| Image item | A `state` item with an `"image"` key and any other key (e.g. `"detail"`), rather than rendering its base64 as text | 400 |
 | Count | At most 4 images per request | 400 |
 | Body | At most 20,000,000 bytes, checked on `Content-Length` by a plain ASGI middleware ([`body_limit.py`](../../gateway/body_limit.py)) before the body is read | 400 |
 | Aspect (Qwen) | Over 200:1 refused, as transformers does | 400 |

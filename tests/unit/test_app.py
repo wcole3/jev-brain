@@ -442,11 +442,12 @@ def test_startup_warns_when_a_fit_was_made_under_other_orders(qwen_settings, cap
     assert "fitted under option orders 'identity', used here with 'identity+reversed'" in caplog.text
 
 
-def write_image_calibration(s, mm: dict, T_image: float = 2.5):
+def write_image_calibration(s, mm: dict, T_image: float = 2.5, orders: str = "identity"):
     """A current text stamp plus an image block stamped with mm."""
     path = s.data_dir("decider_chat") / "calibration.json"
     types = {"choice": {"T": 1.5}, "score": {"T": 1.5}, "noul": {"T": 1.5, "b": 0.0}}
-    image = {"T": T_image, "stamp": OLD_STAMP | {"mm_processor_kwargs": mm}, "fit": {"source": "vision-calib"}}
+    fit = {"source": "vision-calib", "orders": orders}
+    image = {"T": T_image, "stamp": OLD_STAMP | {"mm_processor_kwargs": mm}, "fit": fit}
     path.write_text(json.dumps({"format": 2, "stamp": OLD_STAMP, "types": types, "fit": {}, "image": image}))
 
 
@@ -458,3 +459,11 @@ def test_startup_checks_the_image_stamp_against_the_running_image_settings(qwen_
     write_image_calibration(s, {"max_pixels": 819200})
     with pytest.raises(RuntimeError, match="image.stamp.mm_processor_kwargs changed .*fit_image_t.py --write"):
         load_engine(s, None)
+
+
+def test_startup_warns_when_T_image_was_fitted_under_other_orders(qwen_settings, caplog, monkeypatch):
+    monkeypatch.setattr(gateway.app, "stamp_for", lambda tok, layout, s: OLD_STAMP)
+    s = dataclasses.replace(qwen_settings, mm_processor_kwargs={"max_pixels": 1638400})
+    write_image_calibration(s, {"max_pixels": 1638400}, orders="identity+reversed")
+    assert load_engine(s, None).calibration["decider_chat"].T_image == 2.5
+    assert "T_image was fitted under option orders 'identity+reversed', used here with 'identity'" in caplog.text

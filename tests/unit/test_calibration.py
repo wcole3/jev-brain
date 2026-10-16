@@ -1,3 +1,4 @@
+import dataclasses
 import json
 import math
 
@@ -7,6 +8,7 @@ from gateway.calibration import (
     STAMP_KEYS,
     UNCALIBRATED,
     Calibration,
+    image_orders_warning,
     load_calibration,
     orders_warning,
     softmax,
@@ -71,6 +73,15 @@ def test_orders_warning_only_when_a_fit_meets_other_orders():
     fitted = Calibration({"choice": 1.0, "score": 1.0, "noul": 1.0}, source="x", orders="identity")
     assert orders_warning(fitted, "identity") is None and orders_warning(UNCALIBRATED, "cyclic:3") is None
     assert "'identity', used here with 'identity+reversed'" in orders_warning(fitted, "identity+reversed")
+
+
+def test_image_orders_warning_only_when_the_image_fit_meets_other_orders():
+    text = Calibration({"choice": 1.0, "score": 1.0, "noul": 1.0}, source="x", orders="identity")
+    assert image_orders_warning(text, "identity+reversed") is None  # no image block
+    cal = dataclasses.replace(text, T_image=2.0, image={"fit": {"orders": "identity+reversed"}})
+    assert image_orders_warning(cal, "identity+reversed") is None
+    assert "T_image was fitted under option orders 'identity+reversed', used here with 'identity'" in (
+        image_orders_warning(cal, "identity"))
 
 
 def test_no_expectation_skips_the_stamp_check(tmp_path):

@@ -60,6 +60,14 @@ def orders_warning(cal: Calibration, orders: str) -> str | None:
     return f"{cal.source} was fitted under option orders {cal.orders!r}, used here with {orders!r}"
 
 
+def image_orders_warning(cal: Calibration, orders: str) -> str | None:
+    """T_image holds for the option orders it was fitted under, which may differ from the text fit's."""
+    fitted = ((cal.image or {}).get("fit") or {}).get("orders")
+    if cal.T_image is None or fitted is None or fitted == orders:
+        return None
+    return f"{cal.source}: T_image was fitted under option orders {fitted!r}, used here with {orders!r}"
+
+
 def finite_number(path: Path, name: str, value, positive: bool = False) -> float:
     x = float(value) if isinstance(value, int | float) else math.nan
     if not math.isfinite(x) or (positive and x <= 0):

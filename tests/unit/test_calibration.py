@@ -87,3 +87,40 @@ def test_collect_stamp_carries_stamp_for_exactly(engine):
     assert set(stamp) == set(STAMP_KEYS)
     collected = collect_stamp(engine, "decider_chat")
     assert {k: collected[k] for k in STAMP_KEYS} == stamp
+
+
+IMAGE_EXPECT = STAMP | {"mm_processor_kwargs": {"max_pixels": 1638400}}
+
+
+def image_block(**over):
+    return {"T": 2.5, "stamp": dict(IMAGE_EXPECT), "fit": {"source": "vision-calib", "rows": 40}} | over
+
+
+def test_image_block_is_optional_and_loaded(tmp_path):
+    text_only = load_calibration(v2(tmp_path / "a"), IMAGE_EXPECT)
+    assert text_only.T_image is None and "T_image" not in text_only.as_dict()
+    cal = load_calibration(v2(tmp_path / "b", image=image_block()), IMAGE_EXPECT)
+    assert cal.T_image == 2.5 and cal.T == text_only.T and cal.b == text_only.b
+    shown = cal.as_dict()
+    assert shown["T_image"] == 2.5 and shown["image"]["stamp"] == IMAGE_EXPECT
+    assert shown["image"]["fit"]["source"] == "vision-calib"
+    assert json.loads(json.dumps(shown)) == shown
+
+
+@pytest.mark.parametrize("key, value", [("mm_processor_kwargs", {"max_pixels": 819200}), ("hf_revision", "new")])
+def test_stale_image_stamp_is_refused(tmp_path, key, value):
+    path = v2(tmp_path, image=image_block(stamp=IMAGE_EXPECT | {key: value}))
+    with pytest.raises(RuntimeError, match=f"image.stamp.{key} changed .* move the stale file aside"):
+        load_calibration(path, IMAGE_EXPECT)
+    assert load_calibration(path, None).T_image == 2.5  # no expectation: unchecked, like the text stamp
+
+
+@pytest.mark.parametrize("block, field", [({"T": 0.0}, "image.T"), ({"stamp": "x"}, "image.stamp")])
+def test_malformed_image_block_is_refused(tmp_path, block, field):
+    with pytest.raises(RuntimeError, match=field):
+        load_calibration(v2(tmp_path, image=image_block(**block)), IMAGE_EXPECT)
+
+
+def test_an_image_block_that_is_not_an_object_is_refused(tmp_path):
+    with pytest.raises(RuntimeError, match="image.stamp must be a non-empty object"):
+        load_calibration(v2(tmp_path, image="x"), IMAGE_EXPECT)

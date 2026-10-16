@@ -135,18 +135,23 @@ def blend(reads: list[tuple[list[float], list[int]]], temperature: float, yes_of
     return average_back(probs, [perm for _, perm in reads])
 
 
-def probabilities(reads: list[tuple[list[float], list[int]]], q_type: str, cal: Calibration) -> list[float]:
+def probabilities(
+    reads: list[tuple[list[float], list[int]]], q_type: str, cal: Calibration, image: bool = False
+) -> list[float]:
+    # T_image is fitted on choice rows only: score and noul in image requests keep the text T and b
+    if image and q_type == "choice" and cal.T_image is not None:
+        return blend(reads, cal.T_image)
     return blend(reads, cal.T[q_type], cal.b if q_type == "noul" else 0.0)
 
 
-def answers_for(questions: dict[str, Rendered], reads: dict, cal: Calibration) -> dict:
-    return {qid: answer(q, probabilities(reads[qid], q.type, cal)) for qid, q in questions.items()}
+def answers_for(questions: dict[str, Rendered], reads: dict, cal: Calibration, image: bool = False) -> dict:
+    return {qid: answer(q, probabilities(reads[qid], q.type, cal, image)) for qid, q in questions.items()}
 
 
 async def decide(engine: Engine, request: SystemOneRequest) -> dict:
     r = await read_rows(engine, request)
     return {
         "model": engine.settings.served_model,
-        "answers": answers_for(r.questions, r.reads, engine.calibration[r.layout]),
+        "answers": answers_for(r.questions, r.reads, engine.calibration[r.layout], r.batch.images is not None),
         "usage": {"input_tokens": r.input_tokens, "output_tokens": 0},
     }

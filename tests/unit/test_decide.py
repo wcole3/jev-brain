@@ -198,3 +198,30 @@ async def test_images_after_the_question_are_not_prefix_parts(seeing):
     _, _, shared_len, shared_tokens, parts, prefix_parts = seeing.readout.image_calls[0]
     assert len(parts) == 1 and prefix_parts == []
     assert shared_tokens == shared_len
+
+
+def calibrated(engine, cal):
+    return dataclasses.replace(engine, calibration=dict.fromkeys(engine.layouts, cal))
+
+
+async def test_image_rows_use_T_image_and_text_rows_do_not(seeing):
+    plain = Calibration({"choice": 1.0, "score": 2.0, "noul": 1.5}, b=0.4)
+    tuned = dataclasses.replace(plain, T_image=3.0)
+    text, image = request(layout="header"), request(layout="header", images=[png_b64()])
+    assert await decide(calibrated(seeing, tuned), text) == await decide(calibrated(seeing, plain), text)
+    before = (await decide(calibrated(seeing, plain), image))["answers"]
+    after = (await decide(calibrated(seeing, tuned), image))["answers"]
+    probs = list(after["department"]["probabilities"].values())
+    assert probs == pytest.approx(softmax([0.0, -1.0, -2.0], 3.0), abs=1e-4)
+    assert after["department"] != before["department"]
+    assert (after["frustration"], after["is_urgent"]) == (before["frustration"], before["is_urgent"])
+
+
+def test_probabilities_without_images_or_T_image_are_unchanged():
+    reads = [([0.0, -1.0, -2.0], [0, 1, 2]), ([-0.5, -1.0, 0.0], [2, 1, 0])]
+    plain = Calibration({"choice": 1.7, "score": 2.0, "noul": 1.5}, b=0.4)
+    tuned = dataclasses.replace(plain, T_image=3.0)
+    for q_type in ("choice", "score"):
+        assert probabilities(reads, q_type, tuned) == probabilities(reads, q_type, plain)
+        assert probabilities(reads, q_type, plain, image=True) == probabilities(reads, q_type, plain)
+    assert probabilities(reads, "choice", tuned, image=True) == blend(reads, 3.0)

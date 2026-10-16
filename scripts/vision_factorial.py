@@ -121,17 +121,23 @@ def latency_by_level(args, factors: dict[str, list[str]]) -> tuple[dict[str, dic
     return vc.load_latency(dirs)
 
 
+def untimed(cell: dict) -> dict:
+    return {k: v for k, v in cell.items() if k != "latency"}
+
+
 def interval(e: dict, spec: str) -> str:
     return vc.interval(e["delta"], e["ci"], spec)
 
 
 def markdown(s: dict) -> str:
     factors, mains = s["factors"], s["main_effects"]
-    timed = any(c["latency"] for c in s["cells"])
     lines = [f"# Vision factorial: {s['label']}", "",
              (f"{len(s['cells'])} cells on {s['rows']} rows of `{s['ids']}`; effects are index points against the "
               f"reference `{cell_name(s['reference'])}`. CIs are 95% paired bootstrap ({s['resamples']} resamples, "
               f"seed {s['seed']}) over image groups within each benchmark, one resample shared by every cell."),
+             (f"CIs are unadjusted for multiple comparisons ({len(mains) + len(s['interactions'])} index effects, "
+              f"{len(mains) * len(s['benchmarks'])} per-benchmark); the minimum detectable Δ index on dev is ≈3.5 "
+              "points (docs/background/vision-experiments.md)."),
              "This table reports; the owner picks.", "", "## Main effects", "",
              "Mean over the other factors' cells of index(level) − index(reference level).", "",
              "| factor | level | Δ index [95% CI] |", "|---|---|---|"]
@@ -146,17 +152,19 @@ def markdown(s: dict) -> str:
               "|---" * (2 + len(mains)) + "|"]
     for b, n in s["benchmarks"].items():
         lines.append(f"| {b} | {n} | " + " | ".join(interval(e["skill"][b], ".3f") for e in mains) + " |")
-    head = "| " + " | ".join(factors) + " | index | ECE | NLL | mean input tokens |"
-    lines += ["", "## Cells", "", head + (" p50 ms | p80 ms |" if timed else ""),
-              "|---" * (len(factors) + 4 + 2 * timed) + "|"]
+    lines += ["", "## Cells", "", "| " + " | ".join(factors) + " | index | ECE | NLL | mean input tokens |",
+              "|---" * (len(factors) + 4) + "|"]
     for c in s["cells"]:
         values = [*c["levels"].values(), vc.fmt(c["index"]), vc.fmt(c["ece"], ".4f"), vc.fmt(c["nll"], ".4f"),
                   vc.fmt(c["mean_input_tokens"], ".0f")]
-        lat = c["latency"] or {}
-        values += [vc.fmt(lat.get("median"), ".0f"), vc.fmt(lat.get("p80"), ".0f")] if timed else []
         lines.append("| " + " | ".join(values) + " |")
-    if timed:
-        lines += ["", f"Latency per budget level, at power limit {vc.fmt(s['power_limit_w'], '')} W."]
+    if s["latency"]:
+        lines += ["", "## Latency per budget level", "",
+                  (f"Timed per budget level only, at power limit {vc.fmt(s['power_limit_w'], '')} W: "
+                   "placement and wording get Δ tokens, not latency."), "",
+                  "| budget | p50 ms | p80 ms |", "|---|---|---|"]
+        lines += [f"| {level} | {vc.fmt(lat.get('median'), '.0f')} | {vc.fmt(lat.get('p80'), '.0f')} |"
+                  for level, lat in s["latency"].items()]
     return "\n".join(lines) + "\n"
 
 
@@ -172,8 +180,8 @@ def run(args) -> dict:
         "commit": vision_splits.commit(), "grid": str(args.grid), "ids": IDS, "rows": len(rows[0]),
         "benchmarks": dict(sorted(Counter(r["benchmark"] for r in rows[0]).items())), "weights": vc.WEIGHTS,
         "resamples": RESAMPLES, "seed": SEED, "power_limit_w": power, "factors": factors, "reference": reference,
-        "main_effects": mains, "interactions": pairs,
-        "cells": [{"name": n, "levels": c} | vc.describe(config, latency.get(c.get(BUDGET)))
+        "main_effects": mains, "interactions": pairs, "latency": latency,  # per budget level: cells were not timed
+        "cells": [{"name": n, "levels": c} | untimed(vc.describe(config, None))
                   for n, c, config in zip(names, cells, configs, strict=True)],
     }
     out = args.out_root / f"{datetime.now(UTC).strftime('%Y-%m-%dT%H%M%SZ')}-{args.out_label}"

@@ -81,6 +81,9 @@ def test_main_effect_recovers_a_planted_effect(tmp_path):
     (folder,) = (tmp_path / "o").iterdir()
     md = (folder / "summary.md").read_text()
     assert "| budget | 1120 |" in md and "## Two-way interactions" in md and "## Per-benchmark main effects" in md
+    assert ("unadjusted for multiple comparisons (9 index effects, 12 per-benchmark)" in md
+            and "≈3.5 points" in md and "docs/background/vision-experiments.md" in md)
+    assert "## Latency" not in md and "p50 ms" not in md
 
 
 def test_null_factor_has_zero_effect_and_ci_covering_zero(tmp_path):
@@ -164,13 +167,18 @@ def test_cells_scored_by_different_arms_are_refused(tmp_path):
         run(tmp_path, path)
 
 
-def test_latency_attaches_per_budget_level_under_compare_power_rules(tmp_path):
+def test_latency_is_a_per_budget_table_not_attached_to_cells(tmp_path):
     path = grid(tmp_path)
     lat = latency_dir(tmp_path / "lat-1120", power_limit_w=510, power_limit_w_end=510)
     summary = run(tmp_path, path, "--latency", f"1120={lat}")
-    timed = {c["name"]: c["latency"] for c in summary["cells"]}
-    assert all((t is not None) == ("budget=1120" in n) for n, t in timed.items())
-    assert timed["budget=1120 placement=first wording=none"]["p80"] == 1000.0 and summary["power_limit_w"] == 510
+    assert all("latency" not in c and "mean_input_tokens" in c for c in summary["cells"])
+    assert summary["latency"]["1120"]["p80"] == 1000.0 and summary["power_limit_w"] == 510
+    (folder,) = (tmp_path / "o").iterdir()
+    md = (folder / "summary.md").read_text()
+    cells = md.split("## Cells")[1].split("## Latency")[0]
+    assert "p50 ms" not in cells
+    assert "## Latency per budget level" in md and "| 1120 |" in md.split("## Latency")[1]
+    assert "placement and wording get Δ tokens, not latency" in md
     other = latency_dir(tmp_path / "lat-560")
     with pytest.raises(SystemExit, match="power limit"):
         run(tmp_path / "again", path, "--latency", f"1120={lat}", "--latency", f"560={other}")

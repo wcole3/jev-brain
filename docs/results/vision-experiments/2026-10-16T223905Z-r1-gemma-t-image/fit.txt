@@ -1,0 +1,7 @@
+# uv run python scripts/fit_image_t.py --collect .cache/vision-collect/gemma-4-31b/r1-calib/calib.jsonl.gz --profile gemma-4-31b --dev .cache/vision-collect/gemma-4-31b/r1-b560-header/dev.jsonl.gz --out <this dir>
+T_image 4.106 on 1800 rows (skipped {}), orders identity; text T 4.263
+NLL 0.2190 -> 0.2186
+ECE 0.0166 -> 0.0125
+dev 1462 rows, orders identity:
+  text T 4.263: ECE 0.0768, NLL 0.6079, accuracy 0.8030
+  image T 4.106: ECE 0.0825, NLL 0.6165, accuracy 0.8030

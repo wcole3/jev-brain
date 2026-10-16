@@ -23,12 +23,17 @@ def test_scripts_parse(script):
     subprocess.run(["bash", "-n", str(script)], check=True)
 
 
-# Each box's queue: bf16 profiles recollect the 0.3 index-dev (DS-031); qwen3.8-27b-fp8 collected calib + eval
-# (DS-005 stage 2); the three picked quantized profiles run latency and the full 0.3 Index (DS-030).
+# Each box's queue: qwen3.6-27b recollects the 0.3 index-dev (DS-031); qwen3.8-27b-fp8 collected calib + eval
+# (DS-005 stage 2); the three picked quantized profiles run latency and the full 0.3 Index (DS-030); gemma-4-31b and
+# qwen3.8-27b run DS-024 phase B: vision stack, live tests, text after-runs, image sharing, Vision suite, stock baseline.
+VISION_PHASE_B = (
+    "stack-vision", "vision-setup", "live", "jevbench-after", "index-after", "latency-after", "image-sharing",
+    "vision-latency", "vision-full", "stack-down", "vision-stock",
+)
 JOBS = {
     "qwen3.8-27b-fp8": ("collect-calib", "collect-eval"),
     "qwen3.6-27b": ("collect-index-dev",),
-    **dict.fromkeys(["gemma-4-31b", "qwen3.8-27b"], ("jevbench-before", "index-before", "latency-before")),
+    **dict.fromkeys(["gemma-4-31b", "qwen3.8-27b"], VISION_PHASE_B),
     **dict.fromkeys(["gemma-4-31b-fp8", "qwen3.6-27b-fp8", "qwen3.8-27b-nvfp4"], ("latency", "index")),
 }
 
@@ -60,9 +65,50 @@ def test_index_jobs_resume_the_box_run_tag_and_fail_on_holes(path):
     for name, command in jobs_of(path).items():
         if name == "index":
             assert f"--profile {path.stem} --shards 4" in command
-            assert command.endswith(f"--run-dir .cache/index-runs/{path.stem}/$(cat .cache/remote/run_tag) --strict")
-        if name == "latency":
+        if name.split("-")[0] == "index":  # index, index-before, index-after: each resumes its own tagged run dir
+            tag = "" if name == "index" else name.removeprefix("index-") + "-"
+            assert command.endswith(f"--run-dir .cache/index-runs/{path.stem}/{tag}$(cat .cache/remote/run_tag) --strict")
+        if name.split("-")[0] == "latency":
             assert command.endswith(f"scripts/latency.py --profile {path.stem}")
+
+
+@pytest.mark.parametrize("path", [p for p in JOB_FILES if "vision-full" in jobs_of(p)], ids=lambda p: p.name)
+def test_vision_runs_resume_the_box_run_tag(path):
+    jobs = jobs_of(path)
+    for name in ("vision-latency", "vision-full"):
+        run_dir = f".cache/vision-runs/{path.stem}/{name.removeprefix('vision-')}-$(cat .cache/remote/run_tag)"
+        assert jobs[name].endswith(f"--run-dir {run_dir}")
+    assert "--sample 300 --workers 1" in jobs["vision-latency"] and "--workers" not in jobs["vision-full"]
+    # the stock baseline needs the GPU to itself, so the stack goes down right before it
+    assert list(jobs)[-2:] == ["stack-down", "vision-stock"]
+
+
+LIVE_STACK = "#!/usr/bin/env bash\necho \"stack $*\" >> calls\nexit ${STACK_EXIT:-0}\n"
+LIVE_UV = "#!/usr/bin/env bash\necho \"uv $*\" >> calls\nexit 3\n"
+
+
+@pytest.mark.parametrize("path", [p for p in JOB_FILES if "live" in jobs_of(p)], ids=lambda p: p.name)
+@pytest.mark.parametrize("stack_exit", [0, 1])
+def test_live_job_records_pytest_exit_and_never_stops_the_queue(tmp_path, path, stack_exit):
+    """Controller ruling: a failing live run is read later from junit and pytest-exit.txt; the queue goes on."""
+    (tmp_path / "scripts" / "remote").mkdir(parents=True)
+    (tmp_path / "scripts" / "remote" / "stack.sh").write_text(LIVE_STACK)
+    (tmp_path / ".cache" / "remote").mkdir(parents=True)
+    (tmp_path / ".cache" / "remote" / "run_tag").write_text("T-vast\n")
+    (tmp_path / "bin").mkdir()
+    (tmp_path / "bin" / "uv").write_text(LIVE_UV)
+    (tmp_path / "bin" / "uv").chmod(0o755)
+    env = os.environ | {"PATH": f"{tmp_path / 'bin'}:{os.environ['PATH']}", "STACK_EXIT": str(stack_exit)}
+    out = subprocess.run(["bash", "-c", jobs_of(path)["live"]], cwd=tmp_path, env=env, check=False)
+    assert out.returncode == 0
+    run = tmp_path / "docs" / "results" / "archive" / path.stem / "T-vast-live"
+    assert run.is_dir()
+    if stack_exit:  # no stack: pytest never ran, so no exit file
+        assert not (run / "pytest-exit.txt").exists()
+        return
+    assert (run / "pytest-exit.txt").read_text() == "3\n"
+    uv = (tmp_path / "calls").read_text().splitlines()[1]
+    assert uv == f"uv run pytest -m live tests/live -v --junitxml {run.relative_to(tmp_path)}/junit.xml"
 
 
 def test_job_commands_name_only_their_own_profile():

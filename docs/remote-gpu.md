@@ -224,10 +224,14 @@ vastai destroy instance ID
 |---|---|
 | `qwen3.8-27b-fp8` | stack, collect-calib, collect-eval (DS-005 stage 2) |
 | `qwen3.6-27b-fp8`, `qwen3.8-27b-nvfp4`, `gemma-4-31b-fp8` | stack, latency, index (full 0.3 Index, 4 shards; DS-030) |
-| `qwen3.6-27b`, `qwen3.8-27b`, `gemma-4-31b` | stack, collect-index-dev (the 0.3 index-dev, DS-031) |
+| `qwen3.6-27b` | stack, collect-index-dev (the 0.3 index-dev, DS-031) |
+| `qwen3.8-27b`, `gemma-4-31b` | DS-024 phase B (push with `--vision`): stack, stack-vision, vision-setup, live, jevbench/index/latency-after, image-sharing, vision-latency, vision-full, stack-down, vision-stock |
 
 Earlier queues (host-compare, latency, Index runs) are in git history.
 
+- The `live` job never stops the queue: it writes `junit.xml` and `pytest-exit.txt` to
+  `docs/results/archive/PROFILE/<run tag>-live/` and exits 0. No `pytest-exit.txt` means the stack
+  did not come up (see the job log).
 - Collect runs at its default `--concurrency 8`, like the local collects.
 - `stack.sh up` first copies `docker/vllm/rejection_sampler.py` over the image's file, as compose
   mounts it (DS-004); `stack.sh patch-vllm` does only that.

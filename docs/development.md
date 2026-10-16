@@ -163,12 +163,13 @@ uv run python scripts/vision_offline.py --collect .cache/vision-collect/gemma-4-
 # 3. latency through the gateway (320 rows, 20 warm-up dropped; needs nvidia-smi)
 uv run python scripts/vision_run.py --profile gemma-4-31b --gateway http://127.0.0.1:9000 \
   --ids vision-latency --workers 1
-# 4. paired compare; the first config is the baseline; reports, never picks
+# 4. paired compare on vision-dev (--ids); --baseline is one config, the rest are positional; never picks
 uv run python scripts/vision_compare.py --baseline text=.cache/vision-arms/gemma-4-31b/base-text \
   fitT=.cache/vision-arms/gemma-4-31b/base-fit-T --out-label gemma-base
 ```
 
-On a holdout collect, fitted arms need `--fit-on <dev collect>`. Configs that need a vLLM restart get
+Every holdout touch needs `--holdout` and is logged; on a holdout collect, fitted arms also need
+`--fit-on <dev collect>`. Configs that need a vLLM restart get
 A-B-A latency runs, and `--latency NAME=DIR` attaches a run's `summary.json` to compare.
 
 ## Repository map

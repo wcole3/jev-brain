@@ -25,7 +25,7 @@ Done when:
 | Finding | Source | Effect on the design |
 |---|---|---|
 | IRT anchor subsets (tinyBenchmarks, metabench) estimate model scores within ~2% but are fitted on model-to-model variation | Polo et al. 2024; Kipnis et al. 2024 | Not used: unproven for prompt-vs-prompt; stratified random instead |
-| Paired comparison: SE(Δacc) ≈ √(d/N), d = share of rows where configs disagree | standard; McNemar | Dev ≈1,500 detects ≈+2 pt at d ≤ 8%; compare reports d so N can be revisited |
+| Paired comparison: SE(Δacc) ≈ √(d/N), d = share of rows where configs disagree | standard; McNemar | At d = 8%, dev (1,462) gives pooled accuracy a ±1.5 pt CI, but Δ index (weighted skill, ~136 rows per benchmark) SE ≈ 1.24: CI ±2.4 pt, MDE ≈ 3.5 pt at 80% power; compare reports d so N can be revisited |
 | Reused test sets overfit mostly through winner selection | Dwork et al. 2015; Recht et al. 2019 | Fixed dev/holdout; holdout for finalists only, ≤5 logged looks |
 | VLM multiple choice is order- and letter-biased; PriDe removes a letter prior estimated on a small sample | Zong et al. 2023; Zheng et al. (PriDe) | Offline arms for orders and a letter prior |
 | Temperature scaling calibrates VLMs with few samples | Tu et al. 2024 | Offline `fit-T` and `fit-T-bench` arms, cross-fitted |
@@ -39,7 +39,7 @@ Raw research notes: `.firecrawl/ds-034/`, `.firecrawl/ds-034-vlm/` (git-ignored)
 |---|---|
 | Scope | The public vision suite only; text keeps its splits, and every shipped change still gets a JevBench check |
 | What wins | No automatic rule: the harness reports skill, ECE and latency per config with confidence intervals; the owner picks |
-| Splits | Dev ≈1,500, holdout ≈2,400, reserve ≈8,300 untouched until a submission run |
+| Splits | Dev 1,462, holdout 2,276, reserve 8,472 untouched until a submission run (cut 2026-10-16, ≤ 10 rows per image group) |
 | Approach | Collect raw letter logprobs once per prompt-changing config, re-score offline for calibration, prior and orders; latency through the gateway |
 
 ## 1. Splits (`scripts/vision_splits.py`)
@@ -53,8 +53,9 @@ Raw research notes: `.firecrawl/ds-034/`, `.firecrawl/ds-034-vlm/` (git-ignored)
 - `vision-latency.json`: 320 rows drawn from dev, stratified and seeded; the first 20 are warm-up.
 - Each manifest has `meta` (suite `vision-rows.jsonl` SHA-256, seed, grouping rule, per-benchmark counts)
   and `ids`. A tool refuses a manifest whose suite hash differs from the suite on disk.
-- Holdout guard: tools that read `vision-holdout.json` need `--holdout`. Each use appends date, tool, label
-  and commit to `docs/results/vision-experiments/holdout-log.md`, with a warning from the 6th entry on.
+- Holdout guard: every tool that touches the holdout needs `--holdout` (collect, `vision_run.py`, offline on
+  a holdout collect, compare on `--ids vision-holdout`). Each use appends date, tool, label and commit to
+  `docs/results/vision-experiments/holdout-log.md`, with a warning from the 6th entry on.
 
 ## 2. Collect (`scripts/vision_collect.py`)
 
@@ -88,13 +89,15 @@ top answer, correct, NLL). An arm is a subset of the collected orders plus one c
 Every fitted method is 2-fold cross-fitted by group within dev: fit on one half, score the other, swap. Nothing
 is ever fitted on holdout rows.
 
-**Compare** (`scripts/vision_compare.py --baseline X C1 C2 …`): inputs are offline arms or live kit runs (which
-carry probabilities). All configs must cover the same ids.
+**Compare** (`scripts/vision_compare.py --baseline X [C1 C2 …] [--ids vision-dev]`; X is the baseline, the others
+are positional): inputs are offline arms or live kit runs (which carry probabilities). All configs must cover
+the same ids; live runs are cut to the `--ids` manifest, and offline arms must come from its split.
 
 - Skill per benchmark is (acc − chance) / (1 − chance), with chance the mean of 1/options, matching the kit.
   The index weights benchmarks as the kit does: R-Bench-M 0.5, MMMU-Pro vision 0.25, all others 1.0.
 - Per config against the baseline: Δskill with a paired-bootstrap 95% CI (10,000 resamples, groups resampled
-  within each benchmark), McNemar exact p, d, ΔECE, ΔNLL, mean input tokens, and latency when attached.
+  within each benchmark; the headline), McNemar exact p (row-level, unweighted: a cross-check), d, ΔECE, ΔNLL,
+  mean input tokens of the arm's own reads, and latency when attached.
 - A per-benchmark Δ table, and a frontier table (skill, ECE, latency per config).
 - Output: `docs/results/vision-experiments/<UTC>-<label>/summary.md` and `summary.json`.
 

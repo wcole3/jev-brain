@@ -11,8 +11,8 @@ How we iterate on image-decision prompts and logic without overfitting the publi
   a **holdout**.
 - **Collect once, re-score offline.** `vision_collect.py` records raw letter logprobs per config; calibration,
   the letter prior and option orders are then CPU-only arms over the same file.
-- **Paired statistics, no winner.** `vision_compare.py` reports the index change with a confidence interval,
-  McNemar p, ECE, NLL, tokens and latency. The owner picks.
+- **Paired statistics, no winner.** `vision_compare.py` reports the index change with a group-bootstrap
+  confidence interval (the headline), a row-level McNemar p, ECE, NLL, tokens and latency. The owner picks.
 
 ## 1. The splits
 
@@ -44,8 +44,12 @@ matches the suite on disk.
 
 ## 2. Holdout rules
 
-- Reading `vision-holdout` needs `--holdout` (collect and `vision_run.py`). Each read appends the date, tool,
-  label and commit to `docs/results/vision-experiments/holdout-log.md`; from the 6th entry on it warns.
+- Every tool that touches the holdout needs `--holdout` and logs the use: `vision_collect.py --split holdout`,
+  `vision_run.py --ids vision-holdout`, `vision_offline.py` on a holdout collect, and
+  `vision_compare.py --ids vision-holdout` (one entry per compare). Each entry appends the date, tool, label
+  and commit to `docs/results/vision-experiments/holdout-log.md`, after every check that can refuse the run.
+- The log warns from the 6th entry on. It counts entries, not looks: one finalist's confirmation (collect,
+  its arms, compare) writes several, so count looks by label.
 - Finalists only, at most 5 logged looks, and confirm once. Reused test sets overfit mostly through winner
   selection (Dwork et al. 2015; Recht et al. 2019), so the holdout is for confirming, not choosing.
 - Nothing is ever fitted on holdout rows. A fitted arm on a holdout collect fits on all of a matching dev
@@ -86,8 +90,12 @@ collected orders plus one calibration method:
 
 - **Cross-fit.** On a dev collect, folds are `sha256("fold:" + group) % 2`; each row is scored with parameters
   fitted on the other fold, so no row is scored with a fit that saw it.
-- **Holdout.** Fitted arms on a holdout collect need `--fit-on <dev collect>`; the dev collect's profile,
-  layout, orders and env must match. `--fit-on` is refused for `text` and for dev collects.
+- **Holdout.** Scoring a holdout collect needs `--holdout` and is logged. Fitted arms on it need
+  `--fit-on <dev collect>`; the dev collect's profile, layout, orders and env must match, and so must its
+  records' stamps apart from the commit (layout and label-table hashes, model, mm kwargs). `--fit-on` is
+  refused for `text` and for dev collects.
+- **Text calibration** is the profile's file under the collect's `--env` (`PREFIX_BLOCK` picks
+  `calibration-<block>.json`). `arm.json` stores absolute paths.
 - **Fallbacks.** A fit on fewer than 30 questions uses the text T (listed in `arm.json` and the console).
   PriDe needs at least 30 reads per option count, else that option count is left undebiased.
 - **PriDe and orders.** With identity orders only, PriDe mixes the gold-position skew with the letter bias.
@@ -95,26 +103,41 @@ collected orders plus one calibration method:
 
 ## 5. Compare and how to read it
 
-`scripts/vision_compare.py --baseline NAME=DIR NAME=DIR ... --out-label L` takes offline arms (`DIR` holds
-`scored.jsonl.gz`) and live kit runs (`results.jsonl.gz`). Mixing them: put the offline arm first as
-`--baseline`, because a live full-suite run is cut to the baseline's ids but not the reverse.
+`scripts/vision_compare.py --baseline NAME=DIR [NAME=DIR ...] [--ids vision-dev] --out-label L` takes offline
+arms (`DIR` holds `scored.jsonl.gz`) and live kit runs (`results.jsonl.gz`). `--baseline` takes one config, the
+one every other is paired against; the other configs follow as positional `NAME=DIR` arguments.
+
+- **Rows.** `--ids` names the manifest (default `vision-dev`; `vision-holdout` needs `--holdout`). Live runs
+  are cut to its ids; an offline arm must come from that split and score only its ids. Offline arms skip
+  unsupported, invalid and no-gold rows, so put an offline arm first as `--baseline` when mixing: everything
+  is then cut to its ids. `summary.md` lists the skipped rows per offline arm and the errored rows per live
+  run.
 
 - **Index** is the kit's: per benchmark skill = (acc - mean chance) / (1 - mean chance), clipped to [0, 1],
   then a weighted mean with the kit's weights, R-Bench-M 0.5, MMMU-Pro vision 0.25 and 1.0 for the rest. With
   these weights compare reproduces the stored full-suite 73.70.
 - **Δ index [95% CI]** is config minus baseline, with a paired group bootstrap (10,000 resamples, groups
   resampled within each benchmark, seed 0). If the interval holds 0, the data do not separate the two.
-- **McNemar p** is the exact two-sided test on rows where exactly one config is right (b: baseline only,
-  c: config only). **d** is the discordant share (b + c) / N. SE(Δacc) is about sqrt(d / N), so d tells you
-  whether N is enough: dev (~1,500) detects about +2 points at d <= 8%.
+- **McNemar p (rows)** is the exact two-sided test on rows where exactly one config is right (b: baseline
+  only, c: config only). It is row-level and unweighted: it ignores image groups and benchmark weights, so the
+  group-bootstrap CI on Δ index is the headline and p is a cross-check. **d** is the discordant share
+  (b + c) / N.
+- **What dev can detect.** Pooled accuracy has SE(Δacc) ≈ sqrt(d / N): 0.74 points on dev's 1,462 rows at
+  d = 8% (CI about ±1.5). Δ index is noisier: each benchmark's Δskill is Δacc / (1 − chance) on ~136 rows,
+  then weighted, so SE(Δindex) ≈ 100 · sqrt(Σ w² · d / (n (1 − chance)²)) / Σ w over benchmarks. On dev's
+  counts and chances that is 1.24 at d = 8%: a 95% CI of about ±2.4 points and a minimum detectable effect of
+  about 3.5 points at 80% power (2.80 SE). It scales with sqrt(d) and ignores clipping and group clustering;
+  the bootstrap CI is the measured value.
 - **Agreement** is the share of rows with the same top answer. A high-agreement, near-zero Δ config is a
   different config that does the same job.
 - **Per-benchmark Δ skill** shows where a change lands. One benchmark moving alone is a hint, not a result.
 - **ΔECE, ΔNLL** are calibration. **Tokens** is the mean `input_tokens` of the arm's own reads: an identity
   arm pays for one order, not every collected one; "—" marks an arm scored from an older collect. **Latency**
   is p50 and p80 when attached with `--latency NAME=DIR` (a dir with a latency run's `summary.json`).
-- **Refusals:** configs that do not cover the same ids; a latency summary without a power limit at start and
-  end, or with a limit that changed mid-run; summaries at different limits. Errored live rows count as wrong.
+- **Refusals:** configs that do not cover the same ids; an offline arm from another split than `--ids`; a
+  live row not in the suite or whose gold is not an option; a latency summary without a power limit at start
+  and end, or with a limit that changed mid-run; summaries at different limits. Errored live rows count as
+  wrong.
 - Output: `docs/results/vision-experiments/<UTC>-<label>/summary.md` and `summary.json`. It never picks a
   winner.
 
@@ -146,7 +169,7 @@ GPU jobs over 10 minutes need the owner's ok.
 | Finding | Source | Effect on the design |
 |---|---|---|
 | IRT anchor subsets (tinyBenchmarks, metabench) estimate model scores within ~2% but are fitted on model-to-model variation | Polo et al. 2024; Kipnis et al. 2024 | Not used: unproven for prompt-vs-prompt; stratified random instead |
-| Paired comparison: SE(Δacc) ≈ √(d/N), d = share of rows where configs disagree | standard; McNemar | Dev ≈1,500 detects ≈+2 pt at d ≤ 8%; compare reports d so N can be revisited |
+| Paired comparison: SE(Δacc) ≈ √(d/N), d = share of rows where configs disagree | standard; McNemar | At d = 8%, dev (1,462) gives pooled accuracy a ±1.5 pt CI, but Δ index (weighted skill, ~136 rows per benchmark) SE ≈ 1.24: CI ±2.4 pt, MDE ≈ 3.5 pt at 80% power; compare reports d so N can be revisited |
 | Reused test sets overfit mostly through winner selection | Dwork et al. 2015; Recht et al. 2019 | Fixed dev/holdout; holdout for finalists only, ≤5 logged looks |
 | VLM multiple choice is order- and letter-biased; PriDe removes a letter prior estimated on a small sample | Zong et al. 2023; Zheng et al. (PriDe) | Offline arms for orders and a letter prior |
 | Temperature scaling calibrates VLMs with few samples | Tu et al. 2024 | Offline `fit-T` and `fit-T-bench` arms, cross-fitted |

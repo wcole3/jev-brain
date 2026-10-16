@@ -155,17 +155,25 @@ async def collect(engine, rows: list[dict], layout: str, orders: str, path: Path
     return len(todo)
 
 
+PER_SPLIT = ("split", "commit")  # differ between a label's splits; each record's stamp carries the commit
+
+
+def write_once(path: Path, config: dict) -> None:
+    if not path.exists():
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(config, indent=1) + "\n")
+
+
 def claim(folder: Path, config: dict) -> None:
-    """Write config.json once; refuse a folder collected under another config."""
+    """Write config.json and <split>.config.json once; refuse a folder collected under another config."""
     path = folder / "config.json"
     if path.exists():
         old = json.loads(path.read_text())
-        diff = sorted(k for k in old.keys() | config.keys() if old.get(k) != config.get(k))
+        diff = sorted(k for k in (old.keys() | config.keys()) - set(PER_SPLIT) if old.get(k) != config.get(k))
         if diff:
             raise SystemExit(f"{folder} was collected with other {diff}: use another --label")
-        return
-    folder.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(config, indent=1) + "\n")
+    write_once(path, config)
+    write_once(folder / f"{config['split']}.config.json", config)
 
 
 async def run(args, transport: httpx.AsyncBaseTransport | None = None) -> int:
@@ -175,15 +183,15 @@ async def run(args, transport: httpx.AsyncBaseTransport | None = None) -> int:
         option_orders(2, args.orders)
     except ValueError as e:
         raise SystemExit(str(e)) from e
-    split = f"vision-{args.split}"
-    rows = vision_splits.load_split(split, holdout=args.holdout, tool="vision_collect", label=args.label)
     commit = vision_splits.commit()
     config = {"profile": s.profile, "label": args.label, "layout": args.layout, "orders": args.orders,
               "env": args.env, "split": args.split, "commit": commit}
     folder = COLLECT / s.profile / args.label
     async with vllm_client(s, transport) as client:
         engine = load_engine(s, client, calibrated=False)  # raw reads: calibration is applied offline
-        await self_check(engine, client, args.layout)
+        await self_check(engine, client, args.layout)  # before load_split: a failed check logs no holdout use
+        split = f"vision-{args.split}"
+        rows = vision_splits.load_split(split, holdout=args.holdout, tool="vision_collect", label=args.label)
         claim(folder, config)
         n = await collect(engine, rows, args.layout, args.orders, folder / f"{args.split}.jsonl.gz", commit,
                           args.concurrency)

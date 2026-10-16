@@ -137,6 +137,7 @@ async def test_record_shape_and_config_json(suite, gemma_tok):
         "split": "dev",
         "commit": vs.commit(),
     }
+    assert json.loads((out_file(suite).parent / "dev.config.json").read_text()) == config
 
 
 async def test_resume_skips_done_ids_and_a_truncated_tail(suite):
@@ -152,10 +153,23 @@ async def test_resume_skips_done_ids_and_a_truncated_tail(suite):
     assert (await run(suite))[0] == 0
 
 
-async def test_resume_refuses_another_config(suite):
+@pytest.mark.parametrize(
+    "other, key",
+    [(("--orders", "identity"), "orders"), (("--layout", "decider_chat"), "layout"), (("--env", "WARM_UP=off"), "env")],
+)
+async def test_resume_refuses_another_config(suite, other, key):
     await run(suite)
-    with pytest.raises(SystemExit, match="orders"):
-        await run(suite, "--orders", "identity")
+    with pytest.raises(SystemExit, match=key):
+        await run(suite, *other)
+
+
+async def test_a_label_holds_dev_and_holdout(suite):
+    await run(suite)
+    await run(suite, "--split", "holdout", "--holdout")
+    folder = out_file(suite).parent
+    assert json.loads((folder / "config.json").read_text())["split"] == "dev"
+    assert json.loads((folder / "holdout.config.json").read_text())["split"] == "holdout"
+    assert [r["id"] for r in records(out_file(suite, "holdout"))] == ["bench:2"]
 
 
 async def test_stamp_has_layout_labels_model_mm_kwargs_commit(suite):
@@ -178,6 +192,12 @@ async def test_self_check_refuses_a_count_mismatch(suite):
     got, want = map(int, re.search(r"to (\d+) tokens, the gateway counts (\d+)", str(e.value)).groups())
     assert got == want + 1
     assert fake.paths == [GENERATE_PATH] and not out_file(suite).exists()
+
+
+async def test_failed_self_check_logs_no_holdout_use(suite):
+    with pytest.raises(SystemExit, match="self-check"):
+        await run(suite, "--split", "holdout", "--holdout", fake=FakeVllm(vision_with({"max_soft_tokens": 560}), extra=1))
+    assert not (suite / "holdout-log.md").exists()
 
 
 async def test_missing_label_table_is_refused(suite):
@@ -214,7 +234,7 @@ async def test_holdout_needs_the_flag(suite):
     fake = FakeVllm(vision_with({"max_soft_tokens": 560}))
     with pytest.raises(SystemExit, match="--holdout"):
         await run(suite, "--split", "holdout", fake=fake)
-    assert fake.paths == [] and not (suite / "holdout-log.md").exists()
+    assert fake.paths == [GENERATE_PATH] and not (suite / "holdout-log.md").exists()  # the probe only
     await run(suite, "--split", "holdout", "--holdout")
     assert [r["id"] for r in records(out_file(suite, "holdout"))] == ["bench:2"]
     assert "vision_collect" in (suite / "holdout-log.md").read_text()

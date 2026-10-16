@@ -244,12 +244,49 @@ The decision-index kit's `decide` engine sends each vision row through `/v1/syst
 **Calibration.** Image rows reuse each profile's text T and b. ECE is measured on the image rows; nothing is fitted on
 the suite, because it is a test set.
 
-The full suite (12,210 rows) and the stock-kit baselines were still running when this was written; this section gets
-their results when they finish.
+### Full suite against stock
+
+All 12,210 rows, every one `ok`. The gateway runs go through `/v1/systemone`; the stock runs use the kit's `vllm-vl`
+engine on plain vLLM (qwen3.8 with thinking off). Both used the kit's default 8 workers.
+
+| Profile | Gateway PVI | Stock PVI | Δ | Gateway ECE | Stock ECE | ok rows |
+|---|---|---|---|---|---|---|
+| gemma-4-31b | 73.70 | 71.81 | +1.89 | 0.090 | 0.191 | 12,210 / 12,210 |
+| qwen3.8-27b | 70.55 | 64.62 | +5.93 | 0.034 | 0.038 | 12,210 / 12,210 |
+
+Runs: [gemma gateway](../results/gemma-4-31b/2026-10-16T023752Z-vision/summary.md),
+[gemma stock](../results/gemma-4-31b/2026-10-16T023758Z-vision-stock/summary.md),
+[qwen gateway](../results/qwen3.8-27b/2026-10-16T022903Z-vision/summary.md),
+[qwen stock](../results/qwen3.8-27b/2026-10-16T022908Z-vision-stock/summary.md).
+
+Accuracy per benchmark, gateway / stock:
+
+| Benchmark | Rows | gemma gateway | gemma stock | qwen gateway | qwen stock |
+|---|---|---|---|---|---|
+| CV-Bench | 2038 | 0.856 | 0.834 | 0.841 | 0.836 |
+| BLINK | 961 | 0.780 | 0.755 | 0.751 | 0.702 |
+| RealWorldQA | 589 | 0.771 | 0.781 | 0.818 | 0.800 |
+| CharXiv | 532 | 0.833 | 0.791 | 0.801 | 0.733 |
+| InfographicVQA | 244 | 0.963 | 0.963 | 0.955 | 0.939 |
+| Mind2Web | 973 | 0.881 | 0.823 | 0.876 | 0.822 |
+| Winoground | 800 | 0.925 | 0.930 | 0.904 | 0.800 |
+| KIE (CORD+FUNSD) | 2465 | 0.953 | 0.953 | 0.944 | 0.928 |
+| Moderation (Hateful Memes) | 1213 | 0.757 | 0.763 | 0.697 | 0.676 |
+| R-Bench-M | 665 | 0.459 | 0.435 | 0.350 | 0.343 |
+| MMMU-Pro vision | 1730 | 0.506 | 0.499 | 0.460 | 0.461 |
+
+Where the gain comes from: on both models the largest steps are Mind2Web (+5.8 gemma, +5.4 qwen) and CharXiv (+4.2,
++6.8); BLINK adds +2.5 and +4.9. Qwen's biggest step is Winoground, 0.800 to 0.904. Gemma ties or loses a little on
+RealWorldQA, Winoground and Moderation (at most 1 point), and ties on InfographicVQA and KIE. Gemma's ECE halves
+(0.191 to 0.090); qwen's is close (0.034 vs 0.038).
+
+**Latency is under load.** Eight workers share the GPU, so the gateway medians (gemma 1,750 ms, qwen 1,475 ms) are not
+the single-client numbers; the 300-row one-client samples above are the latency gate. The stock medians (222 and
+177 ms) are on the same 8 workers but are a different kind of request, so they are not a gateway comparison.
 
 ## Caveats
 
-- **The sample is small.** 300 rows over 11 benchmarks, some with fewer than 20 rows. Read the per-benchmark accuracies
+- **The 300-row sample is small.** 300 rows over 11 benchmarks, some with fewer than 20 rows. Read the per-benchmark accuracies
   in the result files loosely.
 - **Calibration is borrowed.** T and b were fitted on text. The ECE above says how well they carry over; it is not a
   fit.

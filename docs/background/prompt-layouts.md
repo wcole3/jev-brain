@@ -60,6 +60,10 @@ All three end at `Answer: (`; the model's next token is the option letter, which
 (see [decision-readout.md](decision-readout.md)). `question_first` puts the state last, right before the
 reply, and `header` shows the model every question before the state.
 
+Images sit inside `Context:` with no wording change: the layout files are the same, and the image tokens replace
+nothing in the text. With `header` the questions still come before the context, so the image comes after them. See
+[images.md](images.md).
+
 ### How layouts are loaded and hashed
 
 [`gateway/layouts.py`](../../gateway/layouts.py) reads every `prompts/*.toml`, checks the required

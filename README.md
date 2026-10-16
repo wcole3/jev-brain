@@ -300,6 +300,15 @@ images. Both formats give the same prompt, with the images inside `Context:`:
 
 How it works: [Images](docs/background/images.md).
 
+Vision suite (12,210 rows, Public Vision Index; the stock runs use the kit's `vllm-vl` engine):
+
+| profile | gateway | stock | ECE gateway / stock |
+|---|---|---|---|
+| gemma-4-31b | 73.70 | 71.81 | 0.090 / 0.191 |
+| qwen3.8-27b | 70.55 | 64.62 | 0.034 / 0.038 |
+
+Per-benchmark numbers and runs: [Images, section 6](docs/background/images.md#6-the-vision-suite).
+
 ## Settings
 
 - **Decision length cap:** `SYSTEMONE_MAX_LEN` (default 32,768, or `MAX_MODEL_LEN` if smaller)

@@ -322,6 +322,15 @@ straight to vLLM and read `vllm:prompt_tokens_cached_total` around each call: do
 the prefix after the warm-up call, and do rows sent together reuse each other? Details and the
 vLLM source references: [DS-015](../results/archive/experiments/ds-015/README.md).
 
+### Image prefixes (DS-024)
+
+Within a request, gemma rows share an image without any warm-up (computed ÷ usage 0.85 at 16 questions), while qwen3.8
+rows sent together recompute it (3.01) and the row warm-up covers that. Across requests, the `header` layout puts the
+question list before `Context:`, so the same image with a different question set is computed again. Numbers and the
+probe: [images.md](images.md) §4;
+[gemma](../results/archive/gemma-4-31b/2026-10-16T014917Z-image-sharing/summary.md) and
+[qwen3.8](../results/archive/qwen3.8-27b/2026-10-16T012611Z-image-sharing/summary.md) results.
+
 ## Caveats
 
 - **Server-wide counters:** vLLM's counters count all traffic, so these numbers assume

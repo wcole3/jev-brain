@@ -45,6 +45,8 @@ Raw research notes: `.firecrawl/ds-034/`, `.firecrawl/ds-034-vlm/` (git-ignored)
 ## 1. Splits (`scripts/vision_splits.py`)
 
 - Rows that share any image file are one group (union over shared paths); a group is in exactly one split.
+  A split takes at most 10 rows from any group, chosen by `sha256(seed:row_id)`; the group's other rows are
+  reserve (one 70-row FUNSD document was 43% of KIE dev).
 - Stratified per benchmark with near-equal allocation, since the board weights benchmarks equally:
   dev = min(136, 40% of the benchmark), holdout = min(218, 40% of the benchmark). Assignment is by a hash of
   the group key and the seed, so it is deterministic.

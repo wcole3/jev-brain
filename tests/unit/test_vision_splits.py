@@ -55,10 +55,24 @@ def test_counts_follow_min_136_and_40_percent():
             n = sum(1 for r in rows if r["benchmark"] == b)
             target = min(big, int(small * n))
             largest = max(Counter(k for i, k in g.items() if bench[i] == b).values())
-            assert target <= got[b] <= target + largest
+            assert target <= got[b] <= target + min(largest, vs.MAX_PER_GROUP)
     small_dev = sum(1 for i in parts["dev"] if bench[i] == "small")
     assert small_dev <= 98
     assert not set(parts["dev"]) & set(parts["holdout"])
+
+
+def test_a_big_group_gives_at_most_10_rows_chosen_by_hash():
+    rows = rows_of("kie", 161)
+    for r in rows[:70]:  # one 70-row document group, like FUNSD in KIE
+        r["images"] = ["kie/doc.jpg"]
+    parts = vs.cut(rows, seed=3)
+    big = {r["id"] for r in rows[:70]}
+    used = {name: big & set(ids) for name, ids in parts.items() if name != "latency"}
+    assert [len(v) for v in used.values()].count(0) == 1  # the group lives in one split only
+    kept = next(v for v in used.values() if v)
+    assert kept == set(sorted(big, key=lambda i: vs.digest(3, i))[: vs.MAX_PER_GROUP])
+    for ids in parts.values():
+        assert max(Counter(vs.groups(rows)[i] for i in ids).values()) <= vs.MAX_PER_GROUP
 
 
 def test_same_seed_same_cut():

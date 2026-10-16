@@ -19,8 +19,10 @@ HOLDOUT_LOG = ROOT / "docs/results/vision-experiments/holdout-log.md"
 SEED = 20261016
 DEV_CAP, HOLDOUT_CAP, SHARE = 136, 218, 0.4
 LATENCY_ROWS, WARMUP = 320, 20
+MAX_PER_GROUP = 10  # one big group (a 70-row FUNSD document) must not dominate a benchmark's split
 LOG_HEADER = "| UTC | tool | label | commit |\n|---|---|---|---|\n"
-RULE = "Whole image groups per benchmark by seeded hash; dev min(136, 40%), holdout min(218, 40%), rest reserve."
+RULE = ("Image groups per benchmark by seeded hash, each capped at 10 rows chosen by sha256(seed:row_id); "
+        "dev min(136, 40%), holdout min(218, 40%), the rest of each group and of each benchmark reserve.")
 
 
 def digest(seed: int, key: str) -> str:
@@ -75,6 +77,11 @@ def latency_ids(dev: list[str], bench: dict[str, str], seed: int) -> list[str]:
     return [i for i in ordered if i in picked]
 
 
+def capped(members: list[str], seed: int) -> list[str]:
+    """A group's rows in the split: at most MAX_PER_GROUP, the first by seeded hash; the rest stay reserve."""
+    return sorted(sorted(members, key=lambda i: digest(seed, i))[:MAX_PER_GROUP])
+
+
 def cut(rows: list[dict], seed: int = SEED) -> dict[str, list[str]]:
     key_of = groups(rows)
     bench = {r["id"]: r["benchmark"] for r in rows}
@@ -85,7 +92,7 @@ def cut(rows: list[dict], seed: int = SEED) -> dict[str, list[str]]:
     holdout: list[str] = []
     for b in sorted(members):
         n = sum(len(m) for m in members[b].values())
-        order = [sorted(members[b][k]) for k in sorted(members[b], key=lambda k: digest(seed, k))]
+        order = [capped(members[b][k], seed) for k in sorted(members[b], key=lambda k: digest(seed, k))]
         got, order = fill(order, min(DEV_CAP, int(SHARE * n)))
         dev += got
         got, _ = fill(order, min(HOLDOUT_CAP, int(SHARE * n)))

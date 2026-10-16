@@ -17,10 +17,11 @@ How we iterate on image-decision prompts and logic without overfitting the publi
 ## 1. The splits
 
 `scripts/vision_splits.py write` cuts three committed manifests in `data/splits/`. Rows that share any image
-file are one group, and a group lives in exactly one split. Per benchmark, whole groups are added by seeded
-hash until the cap is reached: dev = min(136, 40% of the benchmark), holdout = min(218, 40%). The rest is
-reserve and is never read. Caps are filled by whole groups, so a benchmark can overshoot by one group (KIE dev
-is 161).
+file are one group, and a group lives in exactly one split. A split takes at most 10 rows from any group,
+chosen by `sha256(seed:row_id)`, so one 70-row FUNSD document cannot fill KIE; the group's other rows are
+reserve. Per benchmark, capped groups are added by seeded hash until the target is reached: dev = min(136, 40%
+of the benchmark), holdout = min(218, 40%). The rest is reserve and is never read. A benchmark can overshoot
+by one capped group (KIE dev is 141).
 
 | Benchmark | Dev | Holdout | Latency |
 |---|---|---|---|
@@ -28,14 +29,14 @@ is 161).
 | CV-Bench | 136 | 218 | 30 |
 | CharXiv | 136 | 212 | 30 |
 | InfographicVQA | 97 | 97 | 21 |
-| KIE (CORD+FUNSD) | 161 | 223 | 35 |
-| MMMU-Pro vision | 136 | 218 | 29 |
-| Mind2Web | 136 | 218 | 29 |
-| Moderation (Hateful Memes) | 136 | 218 | 29 |
-| R-Bench-M | 136 | 218 | 29 |
+| KIE (CORD+FUNSD) | 141 | 223 | 31 |
+| MMMU-Pro vision | 136 | 218 | 30 |
+| Mind2Web | 136 | 218 | 30 |
+| Moderation (Hateful Memes) | 136 | 218 | 30 |
+| R-Bench-M | 136 | 218 | 30 |
 | RealWorldQA | 136 | 218 | 29 |
 | Winoground | 136 | 218 | 29 |
-| **Total** | **1,482** | **2,276** | **320** |
+| **Total** | **1,462** | **2,276** | **320** |
 
 The latency set is 320 rows drawn from dev; the first 20 are warm-up. Each manifest records the suite's
 SHA-256, the seed and the grouping rule in `meta`, and a tool refuses a manifest whose suite hash no longer
@@ -134,7 +135,7 @@ uv run python scripts/vision_run.py --profile P --gateway URL --ids vision-laten
 | Collect, dev, `identity+reversed` | about 12 min per config per model on a 600 W box (spec estimate) |
 | Offline arm, compare | seconds to a minute, CPU |
 | Latency set | one worker, 320 rows; minutes, plus a restart for A-B-A |
-| Holdout collect | about 1.5x a dev collect (2,276 vs 1,482 rows); a logged look |
+| Holdout collect | about 1.5x a dev collect (2,276 vs 1,462 rows); a logged look |
 
 GPU jobs over 10 minutes need the owner's ok.
 

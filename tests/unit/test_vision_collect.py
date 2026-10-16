@@ -10,11 +10,11 @@ import PIL.Image
 import pytest
 
 from gateway.app import load_engine
-from gateway.config import Settings
+from gateway.config import ROOT, Settings
 from gateway.decide import build_batch
 from gateway.images import decode_image
 from gateway.labels import build_labels, save_labels
-from gateway.layouts import load_layouts
+from gateway.layouts import load_layout, load_layouts
 from gateway.padding import Padding, newline_token
 from gateway.readout import GENERATE_PATH
 from gateway.schema import SystemOneRequest
@@ -329,3 +329,84 @@ async def test_identity_read_matches_a_live_single_row_build(suite):
     await run(suite, "--split", "holdout", "--holdout", "--env", "PREFIX_PAD=front", f"PREFIX_BLOCK={block}", fake=fake)
     rec = next(records(out_file(suite, "holdout")))
     assert fake.prompts[0] == live and rec["padded"] is False and rec["reads"][0]["perm"] == [0, 1]
+
+
+EXPERIMENT = ROOT / "prompts" / "experiments" / "header-worded.toml"
+
+
+async def test_layout_file_is_collected_with_in_memory_labels(suite, gemma_tok):
+    n, fake = await run(suite, "--layout-file", str(EXPERIMENT))
+    recs = list(records(out_file(suite)))
+    layout = load_layout(EXPERIMENT)
+    table = build_labels(gemma_tok, layout)
+    assert n == 4 and all(r["status"] == "ok" and r["layout"] == "header-worded" for r in recs)
+    assert recs[0]["stamp"]["layout_sha256"] == layout.sha256
+    assert recs[0]["stamp"]["labels_sha256"] == hashlib.sha256((json.dumps(table, indent=1) + "\n").encode()).hexdigest()
+    assert not (suite / "data" / PROFILE / "header-worded").exists()
+    hint = gemma_tok.encode("Answer from the image(s).", add_special_tokens=False)
+    assert any(hint == p[i : i + len(hint)] for p in fake.prompts for i in range(len(p)))
+    config = json.loads((out_file(suite).parent / "config.json").read_text())
+    assert config["layout"] == "header-worded" and config["layout_file"] == "prompts/experiments/header-worded.toml"
+    with pytest.raises(SystemExit, match="layout_file"):  # same name, other file: refused on resume
+        await run(suite)
+
+
+async def test_layout_file_with_a_non_single_token_label_is_refused(suite):
+    path = suite / "merging.toml"
+    path.write_text((ROOT / "prompts" / "header.toml").read_text().replace('answer = "Answer: ("', 'answer = "Answer: "'))
+    fake = FakeVllm(vision_with({"max_soft_tokens": 560}))
+    with pytest.raises(SystemExit, match="merging: label 'A' is not one token"):
+        await run(suite, "--layout-file", str(path), fake=fake)
+    assert fake.paths == [] and not out_file(suite).exists()
+
+
+async def test_layout_file_named_like_a_prompts_layout_is_refused(suite):
+    path = suite / "header.toml"
+    path.write_text(EXPERIMENT.read_text())
+    fake = FakeVllm(vision_with({"max_soft_tokens": 560}))
+    with pytest.raises(SystemExit, match="prompts/ layout"):
+        await run(suite, "--layout-file", str(path), fake=fake)
+    assert fake.paths == []
+
+
+async def test_rows_file_collects_with_its_own_image_dir(suite):
+    other = suite / "calib"
+    png(other / "pics" / "x.png", "white")
+    png(other / "pics" / "y.png", "black")
+    rows = [row(10, "pics/x.png", ["A", "B"], "B"), row(11, "pics/y.png", ["A", "B"], "A"),
+            row(12, "pics/x.png", ["A", "B", "C"], "C")]
+    rows_file = other / "rows.jsonl"
+    rows_file.write_text("".join(json.dumps(r) + "\n" for r in rows))
+    n, _ = await run(suite, "--rows", str(rows_file), "--split", "calib")
+    recs = list(records(out_file(suite, "calib")))
+    assert n == 3 and [r["status"] for r in recs] == ["ok"] * 3
+    assert [r["group"] for r in recs] == ["bench:10", "bench:11", "bench:10"]
+    folder = out_file(suite).parent
+    config = json.loads((folder / "calib.config.json").read_text())
+    assert config["split"] == "calib" and config["rows"] == str(rows_file.resolve())
+    assert not out_file(suite).exists() and not (suite / "holdout-log.md").exists()
+
+
+@pytest.mark.parametrize("extra", [("--split", "dev"), ()])
+def test_rows_needs_its_own_split_name(extra, capsys):
+    with pytest.raises(SystemExit):
+        vc.parse_args(["--profile", PROFILE, "--label", "x", "--rows", "r.jsonl", *extra])
+    assert "--rows" in capsys.readouterr().err
+
+
+def test_rows_and_holdout_are_refused_together(capsys):
+    with pytest.raises(SystemExit):
+        vc.parse_args(["--profile", PROFILE, "--label", "x", "--rows", "r.jsonl", "--split", "calib", "--holdout"])
+    assert "--holdout" in capsys.readouterr().err
+
+
+def test_split_without_rows_is_a_suite_split(capsys):
+    with pytest.raises(SystemExit):
+        vc.parse_args(["--profile", PROFILE, "--label", "x", "--split", "calib"])
+    assert "--split" in capsys.readouterr().err
+
+
+def test_layout_and_layout_file_are_exclusive(capsys):
+    with pytest.raises(SystemExit):
+        vc.parse_args(["--profile", PROFILE, "--label", "x", "--layout", "header", "--layout-file", str(EXPERIMENT)])
+    assert "not allowed with" in capsys.readouterr().err

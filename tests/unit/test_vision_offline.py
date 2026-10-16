@@ -1,0 +1,159 @@
+import gzip
+import hashlib
+import json
+import math
+import random
+
+import pytest
+
+from gateway.calibration import Calibration
+from gateway.decide import blend, probabilities
+from scripts import vision_offline as vo
+from scripts.collect import records
+
+TEXT = Calibration({"choice": 3.0, "score": 1.0, "noul": 1.0}, source="p/header/calibration.json")
+
+
+def log_softmax(z: list[float]) -> list[float]:
+    top = max(z)
+    total = top + math.log(sum(math.exp(x - top) for x in z))
+    return [x - total for x in z]
+
+
+def rec(i: int, logprobs: list[list[float]], gold: int | None, *, benchmark="B", group=None,
+        perms=None, status="ok") -> dict:
+    n = len(logprobs[0])
+    perms = perms or [list(range(n)), list(range(n))[::-1]][: len(logprobs)]
+    reads = [{"perm": p, "logprobs": lp} for p, lp in zip(perms, logprobs, strict=True)]
+    return {"id": f"r{i}", "benchmark": benchmark, "group": group or f"g{i}", "layout": "header", "status": status,
+            "names": [f"o{j}" for j in range(n)], "gold": gold, "input_tokens": 10, "shared_len": 5,
+            "padded": False, "reads": reads, "stamp": {"profile": "gemma-4-31b", "layout": "header"}}
+
+
+def planted(bases: int, seed: int, *, T: float = 1.0, bias: float = 0.0, copies: int = 10, benchmark="B") -> list[dict]:
+    """Each base z in all 4 rotations (one group), gold j repeated ∝ softmax(z): the fit's optimum is exact.
+    The model reads T·z (overconfident when T > 1) plus a bias on position 0."""
+    rng, out = random.Random(seed), []
+    for b in range(bases):
+        z = [rng.gauss(0, 1.0) for _ in range(4)]
+        for r in range(4):
+            zr = z[r:] + z[:r]
+            lp = [x + (bias if j == 0 else 0.0) for j, x in enumerate(log_softmax([T * x for x in zr]))]
+            for gold, p in enumerate(math.exp(x) for x in log_softmax(zr)):
+                out += [rec(len(out), [lp], gold, benchmark=benchmark, group=f"{benchmark}{b}")] * round(p * copies)
+    return [r | {"id": f"{benchmark}:{i}"} for i, r in enumerate(out)]
+
+
+def by_id(scored: list[dict]) -> dict[str, dict]:
+    return {s["id"]: s for s in scored}
+
+
+def test_text_arm_reproduces_gateway_probabilities():
+    rng = random.Random(1)
+    recs = [rec(i, [[rng.gauss(0, 3) for _ in range(5)] for _ in range(2)], rng.randrange(5)) for i in range(20)]
+    scored, report = vo.score(recs, "text", "identity+reversed", TEXT)
+    for r, s in zip(recs, scored, strict=True):
+        reads = [(x["logprobs"], x["perm"]) for x in r["reads"]]
+        assert s["probs"] == probabilities(reads, "choice", TEXT)
+        assert s | {"probs": None} == {"id": r["id"], "benchmark": "B", "group": r["group"], "gold": r["gold"],
+                                       "probs": None, "chance": 0.2}
+    assert report["arm"] == "text" and report["folds"] is None and report["fallbacks"] == []
+
+
+@pytest.mark.parametrize("arm", ["fit-T", "fit-T-bench", "pride"])
+def test_cross_fit_never_scores_a_row_with_its_own_fold(arm):
+    recs = planted(10, seed=2, T=2.0, bias=0.5)
+    target = recs[0]
+    own = vo.fold(target["group"])
+    before = by_id(vo.score(recs, arm, "identity", TEXT)[0])[target["id"]]["probs"]
+
+    def shaken(r: dict) -> dict:
+        lp = r["reads"][0]["logprobs"]
+        return r | {"reads": [{"perm": [0, 1, 2, 3], "logprobs": [3 * x for x in lp[::-1]]}], "gold": 3 - r["gold"]}
+
+    same = [shaken(r) if vo.fold(r["group"]) == own and r is not target else r for r in recs]
+    other = [shaken(r) if vo.fold(r["group"]) != own else r for r in recs]
+    assert by_id(vo.score(same, arm, "identity", TEXT)[0])[target["id"]]["probs"] == before
+    assert by_id(vo.score(other, arm, "identity", TEXT)[0])[target["id"]]["probs"] != before
+
+
+def test_folds_hash_the_group_key():
+    assert vo.fold("bench:7") == int(hashlib.sha256(b"fold:bench:7").hexdigest(), 16) % 2
+
+
+def test_fit_T_recovers_a_planted_temperature():
+    _, report = vo.score(planted(30, seed=3, T=2.0, copies=50), "fit-T", "identity", TEXT)
+    for f in report["folds"].values():
+        assert f["T"] == pytest.approx(2.0, abs=0.1) and not f["fallback"] and f["n"] >= 30
+    assert report["fallbacks"] == []
+
+
+def test_pride_removes_a_planted_letter_bias():
+    _, report = vo.score(planted(30, seed=4, bias=1.0, copies=50), "pride", "identity", TEXT)
+    for f in report["folds"].values():
+        prior = f["prior"]["4"]
+        assert prior[0] - sum(prior[1:]) / 3 == pytest.approx(1.0, abs=0.1)
+        assert f["T"] == pytest.approx(1.0, abs=0.1)
+
+
+def test_pride_k_unseen_in_the_fitting_fold_uses_no_prior():
+    recs = planted(10, seed=5, bias=1.0)
+    two = next(r for r in recs if vo.fold(r["group"]) == 0) | {"id": "two", "names": ["a", "b"], "gold": 0,
+                                                                  "reads": [{"perm": [0, 1], "logprobs": [0.0, -1.0]}]}
+    scored, report = vo.score([*recs, two], "pride", "identity", TEXT)
+    assert "2" not in report["folds"]["0"]["prior"]
+    assert by_id(scored)["two"]["probs"] == blend([([0.0, -1.0], [0, 1])], report["folds"]["0"]["T"])
+
+
+def test_tiny_fold_falls_back_to_text_T_and_says_so():
+    recs = planted(1, seed=6, copies=5)
+    text = by_id(vo.score(recs, "text", "identity", TEXT)[0])
+    for arm in ("fit-T", "pride"):
+        scored, report = vo.score(recs, arm, "identity", TEXT)
+        assert all(f["fallback"] and f["T"] == 3.0 for f in report["folds"].values())
+        assert sorted(report["fallbacks"]) == ["fold 0", "fold 1"]
+        assert by_id(scored) == text
+    big, tiny = planted(10, seed=7, T=2.0, benchmark="Big"), planted(3, seed=8, copies=2, benchmark="Tiny")
+    _, report = vo.score(big + tiny, "fit-T-bench", "identity", TEXT)
+    for f in report["folds"].values():
+        assert f["benchmarks"]["Tiny"] == {"n": f["benchmarks"]["Tiny"]["n"], "T": 3.0, "fallback": True}
+        assert not f["benchmarks"]["Big"]["fallback"]
+    assert sorted(report["fallbacks"]) == ["fold 0 / Tiny", "fold 1 / Tiny"]
+
+
+def test_orders_subset_uses_only_collected_perms():
+    both = rec(1, [[0.0, -1.0, -2.0], [-3.0, 0.0, -1.0]], 0)
+    scored, _ = vo.score([both], "text", "identity", TEXT)
+    assert scored[0]["probs"] == probabilities([([0.0, -1.0, -2.0], [0, 1, 2])], "choice", TEXT)
+    only = rec(2, [[0.0, -1.0, -2.0]], 0)
+    with pytest.raises(ValueError, match="r2"):
+        vo.score([both, only], "text", "identity+reversed", TEXT)
+    with pytest.raises(ValueError, match="unknown option_orders"):
+        vo.score([], "text", "sideways", TEXT)
+
+
+def test_unscored_rows_are_counted_per_status():
+    recs = [rec(0, [[0.0, -1.0]], 0), rec(1, [[0.0, -1.0]], None), rec(2, [[0.0, -1.0]], None, status="unsupported"),
+            rec(3, [[0.0, -1.0]], None, status="invalid") | {"names": [], "reads": []}]
+    scored, report = vo.score(recs, "text", "identity", TEXT)
+    assert [s["id"] for s in scored] == ["r0"]
+    assert report["skipped"] == {"no_gold": 1, "unsupported": 1, "invalid": 1}
+
+
+def test_cli_writes_scored_rows_and_arm_report(tmp_path):
+    collect = tmp_path / "collect" / "dev.jsonl.gz"
+    collect.parent.mkdir()
+    config = {"profile": "gemma-4-31b", "label": "x", "layout": "header", "orders": "identity", "env": {}}
+    (collect.parent / "config.json").write_text(json.dumps(config))
+    recs = planted(2, seed=9, copies=5)
+    with gzip.open(collect, "wt", encoding="utf-8") as f:
+        f.writelines(json.dumps(r) + "\n" for r in recs)
+    out = tmp_path / "out"
+    vo.main(["--collect", str(collect), "--arm", "fit-T", "--out", str(out)])
+    scored = list(records(out / "scored.jsonl.gz"))
+    arm = json.loads((out / "arm.json").read_text())
+    assert [s["id"] for s in scored] == [r["id"] for r in recs]
+    assert arm["arm"] == "fit-T" and arm["orders"] == "identity" and arm["collect_config"] == config
+    assert arm["collect"] == str(collect) and arm["commit"] and set(arm["folds"]) == {"0", "1"}
+    assert arm["text_calibration"]["source"] == "gemma-4-31b/header/calibration.json"
+    assert arm["text_calibration"]["stamp_checked"] is False

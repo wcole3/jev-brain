@@ -1,6 +1,11 @@
+import asyncio
+import json
+from types import SimpleNamespace
+
+import httpx
 import pytest
 
-from scripts.image_share_probe import counters, summarize, summary_markdown
+from scripts.image_share_probe import ARMS, Probe, counters, summarize, summary_markdown
 
 
 def record(arm: str, questions: int, ratio: float, ms: float) -> dict:
@@ -40,3 +45,35 @@ vllm:prompt_tokens_created{engine="0",model_name="m"} 1.7e9
 vllm:prompt_tokens_by_source_total{engine="0",source="local_compute"} 999.0
 """
     assert counters(page) == {"prompt": 120.0, "cached": 64.0}
+
+
+def fake_batch():
+    image = SimpleNamespace(part=lambda: {"type": "image_url", "url": "data:x", "uuid": "u"})
+    return SimpleNamespace(images=SimpleNamespace(images=[image]), images_shared=True, shared_len=2,
+                           unpadded_len=3, shared_tokens=2, added=5, input_tokens=10,
+                           rows=[SimpleNamespace(ids=[1, 2, 3]), SimpleNamespace(ids=[1, 2, 4]),
+                                 SimpleNamespace(ids=[1, 2, 5])])
+
+
+def test_row_arm_sends_row_one_first():
+    seen = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/metrics":
+            return httpx.Response(200, text="vllm:prompt_tokens_total 10\n")
+        seen.append(json.loads(request.content)["token_ids"])
+        return httpx.Response(200, json={})
+
+    async def go():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler), base_url="http://v") as http:
+            return await Probe(http, "m").call_set(fake_batch(), "row")
+
+    asyncio.run(go())
+    assert seen[0] == [1, 2, 3]
+    assert sorted(seen[1:]) == [[1, 2, 4], [1, 2, 5]]
+    assert ARMS == ("all", "prefix", "row")
+
+
+def test_summarize_handles_the_row_arm():
+    md = summary_markdown("p", summarize([record("row", 4, 1.0, 450.0)]))
+    assert "| row | 4 | 1 | 1.00 | 450 |" in md

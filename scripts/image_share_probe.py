@@ -1,4 +1,4 @@
-"""Within-request prompt sharing for image decisions: all rows at once vs the image prefix first, on cold requests.
+"""Within-request prompt sharing for image decisions: all rows at once vs the image prefix or row 1 first, on cold requests.
 
 usage: uv run python scripts/image_share_probe.py --profile P [--vllm URL]   (stack up and idle; env VLLM_API_KEY)
 Writes docs/results/archive/<profile>/<UTC>-image-sharing/ with results.json and summary.md.
@@ -31,7 +31,7 @@ IMAGE_SIZE = (1280, 1092)
 STATE_TOKENS = 200
 QUESTIONS = (4, 16)
 REPS = 3
-ARMS = ("all", "prefix")
+ARMS = ("all", "prefix", "row")
 COUNTERS = {"vllm:prompt_tokens_total": "prompt", "vllm:prompt_tokens_cached_total": "cached"}
 
 
@@ -101,6 +101,9 @@ class Probe:
         before, start = await self.metrics(), time.perf_counter()
         if arm == "prefix":
             await self.generate(rows[0][: batch.shared_len], parts if batch.images_shared else [])
+        if arm == "row":  # row 1 alone first, then the rest together, as WARM_UP=row does
+            await self.generate(rows[0], parts)
+            rows = rows[1:]
         await asyncio.gather(*(self.generate(ids, parts) for ids in rows))
         ms = (time.perf_counter() - start) * 1000
         after = await self.metrics()

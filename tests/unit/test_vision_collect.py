@@ -172,6 +172,27 @@ async def test_resume_skips_done_ids_and_a_truncated_tail(suite):
     assert (await run(suite))[0] == 0
 
 
+@pytest.mark.parametrize("k", [1, 3])
+async def test_crash_after_k_rows_resumes_with_the_rest(suite, monkeypatch, k):
+    real, calls = vc.collect_retrying, []
+
+    async def crashing(engine, row, *args):
+        if len(calls) == k:
+            raise RuntimeError("killed")
+        calls.append(row["id"])
+        return await real(engine, row, *args)
+
+    monkeypatch.setattr(vc, "CHUNK", 1)  # one flush per row, so k rows are on disk at the crash
+    monkeypatch.setattr(vc, "collect_retrying", crashing)
+    with pytest.raises(RuntimeError, match="killed"):
+        await run(suite)
+    assert [r["id"] for r in records(out_file(suite))] == calls
+    monkeypatch.setattr(vc, "collect_retrying", real)
+    n, _ = await run(suite)
+    ids = [r["id"] for r in records(out_file(suite))]
+    assert n == len(ROWS) - k and sorted(ids) == sorted(r["id"] for r in ROWS) and len(set(ids)) == len(ids)
+
+
 @pytest.mark.parametrize(
     "other, key",
     [(("--orders", "identity"), "orders"), (("--layout", "decider_chat"), "layout"), (("--env", "WARM_UP=off"), "env")],

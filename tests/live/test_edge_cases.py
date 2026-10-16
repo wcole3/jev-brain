@@ -1,3 +1,4 @@
+import httpx
 import pytest
 
 from tests.live.api import post
@@ -46,6 +47,7 @@ def test_too_many_options_refused_with_marker(gateway_url):
 
 
 def test_oversized_state_refused_with_marker(gateway_url):
-    r = post(gateway_url, {"state": "word " * 40000, "questions": {"q": choice(2)}})
+    limit = httpx.get(f"{gateway_url}/health", timeout=5).json()["systemone_max_len"]
+    r = post(gateway_url, {"state": "word " * (limit + 1), "questions": {"q": choice(2)}})
     assert r.status_code == 422
     assert "maximum context length" in r.text

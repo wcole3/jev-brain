@@ -191,3 +191,10 @@ async def test_usage_counts_image_tokens(seeing):
     usage = (await decide(seeing, req))["usage"]
     assert usage["input_tokens"] == batch.input_tokens == text + batch.added
     assert batch.added == 99
+
+
+async def test_images_after_the_question_are_not_prefix_parts(seeing):
+    await decide(seeing, request(images=[png_b64()], layout="question_first"))
+    _, _, shared_len, shared_tokens, parts, prefix_parts = seeing.readout.image_calls[0]
+    assert len(parts) == 1 and prefix_parts == []
+    assert shared_tokens == shared_len

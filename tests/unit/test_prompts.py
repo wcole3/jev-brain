@@ -150,3 +150,18 @@ def test_sentinel_text_in_an_image_request_is_plain_text(profile):
     assert all(images.ids.count(t) == vision.placeholder.count(t) for t in vision.placeholder)  # one image
     asked = {"q": {"type": "noul", "instructions": "Shape is red"}}
     assert batch_for(tok, "header", asked, images=images).rows
+
+
+@pytest.mark.parametrize("questions, padded", [(2, False), (8, True)])
+def test_qwen_pads_image_rows_only_when_it_pays(qwen_tok, questions, padded):
+    pad = Padding("front", 800, always=False, token=newline_token(qwen_tok))
+    b = image_batch(qwen_tok, "header", questions=questions, padding=pad)
+    assert (b.shared_len != b.unpadded_len) == padded
+    if padded:
+        assert (b.shared_len + b.images.added) % 800 == 0
+
+
+def test_placeholder_text_in_a_state_item_is_refused(gemma_tok):
+    images = image_context(gemma_tok, LAYOUTS["header"], [img(), "Is <|image|> blue?"], GEMMA_VISION)
+    with pytest.raises(ImageError, match="placeholder"):
+        batch_for(gemma_tok, "header", images=images)

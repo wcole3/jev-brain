@@ -300,3 +300,26 @@ def test_gate_ships_a_candidate_with_a_negative_point_change():
     held = {"choice": underconfident_choice(), "score": [], "noul": []}
     g = calibrate.gate_temperatures(gate_fit(0.5, 15.0), held)["choice"]
     assert g["ece"][0] < 0 and g["source"] == "fitted" and g["shipped_T"] == 0.5
+
+
+def test_text_refit_keeps_the_image_block(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+
+    s = Settings.from_env({"PROFILE": "p", "HF_MODEL": "m", "HF_REVISION": "r", "SERVED_MODEL": "s",
+                           "MAX_MODEL_LEN": "1024", "DATA_ROOT": str(tmp_path)})
+    path = s.calibration_path(LAYOUT)
+    path.parent.mkdir(parents=True)
+    first = write(path, (0, []), "first fit", "2026-10-02T00:00:00Z")
+    image = {"T": 2.5, "stamp": STAMP | {"mm_processor_kwargs": {}}, "fit": {"source": "vision-calib", "rows": 40}}
+    path.write_text(json.dumps(first | {"image": image}))
+    r = SimpleNamespace(fit=FIT, ship=False, stats={"acc": (0, 0), "ece": (0, 0)}, b_fitted=0.0, gate={})
+    monkeypatch.setattr(calibrate, "split_questions", lambda *a: ({t: [] for t in calibrate.TYPES}, STAMP))
+    monkeypatch.setattr(calibrate, "fit_and_judge", lambda *a: r)
+    monkeypatch.setattr(calibrate, "moves", lambda *a: {})
+    monkeypatch.setattr(calibrate, "gate_outcome", lambda r: "gate")
+    monkeypatch.setattr(calibrate, "layout_report", lambda r: [])
+    args = SimpleNamespace(orders="identity", comment="refit", dry_run=False)
+    calibrate.calibrate_layout(args, s, LAYOUT, {"calib": [], "eval": []}, {"calib": {}, "eval": {}})
+    data = json.loads(path.read_text())
+    assert data["image"] == image and data["version"] == 2
+    assert [c["text"] for c in data["comments"]] == ["first fit", "refit; gate"]

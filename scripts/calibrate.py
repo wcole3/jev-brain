@@ -127,6 +127,14 @@ def history(path: Path) -> tuple[int, list[dict]]:
     return int(data.get("version", 0)), list(data.get("comments", []))
 
 
+def previous_image(path: Path) -> dict | None:
+    """The image block fit_image_t.py added; a text refit keeps it (the gateway still checks its stamp)."""
+    try:
+        return json.loads(path.read_text()).get("image")
+    except (OSError, ValueError, AttributeError):
+        return None
+
+
 def calibration_file(fit: dict, stamp: dict, orders: str, calib_n: dict, by_split: dict, decisions: dict,
                      previous: tuple[int, list[dict]], comment: str, date: str) -> dict:
     """by_split: {"calib" | "eval": {metric: {before, after}}}; the gateway reads only format, stamp and types."""
@@ -218,6 +226,8 @@ def calibrate_layout(args, s, layout, recs, rows) -> list[str]:
     data = calibration_file(r.fit, stamp, args.orders, {t: len(calib[t]) for t in TYPES},
                             {"calib": moves(r, "calib"), "eval": moves(r, "eval")},
                             {"b_decision": b_decision, "t_decision": r.gate}, history(path), comment, now_iso())
+    if image := previous_image(path):
+        data["image"] = image
     if not args.dry_run:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(data, indent=1) + "\n")

@@ -11,7 +11,7 @@ import json
 from pathlib import Path
 
 from gateway.calibration import IMAGE_STAMP_KEYS, STAMP_KEYS, load_calibration
-from gateway.config import ROOT
+from gateway.config import ROOT, Settings
 from gateway.decide import blend
 from scripts import metrics
 from scripts.calibrate import history, now_iso
@@ -45,6 +45,14 @@ def check_stamp(collected: dict, file_stamp: dict, path: Path, collect: Path) ->
         raise SystemExit(f"{collect} was collected under another stamp than {path}: {diff}")
 
 
+def check_image_settings(collected: dict, profile: str, collect: Path) -> None:
+    """A block stamped with other image settings than the profile runs would stop the gateway at startup."""
+    runs = Settings.from_profile(profile).mm_processor_kwargs
+    if collected.get("mm_processor_kwargs") != runs:
+        raise SystemExit(f"{collect}: collected with mm_processor_kwargs {collected.get('mm_processor_kwargs')}, "
+                         f"profile {profile} runs {runs}")
+
+
 def scored(items: list[Item], T: float) -> list[metrics.Scored]:
     return [metrics.Scored("vision-calib", i.rec["benchmark"], "choice", i.rec["gold"], blend(i.reads, T))
             for i in items]
@@ -76,6 +84,7 @@ def run(args) -> dict:
     data = json.loads(path.read_text())
     collected = bare_stamp(recs, args.collect)
     check_stamp(collected, data["stamp"], path, args.collect)
+    check_image_settings(collected, args.profile, args.collect)
     orders = config["orders"]
     try:
         items, skipped = items_of(recs, orders)

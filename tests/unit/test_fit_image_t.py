@@ -8,16 +8,16 @@ from scripts import fit_image_t
 from scripts.fit import fit_temperature
 
 STAMP = {"tokenizer_sha256": "t", "layout_sha256": "l", "hf_revision": "r", "prefix_pad": "off", "prefix_block": 0}
-MM = {"max_soft_tokens": 560}
+MM = {"max_soft_tokens": 560}  # what profiles/gemma-4-31b.env sets
 ROWS_SHA = "a" * 64
 
 
-def record(n: int) -> dict:
+def record(n: int, mm: dict = MM) -> dict:
     """Overconfident reads: the top letter is right two times in three, at logprob gaps of 6."""
     gold = 0 if n % 3 else 1
     lp = [0.0, -6.0, -6.0]
     return {"id": f"r{n}", "benchmark": "b", "group": f"g{n}", "layout": "header", "names": ["A", "B", "C"],
-            "gold": gold, "status": "ok", "stamp": STAMP | {"profile": "p", "mm_processor_kwargs": MM, "commit": "c"},
+            "gold": gold, "status": "ok", "stamp": STAMP | {"profile": "gemma-4-31b", "mm_processor_kwargs": mm, "commit": "c"},
             "reads": [{"perm": [0, 1, 2], "logprobs": lp}, {"perm": [2, 1, 0], "logprobs": lp[::-1]}]}
 
 
@@ -29,12 +29,12 @@ def setup(tmp_path, monkeypatch):
     recs = [record(n) for n in range(60)] + [record(60) | {"status": "unsupported"}, record(61) | {"gold": None}]
     with gzip.open(collect, "wt") as f:
         f.writelines(json.dumps(r) + "\n" for r in recs)
-    config = {"profile": "p", "label": "x", "layout": "header", "orders": "identity+reversed", "env": {},
+    config = {"profile": "gemma-4-31b", "label": "x", "layout": "header", "orders": "identity+reversed", "env": {},
               "split": "calib", "rows": ".cache/vision-calib/rows.jsonl", "rows_sha256": ROWS_SHA}
     (folder / "calib.config.json").write_text(json.dumps(config))
     manifest = tmp_path / "vision-calib.json"
     manifest.write_text(json.dumps({"meta": {"rows_sha256": ROWS_SHA}}))
-    cal = tmp_path / "data" / "p" / "header" / "calibration.json"
+    cal = tmp_path / "data" / "gemma-4-31b" / "header" / "calibration.json"
     cal.parent.mkdir(parents=True)
     comment = {"version": 1, "date": "2026-10-09T00:00:00Z", "text": "first fit"}
     cal.write_text(json.dumps({"format": 2, "version": 1, "date": comment["date"], "comments": [comment],
@@ -46,7 +46,7 @@ def setup(tmp_path, monkeypatch):
 
 
 def run(collect, *extra):
-    return fit_image_t.main(["--collect", str(collect), "--profile", "p", *extra])
+    return fit_image_t.main(["--collect", str(collect), "--profile", "gemma-4-31b", *extra])
 
 
 def test_fit_image_t_refuses_a_suite_collect(setup):
@@ -100,3 +100,13 @@ def test_fit_image_t_writes_block_and_comment(setup):
     run(collect, "--write")  # a refit replaces the block and adds a comment
     again = json.loads(cal.read_text())
     assert again["version"] == 3 and len(again["comments"]) == 3 and again["image"]["T"] == image["T"]
+
+
+def test_fit_image_t_refuses_image_settings_the_profile_does_not_run(setup):
+    collect, _, cal = setup
+    before = cal.read_text()
+    with gzip.open(collect, "wt") as f:
+        f.writelines(json.dumps(record(n, {"max_soft_tokens": 1120})) + "\n" for n in range(60))
+    with pytest.raises(SystemExit, match="max_soft_tokens.: 1120.*max_soft_tokens.: 560"):
+        run(collect, "--write")
+    assert cal.read_text() == before

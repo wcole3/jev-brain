@@ -24,7 +24,7 @@ from scripts.fit import fit_temperature
 
 ARMS = ("text", "fit-T", "fit-T-bench", "pride")
 MIN_FIT = 30  # a fit on fewer questions uses the text T (a fallback); a PriDe prior needs as many reads
-SAME_CONFIG = ("profile", "layout", "orders")  # a --fit-on collect must match the scored one on these
+SAME_CONFIG = ("profile", "layout", "orders", "env")  # a --fit-on collect must match the scored one on these
 Reads = list[tuple[list[float], list[int]]]
 
 

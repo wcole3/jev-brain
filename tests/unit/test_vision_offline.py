@@ -202,7 +202,8 @@ def test_fit_on_refused_on_a_dev_collect_and_from_another_config(tmp_path):
     with pytest.raises(SystemExit, match="holdout"):
         vo.main(["--collect", str(dev), "--arm", "fit-T", "--fit-on", str(dev), "--out", str(tmp_path / "o")])
     holdout = write_collect(tmp_path / "x", "holdout", planted(2, seed=15, copies=5))
-    for key, value in (("profile", "qwen3.8-27b"), ("layout", "other"), ("orders", "identity")):
+    for key, value in (("profile", "qwen3.8-27b"), ("layout", "other"), ("orders", "identity"),
+                       ("env", {"MM_PROCESSOR_KWARGS": "{\"max_pixels\": 1}"})):
         other = write_collect(tmp_path / key, "dev", planted(2, seed=14, copies=5), **{key: value})
         with pytest.raises(SystemExit, match=key):
             vo.main(["--collect", str(holdout), "--arm", "fit-T", "--fit-on", str(other), "--out", str(tmp_path / "o")])

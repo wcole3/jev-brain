@@ -1,5 +1,7 @@
 """Paired compare of offline arms (scored.jsonl.gz) and live kit runs (results.jsonl.gz) on the same rows; no picks.
-usage: uv run python scripts/vision_compare.py --baseline NAME=DIR NAME=DIR ... [--latency NAME=DIR ...] --out-label L"""
+usage: uv run python scripts/vision_compare.py --baseline NAME=DIR [NAME=DIR ...] [--ids vision-dev] [--holdout]
+       [--latency NAME=DIR ...] --out-label L
+The first config is the baseline; the rest are positional. Rows are the --ids manifest's (holdout is logged)."""
 
 import argparse
 import gzip
@@ -144,9 +146,15 @@ def suite_by_id() -> dict[str, dict]:
     return {r["id"]: r | {"group": group[r["id"]]} for r in rows}
 
 
-def live_row(result: dict, suite_row: dict) -> dict:
+def live_row(result: dict, suite: dict[str, dict]) -> dict:
     """A kit result as a scored row; an errored row or one without probabilities is uniform and wrong."""
+    rid = result["run_id"]
+    if rid not in suite:
+        raise SystemExit(f"live row {rid}: not in the suite (a run on another suite?)")
+    suite_row = suite[rid]
     names = list(suite_row["questions"]["answer"]["criteria"])
+    if suite_row["expected"]["answer"] not in names:
+        raise SystemExit(f"live row {rid}: gold {suite_row['expected']['answer']!r} is not in the criteria {names}")
     response = result.get("response") or {}
     probs = response.get("answers", {}).get("answer", {}).get("probabilities")
     errored = result["status"] != "ok" or not probs
@@ -159,7 +167,7 @@ def live_row(result: dict, suite_row: dict) -> dict:
 def load_live(path: Path, suite: dict[str, dict], keep: set[str] | None = None) -> tuple[list[dict], dict]:
     """The kit's last row per run_id, restricted to keep (the baseline's ids) when given."""
     results = [r for r in last_per_run(read_gz(path / "results.jsonl.gz")) if keep is None or r["run_id"] in keep]
-    rows = [live_row(r, suite[r["run_id"]]) for r in results]
+    rows = [live_row(r, suite) for r in results]
     return rows, {"status": dict(Counter(r["status"] for r in results)), "errored": sum(r["errored"] for r in rows)}
 
 
@@ -178,12 +186,28 @@ def check_ids(name: str, want: set[str], have: set[str], hint: str = "") -> None
                          f"{len(extra)} extra {extra[:EXAMPLES]}{hint}")
 
 
-def load_configs(sources: dict[str, Path]) -> dict[str, dict]:
-    """Every config's rows on the baseline's ids; live runs are cut to them, anything else must match exactly."""
+def check_offline(name: str, about: dict, ids: set[str], manifest: str, allowed: set[str]) -> None:
+    """An offline arm must come from the manifest's split and score only its rows."""
+    split = manifest.removeprefix("vision-")
+    if about["split"] != split:
+        raise SystemExit(f"{name}: scored from split {about['split']!r}, but --ids {manifest} is {split!r}")
+    if extra := sorted(ids - allowed):
+        raise SystemExit(f"{name}: {len(extra)} not in {manifest}, e.g. {extra[:EXAMPLES]}")
+
+
+def load_configs(sources: dict[str, Path], manifest: str) -> dict[str, dict]:
+    """Every config's rows on the baseline's ids; live runs are cut to them (or to the manifest when the
+    baseline is live), anything else must match exactly."""
+    allowed = set(vision_splits.read_manifest(manifest)["ids"])
     suite = suite_by_id() if any(kind(p) == "live" for p in sources.values()) else {}
     configs, want, base_kind = {}, None, kind(next(iter(sources.values())))
     for name, path in sources.items():  # the baseline is first
-        rows, about = load_offline(path) if kind(path) == "offline" else load_live(path, suite, want)
+        if kind(path) == "offline":
+            rows, about = load_offline(path)
+            check_offline(name, about, {r["id"] for r in rows}, manifest, allowed)
+        else:
+            rows, about = load_live(path, suite, want or allowed)
+            about["split"] = manifest.removeprefix("vision-")
         ids = {r["id"] for r in rows}
         if want is None:
             want = ids
@@ -236,7 +260,7 @@ def markdown(s: dict) -> str:
     base, cfgs, pairs = s["baseline"], s["configs"], s["paired"]
     timed = any(c["latency"] for c in cfgs.values())
     lines = [f"# Vision compare: {s['label']}", "",
-             (f"Baseline `{base}`, {s['rows']} rows, Δ = config − baseline. CIs are 95% paired bootstrap "
+             (f"Baseline `{base}`, {s['rows']} rows of `{s['ids']}`, Δ = config − baseline. CIs are 95% paired bootstrap "
               f"({s['resamples']} resamples, seed {s['seed']}) over image groups within each benchmark."),
              "Errored live rows count as wrong. This table reports; the owner picks.", "", "## Frontier", ""]
     head = "| config | kind | index | Δ index [95% CI] | ECE | NLL | mean input tokens | errored |"
@@ -252,7 +276,18 @@ def markdown(s: dict) -> str:
         lines += ["", f"Latency at power limit {fmt(s['power_limit_w'], '')} W."]
     lines += [f"\n{n}: no input tokens (scored from a collect without per-read counts; recollect to get them)."
               for n, c in cfgs.items() if c["kind"] == "offline" and c["mean_input_tokens"] is None]
-    lines += ["", "## Paired", "", "| config | agreement | d | b (base only) | c (config only) | McNemar p | ΔECE | ΔNLL |",
+    lines += ["", "## Rows left out", "",
+              "Offline arms score only ok rows with a gold answer; errored live rows are counted, as wrong.", "",
+              "| config | kind | unsupported | invalid | no_gold | errored |", "|---|---|---|---|---|---|"]
+    for name, c in cfgs.items():
+        skipped = c["about"].get("skipped") or {}
+        counts = ([str(skipped.get(k, 0)) for k in ("unsupported", "invalid", "no_gold")] + ["—"]
+                  if c["kind"] == "offline" else ["—"] * 3 + [str(c["errored"])])
+        lines.append(f"| {name} | {c['kind']} | " + " | ".join(counts) + " |")
+    lines += ["", "## Paired", "",
+              "McNemar p is row-level and unweighted (no groups, no benchmark weights): the Δ index CI is the headline.",
+              "",
+              "| config | agreement | d | b (base only) | c (config only) | McNemar p (rows) | ΔECE | ΔNLL |",
               "|---|---|---|---|---|---|---|---|"]
     lines += [f"| {n} | {p['agreement']:.4f} | {p['discordant_share']:.4f} | {p['b']} | {p['c']} | {p['mcnemar_p']:.4g} | "
               f"{p['delta_ece']:+.4f} | {p['delta_nll']:+.4f} |" for n, p in pairs.items()]
@@ -281,11 +316,15 @@ def run(args) -> dict:
     if unknown := sorted(set(lat_dirs) - set(sources)):
         raise SystemExit(f"--latency names {unknown} are not configs {list(sources)}")
     latency, power = load_latency(lat_dirs)
-    configs = load_configs(sources)
+    if args.ids == "vision-holdout" and not args.holdout:
+        raise SystemExit("--ids vision-holdout is the untouched test set: pass --holdout to compare on it (logged)")
+    configs = load_configs(sources, args.ids)
+    if any(c["about"]["split"] == "holdout" for c in configs.values()):  # after every check that can refuse
+        vision_splits.log_holdout_use("vision_compare", args.out_label, vision_splits.HOLDOUT_LOG)
     rows = configs[base]["rows"]
     summary = {
         "label": args.out_label, "created_utc": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "commit": vision_splits.commit(), "baseline": base, "rows": len(rows),
+        "commit": vision_splits.commit(), "baseline": base, "ids": args.ids, "rows": len(rows),
         "benchmarks": dict(sorted(Counter(r["benchmark"] for r in rows).items())), "weights": WEIGHTS,
         "resamples": RESAMPLES, "seed": SEED, "power_limit_w": power,
         "configs": {n: describe(c, latency.get(n)) for n, c in configs.items()},
@@ -303,6 +342,9 @@ def parse_args(argv=None) -> argparse.Namespace:
     p = argparse.ArgumentParser()
     p.add_argument("--baseline", required=True, help="NAME=DIR of the config every other one is paired against")
     p.add_argument("configs", nargs="*", help="NAME=DIR of each other config")
+    p.add_argument("--ids", default="vision-dev", choices=("vision-dev", "vision-holdout", "vision-latency"),
+                   help="manifest whose rows are compared; live runs are cut to it")
+    p.add_argument("--holdout", action="store_true", help="allow --ids vision-holdout (logged)")
     p.add_argument("--latency", action="append", default=[], help="NAME=DIR holding a latency summary.json")
     p.add_argument("--out-label", required=True)
     p.add_argument("--out-root", type=Path, default=OUT_ROOT)

@@ -127,11 +127,15 @@ def log_holdout_use(tool: str, label: str, log_path: Path) -> None:
         print(f"warning: holdout read {uses} times (log: {log_path}); stop tuning on it", file=sys.stderr)
 
 
+def read_manifest(name: str) -> dict:
+    return json.loads((SPLITS / f"{name}.json").read_text())
+
+
 def load_split(
     name: str, *, holdout: bool = False, tool: str = "", label: str = "", log_path: Path | None = None
 ) -> list[dict]:
     """Suite rows for a manifest, in manifest order. Refuses a stale suite and unflagged holdout reads."""
-    manifest = json.loads((SPLITS / f"{name}.json").read_text())
+    manifest = read_manifest(name)
     have = suite_hash()
     if manifest["meta"]["suite_sha256"] != have:
         raise SystemExit(f"{name}: cut from suite {manifest['meta']['suite_sha256']}, file is {have}; rerun write")

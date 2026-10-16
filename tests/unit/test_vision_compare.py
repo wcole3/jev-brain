@@ -9,6 +9,19 @@ from scripts import vision_compare as vc
 from scripts import vision_splits as vs
 
 STORED = Path("docs/results/gemma-4-31b/2026-10-16T023752Z-vision")
+MANIFEST_IDS = [f"r{i}" for i in range(100)]
+
+
+@pytest.fixture(autouse=True)
+def manifests(tmp_path, monkeypatch):
+    """vision-dev and vision-holdout manifests over r0..r99 in tmp, and the holdout log in tmp."""
+    splits = tmp_path / "splits"
+    splits.mkdir()
+    for name in ("vision-dev", "vision-holdout"):
+        (splits / f"{name}.json").write_text(json.dumps({"meta": {"suite_sha256": "x"}, "ids": MANIFEST_IDS}))
+    monkeypatch.setattr(vs, "SPLITS", splits)
+    monkeypatch.setattr(vs, "HOLDOUT_LOG", tmp_path / "holdout-log.md")
+    return splits
 
 
 def row(i, gold: int, probs: list[float], *, bench="CV-Bench", group=None) -> dict:
@@ -20,13 +33,13 @@ def hit(i, ok: bool, **kw) -> dict:
     return row(i, 0, [0.8, 0.2] if ok else [0.3, 0.7], **kw)
 
 
-def write_offline(path: Path, rows: list[dict], tokens: int | None = 50) -> Path:
+def write_offline(path: Path, rows: list[dict], tokens: int | None = 50, split="dev", skipped=None) -> Path:
     path.mkdir(parents=True)
     rows = [{"input_tokens": tokens} | r for r in rows]
     with gzip.open(path / "scored.jsonl.gz", "wt") as f:
         f.writelines(json.dumps(r) + "\n" for r in rows)
-    (path / "arm.json").write_text(json.dumps({"arm": "text", "orders": "identity", "skipped": {}, "fallbacks": [],
-                                               "collect_config": {"split": "dev"}}))
+    (path / "arm.json").write_text(json.dumps({"arm": "text", "orders": "identity", "skipped": skipped or {},
+                                               "fallbacks": [], "collect_config": {"split": split}}))
     return path
 
 
@@ -216,3 +229,70 @@ def test_latency_dir_without_latency_or_steady_power_limit_is_refused(tmp_path, 
 def test_pre_task5_live_summary_is_refused_for_lacking_a_power_limit():
     with pytest.raises(SystemExit, match="power_limit_w"):
         vc.load_latency({"live": STORED})
+
+
+def compare(tmp_path, *configs: str, extra=()) -> list[str]:
+    return ["--baseline", configs[0], *configs[1:], "--out-label", "t", "--out-root", str(tmp_path / "o"), *extra]
+
+
+def md_of(tmp_path) -> str:
+    return next((tmp_path / "o").iterdir()).joinpath("summary.md").read_text()
+
+
+def test_holdout_manifest_needs_the_flag_and_logs_once(tmp_path):
+    base = write_offline(tmp_path / "base", [hit(i, True) for i in range(6)], split="holdout")
+    other = write_offline(tmp_path / "other", [hit(i, i % 2 == 0) for i in range(6)], split="holdout")
+    argv = compare(tmp_path, f"base={base}", f"other={other}", extra=["--ids", "vision-holdout"])
+    with pytest.raises(SystemExit, match="--holdout"):
+        vc.main(argv)
+    assert not (tmp_path / "holdout-log.md").exists() and not (tmp_path / "o").exists()
+    vc.main(argv + ["--holdout"])
+    (entry,) = (tmp_path / "holdout-log.md").read_text().splitlines()[2:]
+    assert "| vision_compare | t |" in entry
+
+
+def test_offline_split_must_match_the_manifest(tmp_path):
+    base = write_offline(tmp_path / "base", [hit(i, True) for i in range(6)])
+    held = write_offline(tmp_path / "held", [hit(i, True) for i in range(6)], split="holdout")
+    with pytest.raises(SystemExit, match="held.*holdout.*vision-dev"):
+        vc.main(compare(tmp_path, f"base={base}", f"held={held}"))
+    with pytest.raises(SystemExit, match="base.*dev.*vision-holdout"):
+        vc.main(compare(tmp_path, f"base={base}", extra=["--ids", "vision-holdout", "--holdout"]))
+    assert not (tmp_path / "holdout-log.md").exists()
+
+
+def test_offline_ids_outside_the_manifest_are_refused(tmp_path):
+    base = write_offline(tmp_path / "base", [hit(i, True) for i in range(98, 103)])
+    with pytest.raises(SystemExit, match="3 not in vision-dev.*r100"):
+        vc.main(compare(tmp_path, f"base={base}"))
+
+
+def test_live_runs_are_cut_to_the_manifest(tmp_path, monkeypatch, manifests):
+    fake_suite(tmp_path, monkeypatch, 8)
+    (manifests / "vision-dev.json").write_text(json.dumps({"meta": {}, "ids": ["r1", "r3", "r5"]}))
+    live = write_live(tmp_path / "live", [ok_result(f"r{i}", {"A": 0.9, "B": 0.1}) for i in range(8)])
+    vc.main(compare(tmp_path, f"live={live}"))
+    summary = summary_of(tmp_path / "o")
+    assert summary["rows"] == 3 and summary["ids"] == "vision-dev"
+
+
+def test_summary_lists_skipped_and_errored_rows(tmp_path, monkeypatch):
+    fake_suite(tmp_path, monkeypatch, 4)
+    base = write_offline(tmp_path / "base", [hit(i, True) for i in range(4)], skipped={"unsupported": 2, "no_gold": 1})
+    results = [ok_result(f"r{i}", {"A": 0.9, "B": 0.1}) for i in range(3)]
+    live = write_live(tmp_path / "live", results + [{"run_id": "r3", "benchmark": "CV-Bench", "status": "error"}])
+    vc.main(compare(tmp_path, f"base={base}", f"live={live}"))
+    md = md_of(tmp_path)
+    assert "| config | kind | unsupported | invalid | no_gold | errored |" in md
+    assert "| base | offline | 2 | 0 | 1 | — |" in md and "| live | live | — | — | — | 1 |" in md
+    assert "McNemar p (rows)" in md
+
+
+def test_live_row_refuses_unknown_ids_and_golds(tmp_path, monkeypatch):
+    fake_suite(tmp_path, monkeypatch, 2)
+    suite = vc.suite_by_id()
+    with pytest.raises(SystemExit, match="r7.*not in the suite"):
+        vc.live_row(ok_result("r7", {"A": 1.0, "B": 0.0}), suite)
+    suite["r1"]["expected"]["answer"] = "Q"
+    with pytest.raises(SystemExit, match="r1.*'Q'.*criteria"):
+        vc.live_row(ok_result("r1", {"A": 1.0, "B": 0.0}), suite)

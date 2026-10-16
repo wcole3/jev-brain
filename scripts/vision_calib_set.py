@@ -120,7 +120,10 @@ class Pool:
             self.consider(it)
 
     def consider(self, it: Item) -> None:
-        if not 2 <= len(it.choices) <= len(LETTERS) or not 0 <= it.answer < len(it.choices) or not it.question:
+        if not it.question:
+            self.skipped["question"] += 1
+            return
+        if not 2 <= len(it.choices) <= len(LETTERS) or not 0 <= it.answer < len(it.choices):
             self.skipped["choices"] += 1
             return
         try:
@@ -189,9 +192,11 @@ def build(sources: list[Source], suite: SuiteIndex, out: Path = OUT, manifest: P
           total: int = TOTAL, seed: int = SEED) -> dict:
     pools, notes, seen = {}, {}, set()
     for s in sources:
+        notes[s.name] = s.note
+        if not s.enabled:
+            continue
         try:
             pools[s.name] = Pool(seeded(s.name, s.read(), seed), s.name, suite, seen)
-            notes[s.name] = s.note
         except Unavailable as e:
             notes[s.name] = f"unavailable: {e}; its share went to the others"
     allocate(pools, total)
@@ -209,7 +214,8 @@ def build(sources: list[Source], suite: SuiteIndex, out: Path = OUT, manifest: P
 def source_meta(s: Source, pool: Pool | None, note: str) -> dict:
     counts = {"taken": len(pool.taken), "dropped_suite": pool.dropped_suite,
               "skipped": dict(sorted(pool.skipped.items()))} if pool else {"taken": 0, "dropped_suite": 0, "skipped": {}}
-    return {"name": s.name, "repo": s.repo, "revision": s.revision, "split": s.split} | counts | {"note": note}
+    head = {"name": s.name, "repo": s.repo, "revision": s.revision, "split": s.split, "license": s.license}
+    return head | counts | {"note": note}
 
 
 if __name__ == "__main__":

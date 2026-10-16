@@ -1,9 +1,11 @@
+import dataclasses
 import hashlib
 import io
 import json
 import random
 
 import PIL.Image
+import pytest
 
 from gateway.images import decode_image
 from gateway.layouts import load_layouts
@@ -142,6 +144,29 @@ def test_more_than_10_options_are_skipped(tmp_path):
     assert [r["id"] for r in rows] == ["scienceqa:1"]
     assert list(rows[0]["questions"]["answer"]["criteria"]) == list("ABCDEFGHIJ")
     assert by_name(manifest)["scienceqa"]["skipped"]["choices"] == 1
+
+
+def test_empty_question_is_skipped_as_question(tmp_path):
+    suite = suite_of(tmp_path, [noise(99)])
+    empty = cs.Item("0", "", ["a", "b"], 0, noise(0))
+    rows, manifest = build(tmp_path, [fake("ai2d", [empty, item(1, noise(1))])], suite, total=2)
+    assert [r["id"] for r in rows] == ["ai2d:1"] and by_name(manifest)["ai2d"]["skipped"] == {"question": 1}
+
+
+def test_disabled_source_is_listed_not_read_and_its_share_moves(tmp_path):
+    suite = suite_of(tmp_path, [noise(99)])
+    off = cs.Source("scienceqa", "fake/s", "rev", "train", "off", lambda: pytest.fail("read"),
+                    license="excluded: non-commercial licence", enabled=False)
+    on = dataclasses.replace(fake("ai2d", [item(i, noise(i)) for i in range(6)]), license="CC BY-SA 4.0")
+    rows, manifest = build(tmp_path, [off, on], suite, total=4)
+    meta = by_name(manifest)
+    assert len(rows) == 4 and meta["ai2d"]["taken"] == 4 and meta["ai2d"]["license"] == "CC BY-SA 4.0"
+    assert meta["scienceqa"]["taken"] == 0 and meta["scienceqa"]["license"] == "excluded: non-commercial licence"
+
+
+def test_default_sources_leave_scienceqa_off():
+    assert {s.name: s.enabled for s in cs.SOURCES} == {"scienceqa": False, "ai2d": True, "aokvqa": True}
+    assert all(s.license for s in cs.SOURCES)
 
 
 def test_undecodable_and_repeated_images_are_skipped(tmp_path):

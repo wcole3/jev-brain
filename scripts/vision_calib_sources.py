@@ -44,6 +44,8 @@ class Source:
     split: str
     note: str
     read: Callable[[], Iterator[Item]]
+    license: str = ""
+    enabled: bool = True  # a disabled source is listed in the manifest but never read
 
 
 def parquet_files(repo: str, revision: str, prefix: str) -> list[Path]:
@@ -96,8 +98,12 @@ def aokvqa() -> Iterator[Item]:
 
 
 SOURCES = [
-    Source("scienceqa", *SCIENCEQA, "train", "rows with an image; a non-empty hint is the row's state (string), else state {}", scienceqa),
+    Source("scienceqa", *SCIENCEQA, "train", "CC BY-NC-SA 4.0 per its card; adapter kept, off by default (rows with "
+           "an image; a non-empty hint is the row's state string, else state {})", scienceqa,
+           license="excluded: non-commercial licence", enabled=False),
     Source("ai2d", *AI2D, "train", "AI2D train via HuggingFaceM4/the_cauldron@847a98a7, choices parsed by "
-           "tasksource (6 ambiguous-gold questions excluded upstream)", ai2d),
-    Source("aokvqa", *AOKVQA, "train", "multiple-choice: choices + correct_choice_idx; COCO 2017 images", aokvqa),
+           "tasksource (6 ambiguous-gold questions excluded upstream)", ai2d,
+           license="CC BY-SA 4.0 (Cauldron subset keeps original licence)"),
+    Source("aokvqa", *AOKVQA, "train", "multiple-choice: choices + correct_choice_idx; COCO 2017 images", aokvqa,
+           license="annotations Apache-2.0; COCO images under Flickr terms (card has no licence section)"),
 ]

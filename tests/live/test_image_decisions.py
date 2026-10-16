@@ -109,14 +109,22 @@ def image_end(engine, vision, body: dict) -> int:
     return batch.rows[0].ids.index(vision.placeholder[0]) + vision.expanded(batch.images.images[0])
 
 
+def shared_tokens(engine, a: dict, b: dict) -> int:
+    """Leading tokens the two requests' rows share once vLLM expands the images, which sit in the shared part."""
+    x, y = batch_for(engine, a), batch_for(engine, b)
+    same = next(i for i, (p, q) in enumerate(zip(x.rows[0].ids, y.rows[0].ids, strict=False)) if p != q)
+    return same + x.added
+
+
 def test_second_question_hits_the_image_cache(gateway_url, vllm_url, settings, vision, engine):
     # decider_chat puts the context first, so two questions share it; the notes carry it past the image
     state = [{"image": unique_png(1024, 1024)}, NOTES]
     first = {"layout": "decider_chat", "state": state, "questions": {"a": noul("The image is bright")}}
     second = {"layout": "decider_chat", "state": state, "questions": {"b": noul("The image shows a person")}}
-    want = image_end(engine, vision, first)
-    if settings.prefix_block:
-        want -= want % settings.prefix_block  # hybrid Qwen reuses whole blocks only
+    block = settings.prefix_block or 1  # hybrid Qwen reuses whole blocks only
+    want = -(-image_end(engine, vision, first) // block) * block  # the first block boundary past the image
+    reusable = shared_tokens(engine, first, second) // block * block
+    assert reusable >= want, f"the shared prefix ({reusable} reusable tokens) must reach past the image ({want})"
     assert post(gateway_url, first).status_code == 200
     before = prefix_cache_hits(vllm_url)
     assert post(gateway_url, second).status_code == 200

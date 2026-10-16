@@ -93,17 +93,17 @@ def done_keys(path) -> set[tuple[str, str]]:
     return {(r["id"], r["layout"]) for r in records(path)}
 
 
-def repair(path, stamps: dict[str, dict]) -> set[tuple[str, str]]:
+def repair(path, stamps: dict[str, dict], ignore: tuple[str, ...] = ()) -> set[tuple[str, str]]:
     """Rewrite the readable records to a fresh file, so new appends never sit behind a truncated tail.
-    Refuses a file whose records for these layouts were collected under other settings."""
+    Refuses records of these layouts collected under other settings; the `ignore` stamp keys may differ."""
     done: set[tuple[str, str]] = set()
     tmp = path.with_name(path.name + ".tmp")
     try:
         with gzip.open(tmp, "wt", encoding="utf-8") as out:
             for r in records(path):
                 want = stamps.get(r["layout"], r["stamp"])
-                if r["stamp"] != want:
-                    diff = sorted(k for k in want.keys() | r["stamp"].keys() if r["stamp"].get(k) != want.get(k))
+                keys = (want.keys() | r["stamp"].keys()) - set(ignore)
+                if diff := sorted(k for k in keys if r["stamp"].get(k) != want.get(k)):
                     raise SystemExit(f"{path}: {r['layout']} records were collected with other {diff}")
                 out.write(json.dumps(r) + "\n")
                 done.add((r["id"], r["layout"]))

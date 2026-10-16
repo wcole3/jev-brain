@@ -9,11 +9,15 @@ import httpx
 import PIL.Image
 import pytest
 
+from gateway.app import load_engine
 from gateway.config import Settings
+from gateway.decide import build_batch
 from gateway.images import decode_image
 from gateway.labels import build_labels, save_labels
 from gateway.layouts import load_layouts
+from gateway.padding import Padding, newline_token
 from gateway.readout import GENERATE_PATH
+from gateway.schema import SystemOneRequest
 from gateway.vision import load_vision
 from scripts import vision_collect as vc
 from scripts import vision_splits as vs
@@ -53,11 +57,14 @@ ROWS = [  # rows 0 and 1 share an image, so they are one group
 class FakeVllm:
     """vLLM stand-in: letter logprobs -0.001 * id, and prompt lengths expanded by `vision` (plus `extra`)."""
 
-    def __init__(self, vision, extra: int = 0):
-        self.vision, self.extra, self.paths = vision, extra, []
+    def __init__(self, vision, extra: int = 0, served: str = PROFILE):
+        self.vision, self.extra, self.served = vision, extra, served
+        self.paths, self.prompts = [], []  # every path asked; the token ids of every letter read
 
     def __call__(self, request: httpx.Request) -> httpx.Response:
         self.paths.append(request.url.path)
+        if request.url.path == "/v1/models":
+            return httpx.Response(200, json={"data": [{"id": self.served}]})
         if request.url.path != GENERATE_PATH:
             return fake_text_vllm(request)
         body = json.loads(request.content)
@@ -66,6 +73,7 @@ class FakeVllm:
             n = len(body["token_ids"]) + sum(self.vision.added(i) for i in images) + self.extra
             return httpx.Response(200, json={"prompt_token_ids": list(range(n))})
         ids = body["sampling_params"].get("logprob_token_ids", [])
+        self.prompts.append(body["token_ids"])
         top = [{"token": f"token_id:{t}", "logprob": -0.001 * t} for t in ids]
         return httpx.Response(200, json={"choices": [{"logprobs": {"content": [{"top_logprobs": top}]}}]})
 
@@ -118,8 +126,9 @@ async def test_record_shape_and_config_json(suite, gemma_tok):
     recs = list(records(out_file(suite)))
     assert n == 4 and [r["id"] for r in recs] == [r["id"] for r in ROWS]
     first = recs[0]
-    keys = {"id", "benchmark", "group", "layout", "status", "names", "gold", "input_tokens", "reads", "stamp"}
-    assert set(first) == keys
+    keys = {"id", "benchmark", "group", "layout", "status", "names", "gold", "input_tokens", "shared_len", "padded",
+            "reads", "stamp"}
+    assert set(first) == keys and first["padded"] is False and first["shared_len"] > 0
     assert first["status"] == "ok" and first["benchmark"] == "Bench" and first["input_tokens"] > 0
     assert [r["group"] for r in recs] == ["bench:0", "bench:0", "bench:2", "bench:3"]
     assert [r["names"] for r in recs] == [["A", "B"], ["A", "B", "C"], ["A", "B"], ["A", "B", "C", "D"]]
@@ -191,7 +200,7 @@ async def test_self_check_refuses_a_count_mismatch(suite):
         await run(suite, fake=fake)
     got, want = map(int, re.search(r"to (\d+) tokens, the gateway counts (\d+)", str(e.value)).groups())
     assert got == want + 1
-    assert fake.paths == [GENERATE_PATH] and not out_file(suite).exists()
+    assert fake.paths == ["/v1/models", GENERATE_PATH] and not out_file(suite).exists()
 
 
 async def test_failed_self_check_logs_no_holdout_use(suite):
@@ -234,7 +243,58 @@ async def test_holdout_needs_the_flag(suite):
     fake = FakeVllm(vision_with({"max_soft_tokens": 560}))
     with pytest.raises(SystemExit, match="--holdout"):
         await run(suite, "--split", "holdout", fake=fake)
-    assert fake.paths == [GENERATE_PATH] and not (suite / "holdout-log.md").exists()  # the probe only
+    assert fake.paths == ["/v1/models", GENERATE_PATH] and not (suite / "holdout-log.md").exists()
     await run(suite, "--split", "holdout", "--holdout")
     assert [r["id"] for r in records(out_file(suite, "holdout"))] == ["bench:2"]
     assert "vision_collect" in (suite / "holdout-log.md").read_text()
+
+
+def log_uses(tmp_path) -> int:
+    return len((tmp_path / "holdout-log.md").read_text().splitlines()) - 2  # a header and a rule line
+
+
+async def test_holdout_resume_after_the_log_changed(suite, monkeypatch):
+    await run(suite, "--split", "holdout", "--holdout")
+    monkeypatch.setattr(vs, "commit", lambda: "0000000-dirty")  # the log write dirtied the tree
+    path = out_file(suite, "holdout")
+    path.write_bytes(path.read_bytes()[:-8])
+    assert (await run(suite, "--split", "holdout", "--holdout"))[0] == 0
+    assert log_uses(suite) == 2
+    with pytest.raises(SystemExit, match="orders"):  # refused before the split is read: no use logged
+        await run(suite, "--split", "holdout", "--holdout", "--orders", "identity")
+    assert log_uses(suite) == 2
+
+
+async def test_another_served_model_is_refused(suite):
+    fake = FakeVllm(vision_with({"max_soft_tokens": 560}), served="other-model")
+    with pytest.raises(SystemExit, match=f"serves \\['other-model'\\], not {PROFILE}"):
+        await run(suite, fake=fake)
+    assert fake.paths == ["/v1/models"]
+
+
+@pytest.mark.parametrize("pair", ["VLLM_URL=http://x", "VLLM_API_KEY=k"])
+def test_env_refuses_url_and_keys(pair, capsys):
+    with pytest.raises(SystemExit):
+        vc.parse_args(["--profile", PROFILE, "--label", "x", "--env", pair])
+    assert pair.partition("=")[0] in capsys.readouterr().err
+
+
+async def test_identity_read_matches_a_live_single_row_build(suite):
+    s = vc.settings_for(PROFILE, {"DATA_ROOT": str(suite / "data")}, "http://vllm")
+    engine = load_engine(s, httpx.AsyncClient(), calibrated=False)
+    images = [vc.data_url(suite / "suite" / p) for p in ROWS[2]["images"]]
+    body = {"state": ROWS[2]["state"], "questions": ROWS[2]["questions"], "images": images, "layout": "header"}
+
+    async def batch(block: int, orders: str):
+        padded = dataclasses.replace(engine, padding=Padding("front", block, token=newline_token(engine.tokenizer)))
+        return (await build_batch(padded, SystemOneRequest.model_validate(body | {"option_orders": orders})))[2]
+
+    # a block where the two-row build pads, so a read built for two rows would differ from live
+    block = 2
+    while (two := await batch(block, "identity+reversed")).shared_len == two.unpadded_len:
+        block += 1
+    live = (await batch(block, "identity")).rows[0].ids
+    fake = FakeVllm(vision_with({"max_soft_tokens": 560}))
+    await run(suite, "--split", "holdout", "--holdout", "--env", "PREFIX_PAD=front", f"PREFIX_BLOCK={block}", fake=fake)
+    rec = next(records(out_file(suite, "holdout")))
+    assert fake.prompts[0] == live and rec["padded"] is False and rec["reads"][0]["perm"] == [0, 1]

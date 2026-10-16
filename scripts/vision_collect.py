@@ -105,7 +105,7 @@ def gold_index(names: list, expected) -> int | None:
 
 async def collect_one(engine, row: dict, group: str, layout: str, orders: str, rec_stamp: dict) -> dict:
     rec = {"id": row["id"], "benchmark": row["benchmark"], "group": group, "layout": layout, "names": [],
-           "gold": None, "input_tokens": None, "reads": [], "stamp": rec_stamp}
+           "gold": None, "input_tokens": None, "shared_len": None, "padded": None, "reads": [], "stamp": rec_stamp}
     try:
         names = option_names(row, engine.layouts[layout])
         rec |= {"names": names, "gold": gold_index(names, row["expected"].get("answer"))}
@@ -114,13 +114,14 @@ async def collect_one(engine, row: dict, group: str, layout: str, orders: str, r
             {"state": row["state"], "questions": row["questions"], "images": images, "layout": layout,
              "option_orders": orders}
         )
-        r = await read_rows(engine, request)
+        r = await read_rows(engine, request, pad_rows=len(request.questions))  # pad as the live default would
     except ValidationError as e:
         return rec | {"status": "invalid", "error": str(e).splitlines()[0]}
     except RequestError as e:  # includes ImageError: a missing, unreadable or refused image
         return rec | {"status": "unsupported", "error": str(e)}
     reads = [{"perm": perm, "logprobs": lp} for lp, perm in r.reads["answer"]]
-    return rec | {"status": "ok", "input_tokens": r.input_tokens, "reads": reads}
+    read = {"input_tokens": r.input_tokens, "shared_len": r.shared_len, "padded": r.padded, "reads": reads}
+    return rec | {"status": "ok"} | read
 
 
 async def collect_retrying(engine, *args) -> dict:
@@ -133,11 +134,16 @@ async def collect_retrying(engine, *args) -> dict:
     return await collect_one(engine, *args)
 
 
-async def collect(engine, rows: list[dict], layout: str, orders: str, path: Path, commit: str,
+def resume(path: Path, layout: str, rec_stamp: dict) -> set[str]:
+    """Ids already collected; drops a truncated tail. Refuses records read under other settings but commit."""
+    if not path.exists():
+        return set()
+    return {i for i, _ in repair(path, {layout: rec_stamp}, ignore=("commit",))}
+
+
+async def collect(engine, rows: list[dict], layout: str, orders: str, path: Path, rec_stamp: dict, done: set[str],
                   concurrency: int = 8) -> int:
-    """Append a record per row not yet in path; returns how many were written."""
-    rec_stamp = run_stamp(engine, layout, commit)
-    done = {i for i, _ in repair(path, {layout: rec_stamp})}
+    """Append a record per row not in done; returns how many were written."""
     group = vision_splits.groups(vision_splits.read_suite())
     todo = [row for row in rows if row["id"] not in done]
     gate = asyncio.Semaphore(concurrency)
@@ -158,22 +164,28 @@ async def collect(engine, rows: list[dict], layout: str, orders: str, path: Path
 PER_SPLIT = ("split", "commit")  # differ between a label's splits; each record's stamp carries the commit
 
 
-def write_once(path: Path, config: dict) -> None:
-    if not path.exists():
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(config, indent=1) + "\n")
-
-
-def claim(folder: Path, config: dict) -> None:
-    """Write config.json and <split>.config.json once; refuse a folder collected under another config."""
+def check_config(folder: Path, config: dict) -> None:
+    """Refuse a label folder collected under another config."""
     path = folder / "config.json"
     if path.exists():
         old = json.loads(path.read_text())
         diff = sorted(k for k in (old.keys() | config.keys()) - set(PER_SPLIT) if old.get(k) != config.get(k))
         if diff:
             raise SystemExit(f"{folder} was collected with other {diff}: use another --label")
-    write_once(path, config)
-    write_once(folder / f"{config['split']}.config.json", config)
+
+
+def write_configs(folder: Path, config: dict) -> None:
+    """config.json and <split>.config.json, each written once."""
+    folder.mkdir(parents=True, exist_ok=True)
+    for path in (folder / "config.json", folder / f"{config['split']}.config.json"):
+        if not path.exists():
+            path.write_text(json.dumps(config, indent=1) + "\n")
+
+
+async def require_model(client: httpx.AsyncClient, s: Settings) -> None:
+    served = [m["id"] for m in (await client.get("/v1/models")).json()["data"]]
+    if s.served_model not in served:
+        raise SystemExit(f"vLLM serves {served}, not {s.served_model}: start the {s.profile} profile first")
 
 
 async def run(args, transport: httpx.AsyncBaseTransport | None = None) -> int:
@@ -187,15 +199,20 @@ async def run(args, transport: httpx.AsyncBaseTransport | None = None) -> int:
     config = {"profile": s.profile, "label": args.label, "layout": args.layout, "orders": args.orders,
               "env": args.env, "split": args.split, "commit": commit}
     folder = COLLECT / s.profile / args.label
+    path = folder / f"{args.split}.jsonl.gz"
     async with vllm_client(s, transport) as client:
         engine = load_engine(s, client, calibrated=False)  # raw reads: calibration is applied offline
-        await self_check(engine, client, args.layout)  # before load_split: a failed check logs no holdout use
-        split = f"vision-{args.split}"
-        rows = vision_splits.load_split(split, holdout=args.holdout, tool="vision_collect", label=args.label)
-        claim(folder, config)
-        n = await collect(engine, rows, args.layout, args.orders, folder / f"{args.split}.jsonl.gz", commit,
-                          args.concurrency)
-    print(f"wrote {n} records to {folder / f'{args.split}.jsonl.gz'}")
+        await require_model(client, s)
+        await self_check(engine, client, args.layout)
+        rec_stamp = run_stamp(engine, args.layout, commit)
+        check_config(folder, config)
+        done = resume(path, args.layout, rec_stamp)
+        # load_split logs a holdout use, so it comes after every check that can refuse the run
+        rows = vision_splits.load_split(f"vision-{args.split}", holdout=args.holdout, tool="vision_collect",
+                                        label=args.label)
+        write_configs(folder, config)
+        n = await collect(engine, rows, args.layout, args.orders, path, rec_stamp, done, args.concurrency)
+    print(f"wrote {n} records to {path}")
     return n
 
 
@@ -205,6 +222,8 @@ def env_pair(text: str) -> tuple[str, str]:
         raise argparse.ArgumentTypeError(f"--env takes KEY=VALUE, got {text!r}")
     if key.endswith("API_KEY"):  # config.json records --env; keys come from the environment only
         raise argparse.ArgumentTypeError(f"{key} comes from the environment, not --env")
+    if key == "VLLM_URL":
+        raise argparse.ArgumentTypeError("VLLM_URL is set with --vllm, not --env")
     return key, value
 
 

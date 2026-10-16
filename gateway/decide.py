@@ -46,6 +46,8 @@ class Reads:
     questions: dict[str, Rendered]
     reads: dict[str, list[tuple[list[float], list[int]]]]  # per question: (raw letter logprobs, perm) per order
     input_tokens: int
+    shared_len: int  # leading ids every row shares, pad included
+    padded: bool  # the shared prefix carries a pad
 
 
 def has_images(request: SystemOneRequest) -> bool:
@@ -119,7 +121,8 @@ async def read_rows(
     reads: dict[str, list] = {qid: [] for qid in questions}
     for row, lp in zip(batch.rows, logprobs, strict=True):
         reads[row.question_id].append((lp, row.perm))
-    return Reads(name, questions, reads, batch.input_tokens)
+    padded = batch.shared_len != batch.unpadded_len
+    return Reads(name, questions, reads, batch.input_tokens, batch.shared_len, padded)
 
 
 def blend(reads: list[tuple[list[float], list[int]]], temperature: float, yes_offset: float = 0.0) -> list[float]:

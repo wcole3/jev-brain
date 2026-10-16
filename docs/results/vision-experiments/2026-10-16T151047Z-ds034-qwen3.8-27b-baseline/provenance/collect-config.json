@@ -1,0 +1,9 @@
+{
+ "profile": "qwen3.8-27b",
+ "label": "baseline",
+ "layout": "header",
+ "orders": "identity+reversed",
+ "env": {},
+ "split": "dev",
+ "commit": "4648502-dirty"
+}

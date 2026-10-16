@@ -1,0 +1,148 @@
+{
+ "arm": "fit-T-bench",
+ "orders": "identity",
+ "folds": {
+  "0": {
+   "fitted_on": "1",
+   "benchmarks": {
+    "BLINK": {
+     "n": 69,
+     "T": 6.600545304782037,
+     "fallback": false
+    },
+    "CV-Bench": {
+     "n": 63,
+     "T": 7.2702359082229435,
+     "fallback": false
+    },
+    "CharXiv": {
+     "n": 72,
+     "T": 2.9122457202217436,
+     "fallback": false
+    },
+    "InfographicVQA": {
+     "n": 46,
+     "T": 2.2535652739848575,
+     "fallback": false
+    },
+    "KIE (CORD+FUNSD)": {
+     "n": 91,
+     "T": 6.444756356174303,
+     "fallback": false
+    },
+    "MMMU-Pro vision": {
+     "n": 75,
+     "T": 6.044505274708293,
+     "fallback": false
+    },
+    "Mind2Web": {
+     "n": 82,
+     "T": 4.260405349613369,
+     "fallback": false
+    },
+    "Moderation (Hateful Memes)": {
+     "n": 71,
+     "T": 12.059797300654537,
+     "fallback": false
+    },
+    "R-Bench-M": {
+     "n": 78,
+     "T": 4.496498840657417,
+     "fallback": false
+    },
+    "RealWorldQA": {
+     "n": 66,
+     "T": 6.4548324642885575,
+     "fallback": false
+    },
+    "Winoground": {
+     "n": 61,
+     "T": 7.494717347254838,
+     "fallback": false
+    }
+   }
+  },
+  "1": {
+   "fitted_on": "0",
+   "benchmarks": {
+    "BLINK": {
+     "n": 67,
+     "T": 6.97776813940818,
+     "fallback": false
+    },
+    "CV-Bench": {
+     "n": 73,
+     "T": 5.279187586719509,
+     "fallback": false
+    },
+    "CharXiv": {
+     "n": 64,
+     "T": 3.214867547892715,
+     "fallback": false
+    },
+    "InfographicVQA": {
+     "n": 51,
+     "T": 3.282850333190512,
+     "fallback": false
+    },
+    "KIE (CORD+FUNSD)": {
+     "n": 50,
+     "T": 3.2424412010670576,
+     "fallback": false
+    },
+    "MMMU-Pro vision": {
+     "n": 61,
+     "T": 6.834547242202164,
+     "fallback": false
+    },
+    "Mind2Web": {
+     "n": 54,
+     "T": 4.581907269532177,
+     "fallback": false
+    },
+    "Moderation (Hateful Memes)": {
+     "n": 65,
+     "T": 15.587594388843625,
+     "fallback": false
+    },
+    "R-Bench-M": {
+     "n": 58,
+     "T": 6.408519299327213,
+     "fallback": false
+    },
+    "RealWorldQA": {
+     "n": 70,
+     "T": 5.943592452731372,
+     "fallback": false
+    },
+    "Winoground": {
+     "n": 75,
+     "T": 7.034015995032674,
+     "fallback": false
+    }
+   }
+  }
+ },
+ "fallbacks": [],
+ "skipped": {},
+ "scored": 1462,
+ "collect": "/home/welb/devspace/jev-brain/.cache/vision-collect/gemma-4-31b/baseline/dev.jsonl.gz",
+ "collect_config": {
+  "profile": "gemma-4-31b",
+  "label": "baseline",
+  "layout": "header",
+  "orders": "identity+reversed",
+  "env": {},
+  "split": "dev",
+  "commit": "4648502"
+ },
+ "fit_on": null,
+ "text_calibration": {
+  "path": "/home/welb/devspace/jev-brain/data/gemma-4-31b/header/calibration.json",
+  "source": "gemma-4-31b/header/calibration.json",
+  "T": 4.262737987560785,
+  "orders": "identity",
+  "stamp_checked": false
+ },
+ "commit": "4648502-dirty"
+}

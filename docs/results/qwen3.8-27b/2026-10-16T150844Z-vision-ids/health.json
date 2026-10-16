@@ -1,0 +1,61 @@
+{
+  "status": "ok",
+  "profile": "qwen3.8-27b",
+  "served_model": "qwen3.8-27b",
+  "hf_model": "Qwen/Qwen3.8-27B",
+  "hf_revision": "1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0",
+  "prompt_layout": "header",
+  "option_orders": "identity",
+  "prefix_pad": "front",
+  "prefix_block": 800,
+  "prefix_pad_always": false,
+  "systemone_max_len": 32768,
+  "systemone_priority": 1,
+  "systemone_images": true,
+  "mm_processor_kwargs": {
+    "max_pixels": 1638400
+  },
+  "warm_min_prefix_tokens": 800,
+  "warm_up": "row",
+  "governor_duty": 0.6,
+  "governor_wave": 8,
+  "chats_decoding": 0,
+  "calibration": {
+    "decider_chat": {
+      "T": {
+        "choice": 1.4961189013294809,
+        "score": 1.6648399367497366,
+        "noul": 0.972520554755731
+      },
+      "b": 0.0,
+      "source": "qwen3.8-27b/decider_chat/calibration.json",
+      "orders": "identity"
+    },
+    "header": {
+      "T": {
+        "choice": 1.535520473719803,
+        "score": 1.774876073414086,
+        "noul": 0.9625437832558383
+      },
+      "b": 0.0,
+      "source": "qwen3.8-27b/header/calibration.json",
+      "orders": "identity"
+    },
+    "question_first": {
+      "T": {
+        "choice": 1.3508723711404127,
+        "score": 6.269890636485391,
+        "noul": 0.8313413948726119
+      },
+      "b": 0.0,
+      "source": "qwen3.8-27b/question_first/calibration.json",
+      "orders": "identity"
+    }
+  },
+  "vllm_version": "0.30.0",
+  "layouts": [
+    "decider_chat",
+    "header",
+    "question_first"
+  ]
+}

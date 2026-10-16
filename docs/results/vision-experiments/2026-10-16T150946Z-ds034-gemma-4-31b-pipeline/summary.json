@@ -1,0 +1,199 @@
+{
+ "label": "ds034-gemma-4-31b-pipeline",
+ "created_utc": "2026-10-16T15:09:43Z",
+ "commit": "4648502-dirty",
+ "baseline": "offline",
+ "ids": "vision-dev",
+ "rows": 1462,
+ "benchmarks": {
+  "BLINK": 136,
+  "CV-Bench": 136,
+  "CharXiv": 136,
+  "InfographicVQA": 97,
+  "KIE (CORD+FUNSD)": 141,
+  "MMMU-Pro vision": 136,
+  "Mind2Web": 136,
+  "Moderation (Hateful Memes)": 136,
+  "R-Bench-M": 136,
+  "RealWorldQA": 136,
+  "Winoground": 136
+ },
+ "weights": {
+  "CV-Bench": 1.0,
+  "BLINK": 1.0,
+  "RealWorldQA": 1.0,
+  "CharXiv": 1.0,
+  "InfographicVQA": 1.0,
+  "Mind2Web": 1.0,
+  "Winoground": 1.0,
+  "KIE (CORD+FUNSD)": 1.0,
+  "Moderation (Hateful Memes)": 1.0,
+  "R-Bench-M": 0.5,
+  "MMMU-Pro vision": 0.25
+ },
+ "resamples": 10000,
+ "seed": 0,
+ "power_limit_w": null,
+ "configs": {
+  "offline": {
+   "path": ".cache/vision-arms/gemma-4-31b/baseline-text-identity",
+   "kind": "offline",
+   "about": {
+    "arm": "text",
+    "orders": "identity",
+    "skipped": {},
+    "fallbacks": [],
+    "fit_on": null,
+    "split": "dev",
+    "errored": 0
+   },
+   "index": 77.06063961351246,
+   "skills": {
+    "BLINK": 0.63323782234957,
+    "CharXiv": 0.9215686274509803,
+    "KIE (CORD+FUNSD)": 0.9408284023668638,
+    "CV-Bench": 0.7836104988980166,
+    "Moderation (Hateful Memes)": 0.5735294117647058,
+    "InfographicVQA": 0.9587628865979382,
+    "Mind2Web": 0.8725490196078431,
+    "MMMU-Pro vision": 0.3140621954579977,
+    "R-Bench-M": 0.39999999999999986,
+    "RealWorldQA": 0.712574850299401,
+    "Winoground": 0.838235294117647
+   },
+   "accuracy": 0.8002735978112175,
+   "ece": 0.0807705736184709,
+   "nll": 0.6072366083561507,
+   "errored": 0,
+   "mean_input_tokens": 719.2544459644323,
+   "latency": null
+  },
+  "live": {
+   "path": "docs/results/gemma-4-31b/2026-10-16T023752Z-vision",
+   "kind": "live",
+   "about": {
+    "status": {
+     "ok": 1462
+    },
+    "errored": 0,
+    "split": "dev"
+   },
+   "index": 77.44143998353181,
+   "skills": {
+    "CV-Bench": 0.7836104988980165,
+    "BLINK": 0.6446991404011462,
+    "RealWorldQA": 0.7125748502994009,
+    "CharXiv": 0.9215686274509803,
+    "InfographicVQA": 0.9725085910652921,
+    "Mind2Web": 0.8823529411764706,
+    "Winoground": 0.838235294117647,
+    "KIE (CORD+FUNSD)": 0.940828402366864,
+    "Moderation (Hateful Memes)": 0.5735294117647058,
+    "R-Bench-M": 0.39999999999999986,
+    "MMMU-Pro vision": 0.32253056341530634
+   },
+   "accuracy": 0.8030095759233926,
+   "ece": 0.08452082339130969,
+   "nll": 0.6063426365460142,
+   "errored": 0,
+   "mean_input_tokens": 719.2544459644323,
+   "latency": null
+  }
+ },
+ "paired": {
+  "live": {
+   "n": 1462,
+   "delta_index": 0.38080037001934386,
+   "ci": [
+    0.0,
+    0.8640564050117376
+   ],
+   "delta_skill": {
+    "BLINK": {
+     "delta": 0.01146131805157613,
+     "ci": [
+      0.0,
+      0.03529411764705881
+     ]
+    },
+    "CV-Bench": {
+     "delta": 0.0,
+     "ci": [
+      0.0,
+      0.0
+     ]
+    },
+    "CharXiv": {
+     "delta": 0.0,
+     "ci": [
+      0.0,
+      0.0
+     ]
+    },
+    "InfographicVQA": {
+     "delta": 0.013745704467353903,
+     "ci": [
+      0.0,
+      0.04123711340206193
+     ]
+    },
+    "KIE (CORD+FUNSD)": {
+     "delta": 0.0,
+     "ci": [
+      0.0,
+      0.0
+     ]
+    },
+    "MMMU-Pro vision": {
+     "delta": 0.008468367957308653,
+     "ci": [
+      0.0,
+      0.025633374925405572
+     ]
+    },
+    "Mind2Web": {
+     "delta": 0.009803921568627416,
+     "ci": [
+      0.0,
+      0.02941176470588247
+     ]
+    },
+    "Moderation (Hateful Memes)": {
+     "delta": 0.0,
+     "ci": [
+      0.0,
+      0.0
+     ]
+    },
+    "R-Bench-M": {
+     "delta": 0.0,
+     "ci": [
+      -0.026470588235294135,
+      0.026470588235294135
+     ]
+    },
+    "RealWorldQA": {
+     "delta": 0.0,
+     "ci": [
+      0.0,
+      0.0
+     ]
+    },
+    "Winoground": {
+     "delta": 0.0,
+     "ci": [
+      0.0,
+      0.0
+     ]
+    }
+   },
+   "b": 1,
+   "c": 5,
+   "mcnemar_p": 0.21875,
+   "discordant_share": 0.004103967168262654,
+   "agreement": 0.9931600547195623,
+   "delta_ece": 0.00375024977283879,
+   "delta_nll": -0.0008939718101365068
+  }
+ }
+}

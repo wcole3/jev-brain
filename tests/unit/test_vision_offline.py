@@ -140,20 +140,103 @@ def test_unscored_rows_are_counted_per_status():
     assert report["skipped"] == {"no_gold": 1, "unsupported": 1, "invalid": 1}
 
 
-def test_cli_writes_scored_rows_and_arm_report(tmp_path):
-    collect = tmp_path / "collect" / "dev.jsonl.gz"
-    collect.parent.mkdir()
-    config = {"profile": "gemma-4-31b", "label": "x", "layout": "header", "orders": "identity", "env": {}}
-    (collect.parent / "config.json").write_text(json.dumps(config))
-    recs = planted(2, seed=9, copies=5)
-    with gzip.open(collect, "wt", encoding="utf-8") as f:
+CONFIG = {"profile": "gemma-4-31b", "label": "x", "layout": "header", "orders": "identity+reversed", "env": {}}
+
+
+def write_collect(folder, split: str, recs: list[dict], **config) -> object:
+    """A label folder as collect leaves it: <split>.jsonl.gz, <split>.config.json, and config.json from the first."""
+    folder.mkdir(parents=True, exist_ok=True)
+    config = CONFIG | {"split": split, "commit": "abc"} | config
+    (folder / f"{split}.config.json").write_text(json.dumps(config))
+    if not (folder / "config.json").exists():
+        (folder / "config.json").write_text(json.dumps(config))
+    path = folder / f"{split}.jsonl.gz"
+    with gzip.open(path, "wt", encoding="utf-8") as f:
         f.writelines(json.dumps(r) + "\n" for r in recs)
+    return path
+
+
+def test_cli_writes_scored_rows_and_arm_report(tmp_path):
+    write_collect(tmp_path / "x", "holdout", planted(1, seed=10, copies=5))  # first split: owns config.json
+    recs = planted(2, seed=9, copies=5)
+    collect = write_collect(tmp_path / "x", "dev", recs)
     out = tmp_path / "out"
     vo.main(["--collect", str(collect), "--arm", "fit-T", "--out", str(out)])
     scored = list(records(out / "scored.jsonl.gz"))
     arm = json.loads((out / "arm.json").read_text())
     assert [s["id"] for s in scored] == [r["id"] for r in recs]
-    assert arm["arm"] == "fit-T" and arm["orders"] == "identity" and arm["collect_config"] == config
+    assert arm["arm"] == "fit-T" and arm["orders"] == "identity" and arm["fit_on"] is None
+    assert arm["collect_config"] == CONFIG | {"split": "dev", "commit": "abc"}
     assert arm["collect"] == str(collect) and arm["commit"] and set(arm["folds"]) == {"0", "1"}
-    assert arm["text_calibration"]["source"] == "gemma-4-31b/header/calibration.json"
-    assert arm["text_calibration"]["stamp_checked"] is False
+    text = arm["text_calibration"]
+    assert text["source"] == "gemma-4-31b/header/calibration.json" and text["orders"] == "identity"
+    assert text["stamp_checked"] is False
+
+
+def test_holdout_fitted_arm_needs_fit_on(tmp_path):
+    holdout = write_collect(tmp_path / "x", "holdout", planted(2, seed=11, copies=5))
+    for arm in ("fit-T", "fit-T-bench", "pride"):
+        with pytest.raises(SystemExit, match="--fit-on"):
+            vo.main(["--collect", str(holdout), "--arm", arm, "--out", str(tmp_path / "out")])
+    vo.main(["--collect", str(holdout), "--arm", "text", "--out", str(tmp_path / "out")])
+
+
+def test_fit_on_scores_holdout_with_dev_fitted_values_only(tmp_path):
+    dev, holdout = planted(10, seed=12, T=2.0), planted(5, seed=13, T=0.5, benchmark="H")
+    flipped = [r | {"gold": (r["gold"] + 1) % 4} for r in holdout]
+    rows, report = vo.score(holdout, "fit-T", "identity", TEXT, fit_on=dev)
+    rows2, report2 = vo.score(flipped, "fit-T", "identity", TEXT, fit_on=dev)
+    assert report["folds"] == report2["folds"] and set(report["folds"]) == {"dev"}
+    assert report["folds"]["dev"]["n"] == len(dev)
+    assert [r["probs"] for r in rows] == [r["probs"] for r in rows2] and len(rows) == len(holdout)
+    assert report["folds"]["dev"]["T"] == vo.score(dev, "fit-T", "identity", TEXT, fit_on=dev)[1]["folds"]["dev"]["T"]
+    dev_path = write_collect(tmp_path / "x", "dev", dev, orders="identity")
+    holdout_path = write_collect(tmp_path / "x", "holdout", holdout, orders="identity")
+    out = tmp_path / "out"
+    arm = vo.main(["--collect", str(holdout_path), "--arm", "fit-T", "--fit-on", str(dev_path), "--out", str(out)])
+    assert arm["fit_on"] == str(dev_path) and arm["folds"] == report["folds"]
+
+
+def test_fit_on_refused_on_a_dev_collect_and_from_another_config(tmp_path):
+    dev = write_collect(tmp_path / "x", "dev", planted(2, seed=14, copies=5))
+    with pytest.raises(SystemExit, match="holdout"):
+        vo.main(["--collect", str(dev), "--arm", "fit-T", "--fit-on", str(dev), "--out", str(tmp_path / "o")])
+    holdout = write_collect(tmp_path / "x", "holdout", planted(2, seed=15, copies=5))
+    for key, value in (("profile", "qwen3.8-27b"), ("layout", "other"), ("orders", "identity")):
+        other = write_collect(tmp_path / key, "dev", planted(2, seed=14, copies=5), **{key: value})
+        with pytest.raises(SystemExit, match=key):
+            vo.main(["--collect", str(holdout), "--arm", "fit-T", "--fit-on", str(other), "--out", str(tmp_path / "o")])
+    not_dev = write_collect(tmp_path / "y", "latency", planted(2, seed=14, copies=5))
+    with pytest.raises(SystemExit, match="dev"):
+        vo.main(["--collect", str(holdout), "--arm", "fit-T", "--fit-on", str(not_dev), "--out", str(tmp_path / "o")])
+
+
+def test_non_choice_rows_are_refused_naming_the_row():
+    noul = rec(5, [[0.0, -1.0]], 0) | {"names": [False, True]}
+    with pytest.raises(ValueError, match="r5"):
+        vo.score([noul], "text", "identity", TEXT)
+    score_type = rec(6, [[0.0, -1.0]], 0) | {"type": "score"}
+    with pytest.raises(ValueError, match="r6"):
+        vo.score([score_type], "text", "identity", TEXT)
+
+
+def test_pride_prior_needs_30_reads_per_option_count():
+    recs = planted(10, seed=16, bias=1.0)
+    twos = [rec(100 + i, [[0.0, -1.0]], 0, group=f"two{i}") for i in range(40)]
+    _, report = vo.score(recs + twos, "pride", "identity", TEXT)
+    for k, f in report["folds"].items():
+        n2 = sum(vo.fold(r["group"]) != int(k) for r in twos)
+        assert f["prior_reads"]["2"] == n2 and ("2" in f["prior"]) == (n2 >= 30)
+        assert f["prior_reads"]["4"] >= 30 and "4" in f["prior"]
+    assert any(f["prior_reads"]["2"] < 30 for f in report["folds"].values())
+
+
+def test_text_calibration_orders_are_recorded_and_a_mismatch_warns(tmp_path, capsys):
+    recs = [rec(i, [[0.0, -1.0, -2.0], [-2.0, -1.0, 0.0]], 0) for i in range(3)]
+    collect = write_collect(tmp_path / "x", "dev", recs)
+    vo.main(["--collect", str(collect), "--arm", "text", "--out", str(tmp_path / "a")])
+    assert "fitted under option orders" not in capsys.readouterr().err
+    arm = vo.main(["--collect", str(collect), "--arm", "text", "--orders", "identity+reversed",
+                   "--out", str(tmp_path / "b")])
+    assert arm["text_calibration"]["orders"] == "identity"
+    assert "fitted under option orders 'identity'" in capsys.readouterr().err

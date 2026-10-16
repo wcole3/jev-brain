@@ -294,7 +294,8 @@ images. Both formats give the same prompt, with the images inside `Context:`:
   fetches a URL.
 - **Limits:** 4 images and a 20 MB body per request. Images over 1,638,400 pixels are
   downscaled, keeping the aspect ratio.
-- **Errors:** a URL, an undecodable image, more than 4 images, a body over 20 MB, or images
+- **Errors:** a URL, an undecodable image, an image item with keys besides `"image"`, more
+  than 4 images, a body over 20 MB, text that contains image placeholder tokens, or images
   sent to a text-only profile give 400. A prompt over `SYSTEMONE_MAX_LEN` once the images
   are counted gives 422.
 
@@ -329,7 +330,7 @@ Every error body is `{"error": {"message": "..."}}`.
 
 | Status | When |
 |---|---|
-| 400 | Chat body is not a JSON object; a bad image or too many; a decision body over 20 MB; images on a text-only profile |
+| 400 | Chat body is not a JSON object; a bad image or too many; a decision body over 20 MB; images on a text-only profile; decision text with image placeholder tokens |
 | 401 | Missing or wrong gateway key (with `WWW-Authenticate: Bearer`) |
 | 404 / 405 | Unknown path or method |
 | 422 | Invalid request, or over a capacity limit (too many options, levels or tokens) |

@@ -40,6 +40,7 @@ Both formats become one ordered list of context items ([`context_items`](../../g
 | Source | `data:` URLs (base64) or raw base64 only. Any other string, including `https://`, is refused; the gateway never fetches | 400 |
 | Format | PNG, JPEG, WEBP, GIF only (Pillow `formats=`; an open-ended open would accept EPS, which can invoke Ghostscript) | 400 |
 | Header size | Width × height checked against Pillow's `MAX_IMAGE_PIXELS` before the pixels are decoded | 400 |
+| Image item | A `state` item with an `"image"` key and any other key (e.g. `"detail"`), rather than rendering its base64 as text | 400 |
 | Count | At most 4 images per request | 400 |
 | Body | At most 20,000,000 bytes, checked on `Content-Length` by a plain ASGI middleware ([`body_limit.py`](../../gateway/body_limit.py)) before the body is read | 400 |
 | Aspect (Qwen) | Over 200:1 refused, as transformers does | 400 |
@@ -55,6 +56,8 @@ An image over 1,638,400 pixels (1,600 × 32 × 32) is shrunk with the kit's fit 
 aspect ratio inside the budget, resampled with LANCZOS. A PNG stays a PNG (RGBA when it has alpha); everything else is
 re-encoded as JPEG quality 95. 4000×3000, for example, becomes 1478×1108. Decoding and downscaling take CPU time, so
 they run off the event loop, in the same thread as `build_rows`.
+
+A downscaled WEBP or GIF therefore becomes a JPEG and loses its transparency; a PNG keeps its alpha.
 
 ### Where the image sits
 
@@ -139,7 +142,8 @@ piecewise token ids and the single-token label checks would no longer hold.
   cache key, so every row of a request, and any later request with the same bytes, names the same cache entry.
 - **Labels:** `logprob_token_ids` takes at most 128 ids, and with only label ids in it vLLM's answer comes back one
   entry short. Each call therefore asks for a chunk of up to 127 labels plus one spare id (the smallest non-negative id
-  not in the chunk) and `logprobs` = N + 1. The spare is ignored.
+  not in the chunk) and `logprobs` = N + 1. The spare is ignored. vLLM refuses sample `logprobs` above
+  `--max-logprobs` (default 20), so the vision profiles start vLLM with `--max-logprobs 128`.
 - **Warm-up:** as for text, but measured on the expanded shared tokens. gemma (`WARM_UP=prefix`): when the shared
   prefix reaches 4,096 tokens, it is sent alone first, with its images. qwen (`WARM_UP=row`): from 800 shared tokens,
   row 1 goes first and the rest follow; one image takes a request past 800.
@@ -165,9 +169,9 @@ Results: [gemma](../results/archive/gemma-4-31b/2026-10-16T014917Z-image-sharing
 
 - **Gemma:** rows share the image without any warm-up; sending the prefix first only adds a round trip, so the
   4,096-token prefix warm-up is left for long states.
-- **Qwen:** rows sent together recompute the image, as text rows recompute the state (prompt-sharing.md §2). The
-  profile's row warm-up avoids that, and an image request always reaches its 800-token threshold. The 1.62 includes
-  the 800-block pad.
+- **Qwen:** rows sent together recompute the image, as text rows recompute the state (prompt-sharing.md §2). Sending
+  the prefix first cuts that to 1.62 (the 800-block pad included). The profile's `WARM_UP=row` (row 1 first, then the
+  rest) was not measured here; it runs on every image request, since one image reaches its 800-token threshold.
 
 ### Across requests
 

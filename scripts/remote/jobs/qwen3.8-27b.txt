@@ -1,4 +1,6 @@
 # qwen3.8-27b box queue: one `name: command` per line, run in order from the repo root by queue.sh.
-# DS-031 recut index-dev on 0.3; recollected with DS-005 stage 2.
+# DS-024 phase A: text baselines before the vision profile edits.
 stack: bash scripts/remote/stack.sh up qwen3.8-27b
-collect-index-dev: bash scripts/remote/stack.sh up qwen3.8-27b && uv run python scripts/collect.py --profile qwen3.8-27b --split index-dev
+jevbench-before: bash scripts/remote/stack.sh up qwen3.8-27b && uv run python scripts/bench.py --profile qwen3.8-27b --jevbench-only
+index-before: bash scripts/remote/stack.sh up qwen3.8-27b && uv run python scripts/evaluate.py index --profile qwen3.8-27b --ids data/splits/vision-regression.json --run-dir .cache/index-runs/qwen3.8-27b/before-$(cat .cache/remote/run_tag) --strict
+latency-before: bash scripts/remote/stack.sh up qwen3.8-27b && uv run python scripts/latency.py --profile qwen3.8-27b

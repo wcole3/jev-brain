@@ -47,6 +47,11 @@ def test_list_state_without_image_items_stays_whole():
     assert items[1] == render_state([{"a": 1}])
 
 
+def test_image_items_with_extra_keys_are_refused_not_rendered():
+    with pytest.raises(ImageError, match=r'^state\[1\]: an image item takes only the "image" key'):
+        context_items(["Pick", {"image": b64(png(8, 8)), "detail": "high"}], None)
+
+
 @pytest.mark.parametrize("src", ["https://x/a.png", "http://x/a.png", "file:///etc/passwd", "a.png", 7])
 def test_url_and_path_sources_are_refused(src):
     with pytest.raises(ImageError, match=r"images\[0\]"):
@@ -67,6 +72,11 @@ def test_undecodable_image_is_refused():
 def test_formats_outside_the_allowlist_are_refused(fmt):
     with pytest.raises(ImageError, match=r"images\[0\]: not a decodable PNG, JPEG, WEBP or GIF image"):
         decode_image(b64(encoded(8, 8, fmt)), "images[0]")
+
+
+def test_images_carry_their_request_label():
+    a = context_items([{"image": b64(png(8, 8))}], [b64(png(8, 8))])
+    assert [i.where for i in a] == ["images[0]", "state[0].image"]
 
 
 def test_small_images_pass_through_unchanged():

@@ -1,4 +1,5 @@
 from dataclasses import replace
+from functools import partial
 from types import SimpleNamespace
 
 import pytest
@@ -6,7 +7,7 @@ import pytest
 from gateway.config import Settings
 from gateway.images import Image
 from gateway.schema import ImageError
-from gateway.vision import gemma_soft_tokens, load_vision, qwen_soft_tokens
+from gateway.vision import Vision, gemma_soft_tokens, load_vision, qwen_soft_tokens
 
 
 def image(w, h):
@@ -27,6 +28,12 @@ def test_qwen_soft_tokens(w, h, n):
 def test_qwen_refuses_extreme_aspect_ratios():
     with pytest.raises(ImageError, match="200:1"):
         qwen_soft_tokens(3, 900, 16, 2, 65536, 1_638_400)
+
+
+def test_aspect_refusal_names_the_image():
+    v = Vision((1,), partial(qwen_soft_tokens, patch=16, merge=2, min_pixels=65536, max_pixels=1_638_400))
+    with pytest.raises(ImageError, match=r"^state\[2\]\.image: image aspect ratio over 200:1"):
+        v.added(replace(image(3, 900), where="state[2].image"))
 
 
 def test_gemma_profile_vision():

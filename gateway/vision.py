@@ -23,7 +23,10 @@ class Vision:
     soft_tokens: Callable[[int, int], int]  # (width, height) -> soft tokens vLLM puts in for it
 
     def expanded(self, image: Image) -> int:
-        return self.soft_tokens(image.width, image.height) + MARKS
+        try:
+            return self.soft_tokens(image.width, image.height) + MARKS
+        except ImageError as e:
+            raise ImageError(f"{image.where}: {e}") from e
 
     def added(self, image: Image) -> int:
         return self.expanded(image) - len(self.placeholder)

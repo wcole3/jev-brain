@@ -19,6 +19,7 @@ HOLDOUT_LOG = ROOT / "docs/results/vision-experiments/holdout-log.md"
 SEED = 20261016
 DEV_CAP, HOLDOUT_CAP, SHARE = 136, 218, 0.4
 LATENCY_ROWS, WARMUP = 320, 20
+MAX_HOLDOUT_LABELS = 5  # distinct experiments on the holdout before it warns
 MAX_PER_GROUP = 10  # one big group (a 70-row FUNSD document) must not dominate a benchmark's split
 LOG_HEADER = "| UTC | tool | label | commit |\n|---|---|---|---|\n"
 RULE = ("Image groups per benchmark by seeded hash, each capped at 10 rows chosen by sha256(seed:row_id); "
@@ -115,6 +116,11 @@ def commit() -> str:
     return git("rev-parse", "--short", "HEAD") + ("-dirty" if git("status", "--porcelain") else "")
 
 
+def logged_labels(log_path: Path) -> set[str]:
+    """The distinct labels in the holdout log: rereading one experiment is one use."""
+    return {line.split("|")[3].strip() for line in log_path.read_text().splitlines()[2:]}
+
+
 def log_holdout_use(tool: str, label: str, log_path: Path) -> None:
     log_path.parent.mkdir(parents=True, exist_ok=True)
     if not log_path.exists():
@@ -122,13 +128,18 @@ def log_holdout_use(tool: str, label: str, log_path: Path) -> None:
     now = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
     with log_path.open("a") as f:
         f.write(f"| {now} | {tool} | {label} | {commit()} |\n")
-    uses = len(log_path.read_text().splitlines()) - 2
-    if uses > 5:
-        print(f"warning: holdout read {uses} times (log: {log_path}); stop tuning on it", file=sys.stderr)
+    labels = logged_labels(log_path)
+    if len(labels) > MAX_HOLDOUT_LABELS:
+        print(f"warning: holdout read under {len(labels)} labels (log: {log_path}); stop tuning on it", file=sys.stderr)
 
 
 def read_manifest(name: str) -> dict:
-    return json.loads((SPLITS / f"{name}.json").read_text())
+    """A split manifest. Refuses one cut from a suite file other than the one on disk."""
+    manifest = json.loads((SPLITS / f"{name}.json").read_text())
+    have = suite_hash()
+    if manifest["meta"]["suite_sha256"] != have:
+        raise SystemExit(f"{name}: cut from suite {manifest['meta']['suite_sha256']}, file is {have}; rerun write")
+    return manifest
 
 
 def load_split(
@@ -136,9 +147,6 @@ def load_split(
 ) -> list[dict]:
     """Suite rows for a manifest, in manifest order. Refuses a stale suite and unflagged holdout reads."""
     manifest = read_manifest(name)
-    have = suite_hash()
-    if manifest["meta"]["suite_sha256"] != have:
-        raise SystemExit(f"{name}: cut from suite {manifest['meta']['suite_sha256']}, file is {have}; rerun write")
     if name == "vision-holdout":
         if not holdout:
             raise SystemExit("vision-holdout is the untouched test set: pass holdout=True (--holdout) to read it")

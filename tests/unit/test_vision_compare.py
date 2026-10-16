@@ -14,13 +14,14 @@ MANIFEST_IDS = [f"r{i}" for i in range(100)]
 
 @pytest.fixture(autouse=True)
 def manifests(tmp_path, monkeypatch):
-    """vision-dev and vision-holdout manifests over r0..r99 in tmp, and the holdout log in tmp."""
+    """vision-dev and vision-holdout manifests over r0..r99 in tmp, cut from suite "x", and the holdout log in tmp."""
     splits = tmp_path / "splits"
     splits.mkdir()
     for name in ("vision-dev", "vision-holdout"):
         (splits / f"{name}.json").write_text(json.dumps({"meta": {"suite_sha256": "x"}, "ids": MANIFEST_IDS}))
     monkeypatch.setattr(vs, "SPLITS", splits)
     monkeypatch.setattr(vs, "HOLDOUT_LOG", tmp_path / "holdout-log.md")
+    monkeypatch.setattr(vs, "suite_hash", lambda: "x")
     return splits
 
 
@@ -269,7 +270,7 @@ def test_offline_ids_outside_the_manifest_are_refused(tmp_path):
 
 def test_live_runs_are_cut_to_the_manifest(tmp_path, monkeypatch, manifests):
     fake_suite(tmp_path, monkeypatch, 8)
-    (manifests / "vision-dev.json").write_text(json.dumps({"meta": {}, "ids": ["r1", "r3", "r5"]}))
+    (manifests / "vision-dev.json").write_text(json.dumps({"meta": {"suite_sha256": "x"}, "ids": ["r1", "r3", "r5"]}))
     live = write_live(tmp_path / "live", [ok_result(f"r{i}", {"A": 0.9, "B": 0.1}) for i in range(8)])
     vc.main(compare(tmp_path, f"live={live}"))
     summary = summary_of(tmp_path / "o")
@@ -296,3 +297,11 @@ def test_live_row_refuses_unknown_ids_and_golds(tmp_path, monkeypatch):
     suite["r1"]["expected"]["answer"] = "Q"
     with pytest.raises(SystemExit, match="r1.*'Q'.*criteria"):
         vc.live_row(ok_result("r1", {"A": 1.0, "B": 0.0}), suite)
+
+
+def test_a_manifest_cut_from_another_suite_is_refused(tmp_path, manifests):
+    (manifests / "vision-dev.json").write_text(json.dumps({"meta": {"suite_sha256": "stale"}, "ids": MANIFEST_IDS}))
+    base = write_offline(tmp_path / "base", [hit(i, True) for i in range(6)])
+    with pytest.raises(SystemExit, match="vision-dev: cut from suite stale, file is x"):
+        vc.main(compare(tmp_path, f"base={base}"))
+    assert not (tmp_path / "o").exists()

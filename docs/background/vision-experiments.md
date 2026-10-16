@@ -48,8 +48,8 @@ matches the suite on disk.
   `vision_run.py --ids vision-holdout`, `vision_offline.py` on a holdout collect, and
   `vision_compare.py --ids vision-holdout` (one entry per compare). Each entry appends the date, tool, label
   and commit to `docs/results/vision-experiments/holdout-log.md`, after every check that can refuse the run.
-- The log warns from the 6th entry on. It counts entries, not looks: one finalist's confirmation (collect,
-  its arms, compare) writes several, so count looks by label.
+- The log warns once it holds more than 5 distinct labels; rereads under one label count once. The tools
+  label differently (`vision_offline.py` adds the arm and orders), so one confirmation can count as several.
 - Finalists only, at most 5 logged looks, and confirm once. Reused test sets overfit mostly through winner
   selection (Dwork et al. 2015; Recht et al. 2019), so the holdout is for confirming, not choosing.
 - Nothing is ever fitted on holdout rows. A fitted arm on a holdout collect fits on all of a matching dev
@@ -112,6 +112,8 @@ one every other is paired against; the other configs follow as positional `NAME=
   unsupported, invalid and no-gold rows, so put an offline arm first as `--baseline` when mixing: everything
   is then cut to its ids. `summary.md` lists the skipped rows per offline arm and the errored rows per live
   run.
+- **No full-suite compare.** Compare always cuts live runs to a manifest (default `vision-dev`), so the CLI
+  has no full-suite compare; use the kit's `vision score` for full-suite numbers.
 
 - **Index** is the kit's: per benchmark skill = (acc - mean chance) / (1 - mean chance), clipped to [0, 1],
   then a weighted mean with the kit's weights, R-Bench-M 0.5, MMMU-Pro vision 0.25 and 1.0 for the rest. With
@@ -134,7 +136,8 @@ one every other is paired against; the other configs follow as positional `NAME=
 - **ΔECE, ΔNLL** are calibration. **Tokens** is the mean `input_tokens` of the arm's own reads: an identity
   arm pays for one order, not every collected one; "—" marks an arm scored from an older collect. **Latency**
   is p50 and p80 when attached with `--latency NAME=DIR` (a dir with a latency run's `summary.json`).
-- **Refusals:** configs that do not cover the same ids; an offline arm from another split than `--ids`; a
+- **Refusals:** a manifest cut from another suite file (as in `load_split`); configs that do not cover the
+  same ids; an offline arm from another split than `--ids`; a
   live row not in the suite or whose gold is not an option; a latency summary without a power limit at start
   and end, or with a limit that changed mid-run; summaries at different limits. Errored live rows count as
   wrong.

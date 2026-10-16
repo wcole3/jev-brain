@@ -140,3 +140,13 @@ def test_stale_suite_hash_refused_naming_both_hashes(tmp_path, monkeypatch):
     with pytest.raises(SystemExit) as e:
         vs.load_split("vision-dev")
     assert "deadbeef" in str(e.value) and hashlib.sha256(path.read_bytes()).hexdigest() in str(e.value)
+
+
+def test_holdout_warning_counts_distinct_labels_not_reads(tmp_path, capsys):
+    log = tmp_path / "log.md"
+    for _ in range(6):
+        vs.log_holdout_use("t", "same", log)
+    assert "warning" not in capsys.readouterr().err.lower()
+    for n in range(5):
+        vs.log_holdout_use("t", f"run{n}", log)
+        assert ("warning" in capsys.readouterr().err.lower()) == (n == 4)  # "same" + 5 runs: the 6th label

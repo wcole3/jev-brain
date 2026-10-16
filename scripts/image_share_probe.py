@@ -72,7 +72,9 @@ def summarize(records: list[dict]) -> list[dict]:
 
 
 def summary_markdown(profile: str, rows: list[dict]) -> str:
-    lines = [f"# Image prompt sharing, {profile}", "", "computed / usage tokens; medians over reps", "",
+    lines = [f"# Image prompt sharing, {profile}", "",
+             "ratio = computed / usage tokens, medians over reps. computed includes the prefix pad; usage does not.",
+             "",
              "| arm | questions | reps | ratio | ms |", "|---|---|---|---|---|"]
     lines += [f"| {r['arm']} | {r['questions']} | {r['reps']} | {r['ratio']:.2f} | {r['ms']:.0f} |" for r in rows]
     return "\n".join(lines) + "\n"
@@ -104,9 +106,10 @@ class Probe:
         after = await self.metrics()
         prompt, cached = after["prompt"] - before["prompt"], after["cached"] - before["cached"]
         usage = batch.input_tokens
-        return {"rows": len(rows), "shared_len": batch.shared_len, "shared_tokens": batch.shared_tokens,
-                "images_shared": batch.images_shared, "added": batch.added, "usage": usage, "prompt": prompt,
-                "cached": cached, "computed": prompt - cached, "ratio": (prompt - cached) / usage, "ms": ms}
+        return {"rows": len(rows), "shared_len": batch.shared_len, "unpadded_len": batch.unpadded_len,
+                "shared_tokens": batch.shared_tokens, "images_shared": batch.images_shared, "added": batch.added,
+                "usage": usage, "prompt": prompt, "cached": cached, "computed": prompt - cached,
+                "ratio": (prompt - cached) / usage, "ms": ms}
 
 
 async def run(s: Settings, vllm: str) -> list[dict]:

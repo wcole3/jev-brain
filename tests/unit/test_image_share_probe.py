@@ -28,6 +28,7 @@ def test_summary_markdown_has_one_row_per_arm_and_question_count():
     md = summary_markdown("gemma-4-31b", summarize(RECORDS))
     assert "| all | 4 | 3 | 1.20 | 400 |" in md
     assert "| prefix | 16 | 1 | 1.05 | 1100 |" in md
+    assert "computed includes the prefix pad; usage does not" in md
 
 
 def test_counters_sum_label_sets_and_skip_lookalikes():

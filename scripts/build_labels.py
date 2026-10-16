@@ -12,13 +12,17 @@ from gateway.labels import build_labels, save_labels
 from gateway.layouts import load_layouts
 
 
+def table_for(tok, layout, s: Settings) -> dict:
+    return build_labels(tok, layout) | {"model": s.hf_model, "revision": s.hf_revision}
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--profile", required=True)
     s = Settings.from_profile(parser.parse_args().profile)
     tok = AutoTokenizer.from_pretrained(s.hf_model, revision=s.hf_revision)
     for name, layout in load_layouts().items():
-        table = build_labels(tok, layout) | {"model": s.hf_model, "revision": s.hf_revision}
+        table = table_for(tok, layout, s)
         path = s.data_dir(name) / "labels.json"
         save_labels(path, table)
         print(f"wrote {path} ({len(table['ids'])} labels)")

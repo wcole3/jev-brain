@@ -333,3 +333,44 @@ def test_arm_json_paths_are_absolute(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     arm = vo.main(["--collect", "x/dev.jsonl.gz", "--arm", "text", "--out", "o"])
     assert arm["collect"] == str(collect.resolve())
+
+
+EXPERIMENT_FILE = "prompts/experiments/header-worded.toml"
+
+
+def test_text_arm_is_refused_for_an_experiment_layout(tmp_path):
+    data = tmp_path / "data"
+    write_calibration(data / "gemma-4-31b" / "header" / "calibration.json", 2.0)
+    collect = write_collect(tmp_path / "x", "dev", planted(1, seed=24, copies=5), layout_file=EXPERIMENT_FILE,
+                            env={"DATA_ROOT": str(data)})
+    with pytest.raises(SystemExit, match="experiment layout"):
+        vo.main(["--collect", str(collect), "--arm", "text", "--out", str(tmp_path / "o")])
+    assert not (tmp_path / "o").exists()
+
+
+def test_text_arm_is_refused_without_a_calibration_file(tmp_path):
+    data = tmp_path / "empty"
+    collect = write_collect(tmp_path / "x", "dev", planted(1, seed=25, copies=5), env={"DATA_ROOT": str(data)})
+    want = data / "gemma-4-31b" / "header" / "calibration.json"
+    with pytest.raises(SystemExit, match=str(want)):
+        vo.main(["--collect", str(collect), "--arm", "text", "--out", str(tmp_path / "o")])
+
+
+@pytest.mark.parametrize("experiment", [False, True])
+def test_fitted_arm_without_text_calibration_falls_back_to_T_1(tmp_path, experiment):
+    data = tmp_path / "data"
+    write_calibration(data / "gemma-4-31b" / "header" / "calibration.json", 2.0)
+    config = {"layout_file": EXPERIMENT_FILE} if experiment else {}
+    env = {"DATA_ROOT": str(data if experiment else tmp_path / "empty")}
+    collect = write_collect(tmp_path / "x", "dev", planted(1, seed=26, copies=5), env=env, **config)
+    arm = vo.main(["--collect", str(collect), "--arm", "fit-T", "--out", str(tmp_path / "o")])
+    assert arm["fallback_T"] == 1.0 and arm["text_calibration"] is None
+    assert all(f["fallback"] and f["T"] == 1.0 for f in arm["folds"].values())
+    on_disk = json.loads((tmp_path / "o" / "arm.json").read_text())
+    assert on_disk["fallback_T"] == 1.0 and on_disk["text_calibration"] is None
+
+
+def test_arm_json_records_the_text_T_as_fallback(tmp_path):
+    collect = write_collect(tmp_path / "x", "dev", planted(1, seed=27, copies=5))
+    arm = vo.main(["--collect", str(collect), "--arm", "fit-T", "--out", str(tmp_path / "o")])
+    assert arm["fallback_T"] == arm["text_calibration"]["T"]

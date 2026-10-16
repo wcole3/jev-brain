@@ -19,6 +19,7 @@ from gateway.padding import Padding, newline_token
 from gateway.readout import GENERATE_PATH
 from gateway.schema import SystemOneRequest
 from gateway.vision import load_vision
+from scripts import build_labels as bl
 from scripts import vision_collect as vc
 from scripts import vision_splits as vs
 from scripts.collect import records
@@ -338,10 +339,11 @@ async def test_layout_file_is_collected_with_in_memory_labels(suite, gemma_tok):
     n, fake = await run(suite, "--layout-file", str(EXPERIMENT))
     recs = list(records(out_file(suite)))
     layout = load_layout(EXPERIMENT)
-    table = build_labels(gemma_tok, layout)
+    on_disk = suite / "built" / "labels.json"  # what build_labels.py would write for this layout
+    save_labels(on_disk, bl.table_for(gemma_tok, layout, Settings.from_profile(PROFILE)))
     assert n == 4 and all(r["status"] == "ok" and r["layout"] == "header-worded" for r in recs)
     assert recs[0]["stamp"]["layout_sha256"] == layout.sha256
-    assert recs[0]["stamp"]["labels_sha256"] == hashlib.sha256((json.dumps(table, indent=1) + "\n").encode()).hexdigest()
+    assert recs[0]["stamp"]["labels_sha256"] == hashlib.sha256(on_disk.read_bytes()).hexdigest()
     assert not (suite / "data" / PROFILE / "header-worded").exists()
     hint = gemma_tok.encode("Answer from the image(s).", add_special_tokens=False)
     assert any(hint == p[i : i + len(hint)] for p in fake.prompts for i in range(len(p)))
@@ -423,3 +425,76 @@ def test_layout_and_layout_file_are_exclusive(capsys):
     with pytest.raises(SystemExit):
         vc.parse_args(["--profile", PROFILE, "--label", "x", "--layout", "header", "--layout-file", str(EXPERIMENT)])
     assert "not allowed with" in capsys.readouterr().err
+
+
+async def test_layout_file_puts_image_labels_in_prompts(suite, gemma_tok):
+    vision = vision_with({"max_soft_tokens": 560})
+    _, fake = await run(suite, "--layout-file", str(EXPERIMENT), fake=FakeVllm(vision))
+    label = gemma_tok.encode("Image 1:\n", add_special_tokens=False) + list(vision.placeholder)
+    assert all(any(label == p[i : i + len(label)] for i in range(len(p))) for p in fake.prompts)
+
+
+async def test_layout_file_whose_frame_merges_is_refused(suite, monkeypatch):
+    def merging(tok, layout):
+        raise ValueError(f"layout {layout.name}: the chat template tail merges with the answer slot")
+
+    monkeypatch.setattr(vc, "chat_frame", merging)
+    fake = FakeVllm(vision_with({"max_soft_tokens": 560}))
+    with pytest.raises(SystemExit, match="header-worded: the chat template tail merges"):
+        await run(suite, "--layout-file", str(EXPERIMENT), fake=fake)
+    assert fake.paths == []
+
+
+def write_rows(path, rows: list[dict]):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("".join(json.dumps(r) + "\n" for r in rows))
+    return path
+
+
+async def refused_rows(suite, rows_file, match: str) -> None:
+    """The run stops on the rows file before any request and before any config is written."""
+    fake = FakeVllm(vision_with({"max_soft_tokens": 560}))
+    with pytest.raises(SystemExit, match=match):
+        await run(suite, "--rows", str(rows_file), "--split", "calib", fake=fake)
+    assert fake.paths == [] and not (out_file(suite).parent / "config.json").exists()
+
+
+async def test_rows_file_with_a_missing_image_is_refused(suite):
+    png(suite / "calib" / "pics" / "x.png", "white")
+    rows = [row(10, "pics/x.png", ["A", "B"], "A"), row(11, "pics/gone.png", ["A", "B"], "A"),
+            row(12, "pics/also-gone.png", ["A", "B"], "A")]
+    await refused_rows(suite, write_rows(suite / "calib" / "rows.jsonl", rows), r"pics/gone\.png")
+
+
+async def test_missing_rows_file_is_refused(suite):
+    await refused_rows(suite, suite / "nowhere.jsonl", "nowhere.jsonl")
+
+
+@pytest.mark.parametrize("key", ["id", "images", "benchmark", "questions", "expected", "state"])
+async def test_rows_missing_a_key_are_refused_naming_the_row(suite, key):
+    png(suite / "calib" / "pics" / "x.png", "white")
+    rows = [row(10, "pics/x.png", ["A", "B"], "A"), row(11, "pics/x.png", ["A", "B"], "A")]
+    del rows[1][key]
+    await refused_rows(suite, write_rows(suite / "calib" / "rows.jsonl", rows), f"row 2.*{key}")
+
+
+async def test_duplicate_row_ids_are_refused(suite):
+    png(suite / "calib" / "pics" / "x.png", "white")
+    rows = [row(10, "pics/x.png", ["A", "B"], "A"), row(10, "pics/x.png", ["A", "B"], "B")]
+    await refused_rows(suite, write_rows(suite / "calib" / "rows.jsonl", rows), "bench:10")
+
+
+@pytest.mark.parametrize("name", ["../calib", "Calib", "a/b", ""])
+def test_split_name_is_lowercase_letters_digits_and_dashes(name, capsys):
+    with pytest.raises(SystemExit):
+        vc.parse_args(["--profile", PROFILE, "--label", "x", "--rows", "r.jsonl", "--split", name])
+    assert "--split" in capsys.readouterr().err
+
+
+async def test_a_suite_split_then_rows_under_one_label_is_refused(suite):
+    await run(suite)
+    png(suite / "calib" / "pics" / "x.png", "white")
+    rows_file = write_rows(suite / "calib" / "rows.jsonl", [row(10, "pics/x.png", ["A", "B"], "A")])
+    with pytest.raises(SystemExit, match="rows"):
+        await run(suite, "--rows", str(rows_file), "--split", "calib")
+    assert not out_file(suite, "calib").exists()

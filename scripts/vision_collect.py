@@ -17,6 +17,7 @@ import io
 import json
 import mimetypes
 import os
+import re
 import uuid
 from pathlib import Path
 
@@ -28,7 +29,7 @@ from gateway.app import load_engine, vllm_client
 from gateway.calibration import UNCALIBRATED
 from gateway.config import ROOT, Settings, read_env_file
 from gateway.decide import build_batch, read_rows
-from gateway.labels import Labels, build_labels
+from gateway.labels import Labels
 from gateway.layouts import load_layout
 from gateway.orders import option_orders
 from gateway.prompts import chat_frame
@@ -36,12 +37,15 @@ from gateway.questions import render_question
 from gateway.readout import GENERATE_PATH
 from gateway.schema import ImageError, Question, RequestError, SystemOneRequest
 from scripts import vision_splits
+from scripts.build_labels import table_for
 from scripts.collect import ATTEMPTS, BACKOFF, repair, stamp
 
 COLLECT = ROOT / ".cache" / "vision-collect"
 PROBE_SIZE = (1280, 1092)
 CHUNK = 500  # records written per flush, so a crash loses at most one chunk
 SUITE_SPLITS = ("dev", "holdout", "latency")
+SPLIT_NAME = re.compile(r"[a-z0-9-]+")
+ROW_KEYS = ("id", "benchmark", "images", "state", "questions", "expected")
 
 
 def settings_for(profile: str, env: dict[str, str], vllm: str) -> Settings:
@@ -67,14 +71,15 @@ def add_layout_file(engine, path: Path) -> str:
         layout = load_layout(path)
         if layout.name in engine.layouts:
             raise SystemExit(f"{path}: {layout.name!r} is a prompts/ layout name; rename the experiment file")
-        table = build_labels(engine.tokenizer, layout)
-    except (OSError, ValueError) as e:  # a bad file, or a label that merges with the answer text
+        table = table_for(engine.tokenizer, layout, engine.settings)
+        frame = chat_frame(engine.tokenizer, layout)
+    except (OSError, ValueError) as e:  # a bad file, or a label or frame that merges with the answer text
         raise SystemExit(f"{path}: {e}") from e
     engine.layouts[layout.name] = layout
-    engine.frames[layout.name] = chat_frame(engine.tokenizer, layout)
+    engine.frames[layout.name] = frame
     engine.labels[layout.name] = Labels(table["names"], table["ids"])
     engine.calibration[layout.name] = UNCALIBRATED
-    # hashed as save_labels would write it, so it matches a labels.json built on disk later
+    # the bytes build_labels.py would write, so it matches a labels.json built on disk later
     return hashlib.sha256((json.dumps(table, indent=1) + "\n").encode()).hexdigest()
 
 
@@ -196,8 +201,30 @@ def suite_source(split: str, holdout: bool, label: str) -> Source:
     return Source(rows, vision_splits.groups(vision_splits.read_suite()), vision_splits.SUITE.parent)
 
 
+def file_rows(path: Path) -> list[dict]:
+    """Suite-format rows; refuses a missing file, a row without a needed key, and a repeated id."""
+    try:
+        lines = path.read_text().splitlines()
+    except OSError as e:
+        raise SystemExit(f"--rows {path}: {e.strerror}") from e
+    rows, seen = [], set()
+    for n, line in enumerate((line for line in lines if line), start=1):
+        row = json.loads(line)
+        if missing := [k for k in ROW_KEYS if k not in row]:
+            raise SystemExit(f"{path}: row {n} ({row.get('id')}) lacks {missing}")
+        if row["id"] in seen:
+            raise SystemExit(f"{path}: id {row['id']} appears twice")
+        seen.add(row["id"])
+        rows.append(row)
+    return rows
+
+
 def file_source(path: Path) -> Source:
-    rows = [json.loads(line) for line in path.read_text().splitlines() if line]
+    """Rows from a file, images relative to it. A missing image stops the run: its row would read as done."""
+    rows = file_rows(path)
+    for row in rows:
+        if missing := next((p for p in row["images"] if not (path.parent / p).is_file()), None):
+            raise SystemExit(f"{path}: row {row['id']} image {path.parent / missing} is missing")
     return Source(rows, vision_splits.groups(rows), path.parent)
 
 
@@ -266,6 +293,7 @@ def config_for(args, s: Settings, commit: str) -> dict:
 
 async def run(args, transport: httpx.AsyncBaseTransport | None = None) -> int:
     s = settings_for(args.profile, args.env, args.vllm)
+    rows = file_source(Path(args.rows)) if args.rows else None  # a bad rows file stops the run before any request
     if not args.layout_file:
         require_labels(s, args.layout)
     try:
@@ -288,7 +316,7 @@ async def run(args, transport: httpx.AsyncBaseTransport | None = None) -> int:
         check_config(folder, config)
         done = resume(path, args.layout, rec_stamp)
         # load_split logs a holdout use, so it comes after every check that can refuse the run
-        source = file_source(Path(args.rows)) if args.rows else suite_source(args.split, args.holdout, args.label)
+        source = rows or suite_source(args.split, args.holdout, args.label)
         write_configs(folder, config)
         n = await collect(engine, source, args.layout, args.orders, path, rec_stamp, done, args.concurrency)
     print(f"wrote {n} records to {path}")
@@ -325,6 +353,8 @@ def parse_args(argv=None) -> argparse.Namespace:
         p.error(f"--rows needs --split with a name other than {', '.join(SUITE_SPLITS)} (e.g. calib)")
     if args.rows and args.holdout:
         p.error("--rows does not read the holdout: drop --holdout")
+    if not SPLIT_NAME.fullmatch(args.split):
+        p.error(f"--split {args.split!r}: use lowercase letters, digits and dashes")
     if not args.rows and args.split not in SUITE_SPLITS:
         p.error(f"--split is one of {', '.join(SUITE_SPLITS)} unless --rows is given")
     # --layout defaults after parsing: argparse lets a value equal to the default slip past the exclusive group

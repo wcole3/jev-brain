@@ -4,7 +4,8 @@ usage: uv run python scripts/vision_offline.py --collect FILE --arm A [--orders 
        --out DIR
 Fitted arms are 2-fold cross-fitted by group: a row is scored with parameters fitted on the other fold.
 Nothing is fitted on holdout rows: on a holdout collect, fitted arms fit on a dev collect (--fit-on).
-Scoring a holdout collect needs --holdout and is logged.
+Scoring a holdout collect needs --holdout and is logged. The text arm needs the shipped calibration file, so
+experiment layouts have none; without it a fitted arm's tiny-fold fallback uses T = 1.
 """
 
 import argparse
@@ -16,7 +17,7 @@ from collections import Counter, defaultdict
 from dataclasses import dataclass, replace
 from pathlib import Path
 
-from gateway.calibration import Calibration, load_calibration, orders_warning
+from gateway.calibration import UNCALIBRATED, Calibration, load_calibration, orders_warning
 from gateway.config import ROOT, Settings, read_env_file
 from gateway.decide import blend, probabilities
 from gateway.orders import option_orders
@@ -178,12 +179,19 @@ def score(recs: list[dict], arm: str, orders: str, text_cal: Calibration,
     return rows, report
 
 
-def text_calibration(profile: str, layout: str, env: dict[str, str]) -> tuple[Calibration, Path]:
-    """The profile's shipped calibration under the collect's --env (PREFIX_BLOCK picks the file); offline reuse
-    skips the stamp check, and arm.json says so."""
-    s = Settings.from_env(read_env_file(ROOT / "profiles" / f"{profile}.env") | env)
+def text_calibration(profile: str, layout: str, config: dict) -> tuple[Calibration | None, Path]:
+    """The shipped calibration under the collect's --env (PREFIX_BLOCK picks the file), stamp unchecked.
+    None when there is no file or the layout is an experiment one (no text arm)."""
+    s = Settings.from_env(read_env_file(ROOT / "profiles" / f"{profile}.env") | config.get("env", {}))
     path = s.calibration_path(layout)
+    if config.get("layout_file") or not path.exists():
+        return None, path
     return load_calibration(path, expect=None), path
+
+
+def no_text_arm(config: dict, path: Path) -> SystemExit:
+    why = f"{config['layout_file']} is an experiment layout" if config.get("layout_file") else f"{path} is missing"
+    return SystemExit(f"arm text needs a shipped text calibration: {why}")
 
 
 def only(values: set, what: str, path: Path):
@@ -239,18 +247,21 @@ def run(args) -> dict:
     fit_on = fit_source(args, config, recs)
     profile = only({r["stamp"]["profile"] for r in recs}, "profile", args.collect)
     layout = only({r["layout"] for r in recs}, "layout", args.collect)
-    cal, cal_path = text_calibration(profile, layout, config.get("env", {}))
-    if warning := orders_warning(cal, args.orders):
+    cal, cal_path = text_calibration(profile, layout, config)
+    if cal is None and args.arm == "text":
+        raise no_text_arm(config, cal_path)
+    if cal is not None and (warning := orders_warning(cal, args.orders)):
         print(f"warning: {warning}", file=sys.stderr)
-    try:
-        rows, report = score(recs, args.arm, args.orders, cal, fit_on)
+    try:  # without a text calibration a tiny fold falls back to T = 1
+        rows, report = score(recs, args.arm, args.orders, cal or UNCALIBRATED, fit_on)
     except ValueError as e:
         raise SystemExit(str(e)) from e
-    text = {"path": str(cal_path), "source": cal.source, "T": cal.T["choice"], "orders": cal.orders,
-            "stamp_checked": False}
+    text = None if cal is None else {"path": str(cal_path), "source": cal.source, "T": cal.T["choice"],
+                                     "orders": cal.orders, "stamp_checked": False}
     fit = str(args.fit_on.resolve()) if args.fit_on else None
     arm = report | {"collect": str(args.collect.resolve()), "collect_config": config, "fit_on": fit,
-                    "text_calibration": text, "commit": vision_splits.commit()}
+                    "text_calibration": text, "fallback_T": (cal or UNCALIBRATED).T["choice"],
+                    "commit": vision_splits.commit()}
     if holdout:  # logged after every check that can refuse the run
         vision_splits.log_holdout_use("vision_offline", f"{config['label']} {args.arm} {args.orders}",
                                       vision_splits.HOLDOUT_LOG)

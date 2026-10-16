@@ -46,6 +46,14 @@ def test_image_label_needs_n(tmp_path):
         load_layout(tmp_path / "bad.toml")
 
 
+@pytest.mark.parametrize("label", ["Image {n} of {total}:\\n", "Image {n} {0}:\\n", "Image {n} {:\\n"])
+def test_image_label_formats_with_n_only(tmp_path, label):
+    bad = (PROMPTS_DIR / "header.toml").read_text() + f'image_label = "{label}"\n'
+    (tmp_path / "bad.toml").write_text(bad)
+    with pytest.raises(ValueError, match="bad.toml: image_label must format with {n} only"):
+        load_layout(tmp_path / "bad.toml")
+
+
 def test_gateway_does_not_load_experiment_layouts():
     assert sorted(load_layouts()) == ["decider_chat", "header", "question_first"]
 

@@ -37,6 +37,15 @@ class Layout:
         return self.option.split("{label}")[1]
 
 
+def _check_image_label(name: str, label: str) -> None:
+    if "{n}" not in label:
+        raise ValueError(f"{name}: image_label needs {{n}}")
+    try:
+        label.format(n=1)
+    except (KeyError, IndexError, ValueError) as e:
+        raise ValueError(f"{name}: image_label must format with {{n}} only ({e!r})") from None
+
+
 def _check(name: str, data: dict) -> None:
     missing = [k for k in REQUIRED if k not in data]
     if missing:
@@ -62,8 +71,8 @@ def _check(name: str, data: dict) -> None:
             raise ValueError(f"{name}: {key} needs {placeholder}")
     if "{text}" not in data["option"].split("{label}")[-1]:
         raise ValueError(f"{name}: option needs {{text}} after {{label}}")
-    if "image_label" in data and "{n}" not in data["image_label"]:
-        raise ValueError(f"{name}: image_label needs {{n}}")
+    if "image_label" in data:
+        _check_image_label(name, data["image_label"])
     if len(data["noul"]) != 2:
         raise ValueError(f"{name}: noul must be [false word, true word]")
 

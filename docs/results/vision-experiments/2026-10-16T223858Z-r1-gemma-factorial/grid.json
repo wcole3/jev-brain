@@ -1,0 +1,96 @@
+{
+ "factors": {
+  "budget": [
+   "560",
+   "280",
+   "1120"
+  ],
+  "placement": [
+   "current",
+   "imgfirst"
+  ],
+  "wording": [
+   "none",
+   "worded"
+  ]
+ },
+ "reference": {
+  "budget": "560",
+  "placement": "current",
+  "wording": "none"
+ },
+ "cells": [
+  {
+   "dir": ".cache/vision-arms/gemma-4-31b/r1-b560-header-fitT",
+   "budget": "560",
+   "placement": "current",
+   "wording": "none"
+  },
+  {
+   "dir": ".cache/vision-arms/gemma-4-31b/r1-b560-header-imgfirst-fitT",
+   "budget": "560",
+   "placement": "imgfirst",
+   "wording": "none"
+  },
+  {
+   "dir": ".cache/vision-arms/gemma-4-31b/r1-b560-header-worded-fitT",
+   "budget": "560",
+   "placement": "current",
+   "wording": "worded"
+  },
+  {
+   "dir": ".cache/vision-arms/gemma-4-31b/r1-b560-header-imgfirst-worded-fitT",
+   "budget": "560",
+   "placement": "imgfirst",
+   "wording": "worded"
+  },
+  {
+   "dir": ".cache/vision-arms/gemma-4-31b/r1-b280-header-fitT",
+   "budget": "280",
+   "placement": "current",
+   "wording": "none"
+  },
+  {
+   "dir": ".cache/vision-arms/gemma-4-31b/r1-b280-header-imgfirst-fitT",
+   "budget": "280",
+   "placement": "imgfirst",
+   "wording": "none"
+  },
+  {
+   "dir": ".cache/vision-arms/gemma-4-31b/r1-b280-header-worded-fitT",
+   "budget": "280",
+   "placement": "current",
+   "wording": "worded"
+  },
+  {
+   "dir": ".cache/vision-arms/gemma-4-31b/r1-b280-header-imgfirst-worded-fitT",
+   "budget": "280",
+   "placement": "imgfirst",
+   "wording": "worded"
+  },
+  {
+   "dir": ".cache/vision-arms/gemma-4-31b/r1-b1120-header-fitT",
+   "budget": "1120",
+   "placement": "current",
+   "wording": "none"
+  },
+  {
+   "dir": ".cache/vision-arms/gemma-4-31b/r1-b1120-header-imgfirst-fitT",
+   "budget": "1120",
+   "placement": "imgfirst",
+   "wording": "none"
+  },
+  {
+   "dir": ".cache/vision-arms/gemma-4-31b/r1-b1120-header-worded-fitT",
+   "budget": "1120",
+   "placement": "current",
+   "wording": "worded"
+  },
+  {
+   "dir": ".cache/vision-arms/gemma-4-31b/r1-b1120-header-imgfirst-worded-fitT",
+   "budget": "1120",
+   "placement": "imgfirst",
+   "wording": "worded"
+  }
+ ]
+}

@@ -1,0 +1,18 @@
+{
+ "collect": ".cache/vision-collect/gemma-4-31b/r1-b560-header/dev.jsonl.gz",
+ "orders": "identity",
+ "rows": 1462,
+ "skipped": {},
+ "text": {
+  "T": 4.262737987560785,
+  "ece": 0.0767639891079557,
+  "nll": 0.6079325708190363,
+  "accuracy": 0.8030095759233926
+ },
+ "image": {
+  "T": 4.105538378722478,
+  "ece": 0.08252784909501605,
+  "nll": 0.6165339897645984,
+  "accuracy": 0.8030095759233926
+ }
+}

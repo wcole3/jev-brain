@@ -1,6 +1,6 @@
 # Vision experiment campaign, round 1 (DS-035, DS-036, DS-037)
 
-Date: 2026-10-16. Status: approved in brainstorming, pending spec review.
+Date: 2026-10-16. Status: approved. Plan: [2026-10-16-vision-campaign-1.md](../plans/2026-10-16-vision-campaign-1.md).
 Tickets: DS-035 (prompt and layout), DS-036 (image budget and calibration), DS-037 (latency).
 Builds on: the DS-034 harness ([vision-experiments.md](../../background/vision-experiments.md)) and its
 dev baselines (`docs/results/vision-experiments/*-ds034-*-baseline`).

@@ -369,7 +369,7 @@ async def test_layout_file_named_like_a_prompts_layout_is_refused(suite):
     assert fake.paths == []
 
 
-async def test_rows_file_collects_with_its_own_image_dir(suite):
+async def collect_calib(suite):
     other = suite / "calib"
     png(other / "pics" / "x.png", "white")
     png(other / "pics" / "y.png", "black")
@@ -378,13 +378,26 @@ async def test_rows_file_collects_with_its_own_image_dir(suite):
     rows_file = other / "rows.jsonl"
     rows_file.write_text("".join(json.dumps(r) + "\n" for r in rows))
     n, _ = await run(suite, "--rows", str(rows_file), "--split", "calib")
+    return rows_file, n
+
+
+async def test_rows_file_collects_with_its_own_image_dir(suite):
+    rows_file, n = await collect_calib(suite)
     recs = list(records(out_file(suite, "calib")))
     assert n == 3 and [r["status"] for r in recs] == ["ok"] * 3
     assert [r["group"] for r in recs] == ["bench:10", "bench:11", "bench:10"]
     folder = out_file(suite).parent
     config = json.loads((folder / "calib.config.json").read_text())
     assert config["split"] == "calib" and config["rows"] == str(rows_file.resolve())
+    assert config["rows_sha256"] == hashlib.sha256(rows_file.read_bytes()).hexdigest()
     assert not out_file(suite).exists() and not (suite / "holdout-log.md").exists()
+
+
+async def test_a_changed_rows_file_is_refused_on_resume(suite):
+    rows_file, _ = await collect_calib(suite)
+    rows_file.write_text(rows_file.read_text().replace("Question 10?", "Question ten?"))
+    with pytest.raises(SystemExit, match="rows_sha256"):
+        await run(suite, "--rows", str(rows_file), "--split", "calib")
 
 
 @pytest.mark.parametrize("extra", [("--split", "dev"), ()])

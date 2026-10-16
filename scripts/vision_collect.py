@@ -260,6 +260,7 @@ def config_for(args, s: Settings, commit: str) -> dict:
         config["layout_file"] = repo_relative(args.layout_file)
     if args.rows:
         config["rows"] = repo_relative(args.rows)
+        config["rows_sha256"] = hashlib.sha256(Path(args.rows).read_bytes()).hexdigest()
     return config
 
 

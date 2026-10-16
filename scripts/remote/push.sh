@@ -1,18 +1,19 @@
 #!/usr/bin/env bash
 # Put this commit and the pushed-not-rebuilt data on a rented box, set its profile, and start its queue.
-# usage: push.sh SSH_URL PROFILE [--restore] [--dry-run]   (SSH_URL as `vastai ssh-url ID` prints it: ssh://root@HOST:PORT)
+# usage: push.sh SSH_URL PROFILE [--restore] [--vision] [--dry-run]   (SSH_URL as `vastai ssh-url ID` prints it: ssh://root@HOST:PORT)
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 box_repo=/workspace/jev-brain
-usage() { echo "usage: push.sh ssh://root@HOST:PORT PROFILE [--restore] [--dry-run]" >&2; exit 2; }
+usage() { echo "usage: push.sh ssh://root@HOST:PORT PROFILE [--restore] [--vision] [--dry-run]" >&2; exit 2; }
 
 (( $# >= 2 )) || usage
-url=$1 profile=$2 dry=0 restore=0
+url=$1 profile=$2 dry=0 restore=0 vision=0
 shift 2
 for arg; do
   case $arg in
     --dry-run) dry=1 ;;
     --restore) restore=1 ;;
+    --vision) vision=1 ;;
     *) usage ;;
   esac
 done
@@ -56,6 +57,11 @@ check+=" || { echo 'box tree differs from the pushed commit; not starting:' >&2;
 run "${ssh[@]}" "$box" "$check"
 run "${rsync[@]}" --relative .cache/decision-index/rows-0.3.jsonl.gz .cache/decision-index/suite-0.3 \
   .cache/jevbench "$box:$box_repo/"
+# vision: the Decision Index kit source and its 4.3 GB Vision suite (DS-024), for vision_run.py and the stock baseline.
+if (( vision )); then
+  run "${rsync[@]}" --relative .cache/decision-index-vision/src .cache/decision-index-vision/work/vision \
+    "$box:$box_repo/"
+fi
 
 # restore: a replacement box gets the pulled runs, run tag and index/collect markers before its queue starts.
 # A finished index must stay done (a rerun would overwrite its summary); stack and host-compare rerun here.

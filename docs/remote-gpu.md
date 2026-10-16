@@ -99,7 +99,7 @@ vastai ssh-url ID     # ssh://root@HOST:PORT
 ### 4. Push
 
 ```bash
-scripts/remote/push.sh ssh://root@HOST:PORT PROFILE [--restore] [--dry-run]
+scripts/remote/push.sh ssh://root@HOST:PORT PROFILE [--restore] [--vision] [--dry-run]
 ```
 
 - **Refuses a dirty tree**, so box and local run the same commit.
@@ -114,12 +114,23 @@ scripts/remote/push.sh ssh://root@HOST:PORT PROFILE [--restore] [--dry-run]
   `.cache/decision-index/rows-0.3.jsonl.gz`, `.cache/decision-index/suite-0.3`,
   `.cache/jevbench`.
 - `--restore` (a replacement box): see Recovery.
+- `--vision`: also the vision kit and suite; see below.
 - Writes `.cache/remote/profile`, then starts `start.sh` detached.
 - Needs the pushed files to exist locally. `--dry-run` prints every command.
 - Each profile keeps its own `known_hosts` in `.cache/remote-boxes/PROFILE/` (vast reuses
   HOST:PORT across boxes).
 - Re-pushing to a running box updates its files, but running jobs keep the code they started
   with. Only later jobs run the new commit, so that box's results can mix commits.
+
+#### Vision data (`--vision`)
+
+Image decision runs (DS-024: `vision_run.py`, `vision_baseline.sh`) need the Decision Index kit
+and its Vision suite on the box. `--vision` also rsyncs, with the same relative paths:
+
+- `.cache/decision-index-vision/src`, the kit source; a `vision-setup` job pip-installs it
+  (`--no-deps -e`) into the image's `python3`;
+- `.cache/decision-index-vision/work/vision`, the suite: about 4.3 GB of images, so the first
+  push takes a while. Later pushes send only changes.
 
 On the box, `start.sh` (safe to rerun and run at every boot):
 

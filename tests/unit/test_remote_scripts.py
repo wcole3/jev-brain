@@ -380,20 +380,25 @@ def test_rent_rejects_bad_arguments(tmp_path, args):
     assert out.returncode == 2 and not out.stdout
 
 
-def test_push_dry_run_prints_every_step(tmp_path):
+VISION_DATA = [".cache/decision-index-vision/src", ".cache/decision-index-vision/work/vision"]
+
+
+@pytest.mark.parametrize("vision", [False, True], ids=["text", "vision"])
+def test_push_dry_run_prints_every_step(tmp_path, vision):
     repo = scratch_repo(tmp_path, git=True)
-    out = local(repo, "push.sh", URL, PROFILE, "--dry-run")
+    out = local(repo, "push.sh", URL, PROFILE, *(["--vision"] if vision else []), "--dry-run")
     assert out.returncode == 0, out.stderr
     head = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=repo, capture_output=True, text=True, check=True)
     assert head.stdout.strip() in out.stdout
-    install, code, check, data, profile, start = commands(out.stdout)
+    install, code, check, data, *kit, profile, start = commands(out.stdout)
+    assert len(kit) == vision
     for step in (install, check, profile, start):
         assert step[:-1] == [*ssh_options(repo), HOST]
     assert "apt-get install -y -qq rsync tmux git" in install[-1]
     assert f"safe.directory {BOX}" in check[-1] and f"git -C {BOX} status --porcelain" in check[-1]
     assert profile[-1] == f"mkdir -p {BOX}/.cache/remote && echo {PROFILE} > {BOX}/.cache/remote/profile"
     assert start[-1] == f"cd {BOX} && setsid -f bash scripts/remote/start.sh > /dev/null 2>&1 < /dev/null"
-    for step in (code, data):
+    for step in (code, data, *kit):
         assert step[step.index("-e") + 1] == shlex.join(ssh_options(repo)) and "--delete" not in step
     excludes = {arg.removeprefix("--exclude=") for arg in code if arg.startswith("--exclude=")}
     hidden = {".cache", ".venv", ".firecrawl", "/secrets/*", ".superpowers", ".env", ".vscode"}
@@ -403,6 +408,8 @@ def test_push_dry_run_prints_every_step(tmp_path):
     assert code[-2:] == ["./", f"{HOST}:{BOX}/"]
     suite = [".cache/decision-index/rows-0.3.jsonl.gz", ".cache/decision-index/suite-0.3", ".cache/jevbench"]
     assert "--relative" in data and data[-4:] == [*suite, f"{HOST}:{BOX}/"]
+    for step in kit:  # the kit source and Vision suite, at the same paths on the box
+        assert "--relative" in step and step[-3:] == [*VISION_DATA, f"{HOST}:{BOX}/"]
     assert (repo / ".cache" / "remote-boxes" / PROFILE).is_dir()
 
 

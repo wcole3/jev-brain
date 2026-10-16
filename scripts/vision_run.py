@@ -38,6 +38,17 @@ def stratified_sample(rows: list[dict], n: int, seed: int = SEED) -> list[dict]:
     return [r for r in rows if id(r) in picked]
 
 
+def write_sample_dir(suite_dir: Path, rows: list[dict], out: Path) -> Path:
+    """A suite dir holding only these rows; the kit has no --rows, so images are symlinked in."""
+    out.mkdir(parents=True, exist_ok=True)
+    (out / "vision-rows.jsonl").write_text("".join(json.dumps(r, ensure_ascii=False, separators=(",", ":")) + "\n" for r in rows))
+    for top in sorted({Path(img).parts[0] for r in rows for img in r["images"]}):
+        link = out / top
+        if not link.is_symlink():
+            link.symlink_to(suite_dir / top)
+    return out
+
+
 def check_health(gateway: str, profile: str) -> dict:
     health = httpx.get(f"{gateway}/health", headers=gateway_headers(), timeout=30).json()
     if health["profile"] != profile:
@@ -54,17 +65,17 @@ def kit_env() -> dict:
     return env
 
 
-def run_command(args, health: dict, run_dir: Path, rows: Path | None) -> list[str]:
-    cmd = [args.kit_python, "-m", "decision_index", "vision", "run", "--dir", str(args.suite_dir),
+def run_command(args, health: dict, run_dir: Path, suite: Path) -> list[str]:
+    cmd = [args.kit_python, "-m", "decision_index", "vision", "run", "--dir", str(suite), "--no-verify",
            "--engine", "decide", "--option", f"base_url={args.gateway}", "--option", "path=/v1/systemone",
            "--option", "protocol=decisions", "--option", f"model={health['served_model']}",
            "--workers", str(args.workers), "--compact", "--out", str(run_dir)]
-    return cmd + (["--rows", str(rows)] if rows else [])
+    return cmd
 
 
-def score_command(args, run_dir: Path) -> list[str]:
+def score_command(args, run_dir: Path, suite: Path) -> list[str]:
     return [args.kit_python, "-m", "decision_index", "vision", "score", "--results", str(run_dir / "results.jsonl"),
-            "--dir", str(args.suite_dir), "--out", str(run_dir)]
+            "--dir", str(suite), "--out", str(run_dir)]
 
 
 def parse_args(argv=None) -> argparse.Namespace:
@@ -88,17 +99,16 @@ def parse_args(argv=None) -> argparse.Namespace:
 def main(args) -> None:
     health = check_health(args.gateway, args.profile)
     args.run_dir.mkdir(parents=True, exist_ok=True)
-    rows = None
+    suite = args.suite_dir
     if args.sample:
-        rows = args.run_dir / "sample.jsonl"
         sample = stratified_sample(read_jsonl(args.suite_dir / "vision-rows.jsonl"), args.sample)
-        rows.write_text("".join(json.dumps(r) + "\n" for r in sample))
-    for cmd in (run_command(args, health, args.run_dir, rows), score_command(args, args.run_dir)):
+        suite = write_sample_dir(args.suite_dir, sample, args.run_dir / "sample-suite")
+    for cmd in (run_command(args, health, args.run_dir, suite), score_command(args, args.run_dir, suite)):
         subprocess.run(cmd, cwd=args.kit_src, env=kit_env(), check=True)
     name = f"{now()}-vision" + ("-sample" if args.sample else "")
     out = results_dir(args.profile, name)
     (out / "health.json").write_text(json.dumps(health, indent=2) + "\n")
-    summary = write_folder(args.run_dir, args.suite_dir, out, f"Vision suite, {args.profile} via gateway")
+    summary = write_folder(args.run_dir, suite, out, f"Vision suite, {args.profile} via gateway")
     print(out, json.dumps(summary))
 
 

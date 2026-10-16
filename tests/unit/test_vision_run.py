@@ -1,3 +1,5 @@
+import json
+
 import pytest
 
 from scripts import vision_run, vision_summary
@@ -59,3 +61,14 @@ def test_sample_gives_leftover_seats_to_largest_remainders():
 def test_sample_larger_than_suite_returns_everything():
     rows = suite({"A": 3})
     assert vision_run.stratified_sample(rows, 10) == rows
+
+
+def test_sample_dir_holds_only_the_rows_and_links_image_dirs(tmp_path):
+    suite = tmp_path / "suite"
+    (suite / "full").mkdir(parents=True)
+    rows = [{"id": "x:1", "images": ["full/a/1.jpg", "full/a/2.jpg"]}, {"id": "x:2", "images": ["extra/3.jpg"]}]
+    out = vision_run.write_sample_dir(suite, rows, tmp_path / "run" / "sample")
+    lines = (out / "vision-rows.jsonl").read_text().splitlines()
+    assert [json.loads(line)["id"] for line in lines] == ["x:1", "x:2"]
+    assert (out / "full").resolve() == (suite / "full").resolve()
+    assert (out / "extra").is_symlink()

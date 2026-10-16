@@ -55,10 +55,24 @@ class ImageContext:
     added: int  # ids vLLM adds to a row when it expands every image
 
 
+def around_images(items: list[str | Image]) -> list[str]:
+    """The text before, between and after the images, items joined by newlines."""
+    texts = [""]
+    for n, item in enumerate(items):
+        texts[-1] += ("\n" if n else "") + ("" if isinstance(item, Image) else item)
+        if isinstance(item, Image):
+            texts.append("")
+    return texts
+
+
 def image_context(tok, layout: Layout, items: list[str | Image], vision: Vision) -> ImageContext:
-    """The context part with the model's placeholder ids where each image sits, text items joined by newlines."""
-    state = "\n".join(SENTINEL if isinstance(item, Image) else item for item in items)
-    pieces = encode_each(tok, layout.context.format(state=state).split(SENTINEL))
+    """The context part with the model's placeholder ids where each image sits. User text is never split or
+    formatted, so text that spells the sentinel stays text."""
+    label, after = layout.context.format(state=SENTINEL).split(SENTINEL)
+    texts = around_images(items)
+    texts[0] = label + texts[0]
+    texts[-1] += after
+    pieces = encode_each(tok, texts)
     ids = list(pieces[0])
     for piece in pieces[1:]:
         ids += list(vision.placeholder) + piece

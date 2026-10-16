@@ -7,7 +7,7 @@ from gateway.padding import Padding, newline_token
 from gateway.prompts import chat_frame, encode, encode_each, image_context
 from gateway.schema import ImageError
 from gateway.vision import Vision
-from tests.helpers import LAYOUTS, PROFILES, batch_for, image_batch, img, tokenizer_for
+from tests.helpers import LAYOUTS, PROFILES, STATE, batch_for, image_batch, img, tokenizer_for, vision_for
 
 GOLDEN = Path(__file__).parent / "golden"
 GEMMA_VISION = Vision(placeholder=(258880,), soft_tokens=lambda w, h: 100)
@@ -119,3 +119,34 @@ def test_qwen_placeholder_text_in_an_image_request_is_refused(qwen_tok):
 def test_the_same_image_twice_gets_two_placeholders(gemma_tok):
     ctx = image_context(gemma_tok, LAYOUTS["header"], [img(), img()], GEMMA_VISION)
     assert ctx.ids.count(258880) == 2
+
+
+CONTEXTS = [
+    lambda: [img(), STATE],
+    lambda: [img(), "Pick the red one", img()],
+    lambda: ["Step 3 of checkout", img()],
+    lambda: [img(), img()],
+    lambda: ["a", img(), "b\n", img(), " c "],
+    lambda: [img(), "naïve café ☕\n"],
+]
+
+
+@pytest.mark.parametrize("profile", PROFILES)
+def test_image_context_ids_match_golden(profile):
+    tok = tokenizer_for(profile)
+    lines = [
+        f"{name}/{n} {image_context(tok, LAYOUTS[name], items(), vision_for(tok)).ids}"
+        for name in sorted(LAYOUTS)
+        for n, items in enumerate(CONTEXTS)
+    ]
+    assert_golden(f"{profile}/image_context_ids.txt", "\n".join(lines) + "\n")
+
+
+@pytest.mark.parametrize("profile", ["qwen3.6-27b", "gemma-4-31b"])
+def test_sentinel_text_in_an_image_request_is_plain_text(profile):
+    tok = tokenizer_for(profile)
+    vision = vision_for(tok)
+    images = image_context(tok, LAYOUTS["header"], [img(), "Is @@USER_CONTENT@@ red?"], vision)
+    assert all(images.ids.count(t) == vision.placeholder.count(t) for t in vision.placeholder)  # one image
+    asked = {"q": {"type": "noul", "instructions": "Shape is red"}}
+    assert batch_for(tok, "header", asked, images=images).rows

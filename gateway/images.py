@@ -21,6 +21,7 @@ MAX_REQUEST_PIXELS = 100_000_000  # all images of one request, also from their h
 
 ALLOWED_FORMATS = ["PNG", "JPEG", "WEBP", "GIF"]  # the decision-index kit's pass-through set
 EMPTY_STATES = (None, "", {}, [])
+WRAPPING = str.maketrans("", "", " \t\r\n")  # line-wrapped base64 (MIME, encodebytes) decodes once these go
 
 
 @dataclass(frozen=True)
@@ -59,7 +60,7 @@ def raw_bytes(source: Any, where: str) -> bytes:
         if source.startswith("data:") and head.endswith(";base64"):
             source = payload
         try:
-            return base64.b64decode(source, validate=True)
+            return base64.b64decode(source.translate(WRAPPING), validate=True)
         except (binascii.Error, ValueError):
             pass
     raise ImageError(f"{where}: images must be data: URLs or base64; URLs are not fetched")

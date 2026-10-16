@@ -129,3 +129,12 @@ def test_images_over_100_mp_in_total_are_refused():
 
 def test_a_one_pixel_image_still_passes():
     assert context_items("", [b64(png(1, 1))])[0].width == 1
+
+
+@pytest.mark.parametrize("prefix", ["", "data:image/png;base64,"])
+@pytest.mark.parametrize("newline", ["\n", "\r\n\t "])
+def test_wrapped_base64_is_accepted(prefix, newline):
+    raw = png(64, 32)
+    wrapped = base64.encodebytes(raw).decode()  # a newline every 76 characters
+    assert "\n" in wrapped.strip()
+    assert decode_image(prefix + wrapped.replace("\n", newline), "images[0]").data == raw

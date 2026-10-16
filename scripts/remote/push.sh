@@ -72,7 +72,7 @@ restore() {
   done
   run "${ssh[@]}" "$box" "mkdir -p $box_repo/.cache/remote/state/$profile"
   run "${rsync[@]}" --relative --ignore-missing-args .cache/index-runs/"$profile" .cache/collect/"$profile" \
-    "$box:$box_repo/"
+    .cache/vision-runs/"$profile" "$box:$box_repo/"
   run "${rsync[@]}" "$mirror/run_tag" "$box:$box_repo/.cache/remote/run_tag"
   if (( ${#markers[@]} )); then
     run "${rsync[@]}" "${markers[@]}" "$box:$box_repo/.cache/remote/state/$profile/"

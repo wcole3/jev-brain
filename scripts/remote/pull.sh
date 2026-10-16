@@ -29,11 +29,11 @@ fetch() { rsync -az --ignore-missing-args -e "${ssh[*]}" "$@" || (( $? == 24 ));
 # Box state comes last, so the pass after the one that brings QUEUE_DONE has every result.
 pull_once() {
   local dir
-  mkdir -p {docs/results,docs/results/archive,.cache/collect,.cache/index-runs}/"$profile" "$mirror"
+  mkdir -p {docs/results,docs/results/archive,.cache/collect,.cache/index-runs,.cache/vision-runs}/"$profile" "$mirror"
   # rsync fails on a missing parent dir (collect/ appears only when collect starts), so make them first.
-  "${ssh[@]}" "$box" "mkdir -p $box_repo/docs/results/$profile $box_repo/docs/results/archive/$profile $box_repo/.cache/collect/$profile $box_repo/.cache/index-runs/$profile" || return
+  "${ssh[@]}" "$box" "mkdir -p $box_repo/docs/results/$profile $box_repo/docs/results/archive/$profile $box_repo/.cache/collect/$profile $box_repo/.cache/index-runs/$profile $box_repo/.cache/vision-runs/$profile" || return
   # --update: a local file newer than the box's copy (an edit here) is kept.
-  for dir in docs/results docs/results/archive .cache/collect .cache/index-runs; do
+  for dir in docs/results docs/results/archive .cache/collect .cache/index-runs .cache/vision-runs; do
     fetch --update "$box:$box_repo/$dir/$profile" "$dir/" || return
   done
   # Markers only: the box removes these when it retries, so a stale copy must not keep the alarm up.

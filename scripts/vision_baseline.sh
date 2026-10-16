@@ -10,7 +10,7 @@ py=${KIT_PYTHON:-python3}
 kit=$(realpath "${KIT_DIR:-$root/.cache/decision-index-vision}")
 suite=$kit/work/vision
 utc=$(date -u +%Y-%m-%dT%H%M%SZ)
-run=${RUN_DIR:-$root/.cache/vision-runs/$profile/stock-$utc}
+run=$(realpath -m "${RUN_DIR:-$root/.cache/vision-runs/$profile/stock-$utc}")  # absolute: the kit runs from its src
 
 if curl -s -m 2 -o /dev/null http://127.0.0.1:8000/health; then
   echo "port 8000 answers: bring the stack down first" >&2

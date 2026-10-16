@@ -23,12 +23,11 @@ def test_scripts_parse(script):
     subprocess.run(["bash", "-n", str(script)], check=True)
 
 
-# Each box's queue: qwen3.6-27b recollects the 0.3 index-dev (DS-031); qwen3.8-27b-fp8 collected calib + eval
-# (DS-005 stage 2); the three picked quantized profiles run latency and the full 0.3 Index (DS-030); gemma-4-31b and
-# qwen3.8-27b run DS-024 phase B: vision stack, live tests, text after-runs, image sharing, Vision suite, stock baseline.
+# Box queues: qwen3.6-27b index-dev (DS-031); qwen3.8-27b-fp8 calib + eval (DS-005); quantized latency + full Index
+# (DS-030); gemma-4-31b and qwen3.8-27b DS-024 phase B (vision stack, live, after-runs, sharing, Vision suite, stock).
 VISION_PHASE_B = (
-    "stack-vision", "vision-setup", "live", "jevbench-after", "index-after", "latency-after", "image-sharing",
-    "vision-latency", "vision-full", "stack-down", "vision-stock",
+    "stack-vision", "live", "jevbench-after", "index-after", "latency-after", "image-sharing",
+    "vision-latency", "vision-full", "vision-stock",
 )
 JOBS = {
     "qwen3.8-27b-fp8": ("collect-calib", "collect-eval"),
@@ -79,8 +78,13 @@ def test_vision_runs_resume_the_box_run_tag(path):
         run_dir = f".cache/vision-runs/{path.stem}/{name.removeprefix('vision-')}-$(cat .cache/remote/run_tag)"
         assert jobs[name].endswith(f"--run-dir {run_dir}")
     assert "--sample 300 --workers 1" in jobs["vision-latency"] and "--workers" not in jobs["vision-full"]
-    # the stock baseline needs the GPU to itself, so the stack goes down right before it
-    assert list(jobs)[-2:] == ["stack-down", "vision-stock"]
+    # One job, so a restart (which brings the stack back) still frees the GPU, installs the kit and resumes the run.
+    down, install, run = jobs["vision-stock"].split(" && ")
+    assert down == "bash scripts/remote/stack.sh down"
+    assert install == "python3 -m pip install -q --no-deps -e .cache/decision-index-vision/src"
+    tag = "$(cat .cache/remote/run_tag)"
+    assert run == f"RUN_DIR=.cache/vision-runs/{path.stem}/stock-{tag} bash scripts/vision_baseline.sh {path.stem}"
+    assert list(jobs)[-1] == "vision-stock"
 
 
 LIVE_STACK = "#!/usr/bin/env bash\necho \"stack $*\" >> calls\nexit ${STACK_EXIT:-0}\n"
@@ -491,7 +495,8 @@ def push_to_fake_box(tmp_path, *args: str, stray: str | None = None) -> tuple[su
     for git_args in (["add", ".gitignore", "secrets/.gitkeep"], commit):
         subprocess.run(["git", *git_args], cwd=repo, check=True)
     for path in ("decision-index/rows-0.3.jsonl.gz", "decision-index/suite-0.3/s", "jevbench/j",
-                 f"index-runs/{PROFILE}/tag/shard-0/r", f"collect/{PROFILE}/c.jsonl", f"remote-boxes/{PROFILE}/run_tag",
+                 f"index-runs/{PROFILE}/tag/shard-0/r", f"collect/{PROFILE}/c.jsonl", f"vision-runs/{PROFILE}/full-tag/r",
+                 f"remote-boxes/{PROFILE}/run_tag",
                  *(f"remote-boxes/{PROFILE}/state/{PROFILE}/{name}.done" for name in MIRROR_STATE)):
         (repo / ".cache" / path).parent.mkdir(parents=True, exist_ok=True)
         (repo / ".cache" / path).write_text("x\n")
@@ -541,6 +546,7 @@ def test_push_restore_puts_back_runs_run_tag_and_index_collect_markers(tmp_path)
     assert out.returncode == 0, out.stderr
     assert (box / ".cache" / "index-runs" / PROFILE / "tag" / "shard-0" / "r").exists()
     assert (box / ".cache" / "collect" / PROFILE / "c.jsonl").exists()
+    assert (box / ".cache" / "vision-runs" / PROFILE / "full-tag" / "r").exists()
     assert (box / ".cache" / "remote" / "run_tag").read_text() == "x\n"
     markers = sorted(p.name for p in (box / ".cache" / "remote" / "state" / PROFILE).iterdir())
     assert markers == ["collect-calib.done", "index.done"]
@@ -562,7 +568,8 @@ def test_push_restores_before_it_sets_the_profile(tmp_path, flags):
     assert len(steps) == 10
     mkdir, runs, tag, markers, profile = steps[4:9]
     assert mkdir[-1] == f"mkdir -p {BOX}/.cache/remote/state/{PROFILE}"
-    assert runs[-3:] == [f".cache/index-runs/{PROFILE}", f".cache/collect/{PROFILE}", f"{HOST}:{BOX}/"]
+    restored = [f".cache/{d}/{PROFILE}" for d in ("index-runs", "collect", "vision-runs")]
+    assert runs[-4:] == [*restored, f"{HOST}:{BOX}/"]
     assert tag[-2:] == [f".cache/remote-boxes/{PROFILE}/run_tag", f"{HOST}:{BOX}/.cache/remote/run_tag"]
     state = f".cache/remote-boxes/{PROFILE}/state/{PROFILE}"
     assert markers[-3:] == [f"{state}/index.done", f"{state}/collect-calib.done", f"{HOST}:{BOX}/.cache/remote/state/{PROFILE}/"]
@@ -625,19 +632,20 @@ def pull(tmp_path, *args: str, fail_first: bool = False, exit_code: int = 0,
 def test_pull_copies_results_runs_and_box_state_without_deleting(tmp_path):
     out, calls, repo = pull(tmp_path)
     assert out.returncode == 0, out.stderr
-    assert [call[-2:] for call in calls[:4]] == [
+    assert [call[-2:] for call in calls[:5]] == [
         [f"{HOST}:{BOX}/docs/results/{PROFILE}", "docs/results/"],
         [f"{HOST}:{BOX}/docs/results/archive/{PROFILE}", "docs/results/archive/"],
         [f"{HOST}:{BOX}/.cache/collect/{PROFILE}", ".cache/collect/"],
         [f"{HOST}:{BOX}/.cache/index-runs/{PROFILE}", ".cache/index-runs/"],
+        [f"{HOST}:{BOX}/.cache/vision-runs/{PROFILE}", ".cache/vision-runs/"],
     ]
     remote = f"{HOST}:{BOX}/.cache/remote"
     names = ["logs", "state", "telemetry.csv", "run_tag"]
-    assert calls[4][-5:] == [*(f"{remote}/{name}" for name in names), f".cache/remote-boxes/{PROFILE}/"]
-    assert len(calls) == 5
+    assert calls[5][-5:] == [*(f"{remote}/{name}" for name in names), f".cache/remote-boxes/{PROFILE}/"]
+    assert len(calls) == 6
     for call in calls:
         assert call[call.index("-e") + 1] == shlex.join(ssh_options(repo)) and "--delete" not in call
-    assert all("--update" in call for call in calls[:4]) and "--update" not in calls[4]
+    assert all("--update" in call for call in calls[:5]) and "--update" not in calls[5]
     assert out.stdout.splitlines()[-4:] == ["two", "three", "four", "bootstrap: running; job: none; failed: none"]
     assert (repo / "docs" / "results" / PROFILE).is_dir() and (repo / "docs" / "results" / "archive" / PROFILE).is_dir()
 
@@ -676,14 +684,14 @@ def test_pull_drops_alarms_the_box_has_cleared(tmp_path):
 
 def test_pull_loop_keeps_going_and_reports_a_failure_every_pass(tmp_path):
     out, calls, _ = pull(tmp_path, "--loop", "0", box={f"state/{PROFILE}/collect-eval.failed": "exit=1"})
-    assert out.returncode == 0 and len(calls) == 15
+    assert out.returncode == 0 and len(calls) == 18
     assert out.stdout.count("failed: collect-eval") == 3
 
 
 @pytest.mark.parametrize("code, ok", [(24, True), (23, False)])
 def test_pull_tolerates_only_vanished_files(tmp_path, code, ok):
     out, calls, _ = pull(tmp_path, exit_code=code)
-    assert (out.returncode == 0) == ok and len(calls) == (5 if ok else 1)
+    assert (out.returncode == 0) == ok and len(calls) == (6 if ok else 1)
 
 
 def test_pull_loop_survives_a_down_box_and_stops_after_a_pass_past_queue_done(tmp_path):
@@ -693,8 +701,8 @@ def test_pull_loop_survives_a_down_box_and_stops_after_a_pass_past_queue_done(tm
     out, calls, _ = pull(tmp_path, "--loop", "0", fail_first=True)
     assert out.returncode == 0, out.stderr
     assert "warning" in out.stderr
-    # failed pass (1 call), pass without QUEUE_DONE, pass that pulls it, final pass (5 calls each)
-    assert len(calls) == 16
+    # failed pass (1 call), pass without QUEUE_DONE, pass that pulls it, final pass (6 calls each)
+    assert len(calls) == 19
 
 
 def test_push_offers_the_vast_key_when_present(tmp_path):
@@ -710,3 +718,4 @@ def test_pull_makes_the_box_dirs_before_fetching(tmp_path):
     out, _, _ = pull(tmp_path)
     ssh_calls = (tmp_path / "rsync-calls.ssh").read_text()
     assert out.returncode == 0 and "mkdir -p" in ssh_calls and f"{BOX}/.cache/collect/{PROFILE}" in ssh_calls
+    assert f"{BOX}/.cache/vision-runs/{PROFILE}" in ssh_calls

@@ -1,9 +1,8 @@
 # qwen3.8-27b box queue: one `name: command` per line, run in order from the repo root by queue.sh.
-# DS-024 phase B, after the vision profile edits: restart on the vision profile, live tests (never stop the queue),
-# text after-runs, image prompt sharing, the Vision suite through the gateway, then the kit's stock vLLM baseline.
+# DS-024 phase B: vision stack, live tests (never stop the queue), text after-runs, image sharing, Vision
+# suite, stock baseline (stack down, kit in the image's python3). Run dirs carry the run tag, so restarts resume.
 stack: bash scripts/remote/stack.sh up qwen3.8-27b
 stack-vision: bash scripts/remote/stack.sh down; bash scripts/remote/stack.sh up qwen3.8-27b
-vision-setup: python3 -m pip install -q --no-deps -e .cache/decision-index-vision/src
 live: d=docs/results/archive/qwen3.8-27b/$(cat .cache/remote/run_tag)-live; mkdir -p $d; bash scripts/remote/stack.sh up qwen3.8-27b && { uv run pytest -m live tests/live -v --junitxml $d/junit.xml; echo $? > $d/pytest-exit.txt; }; exit 0
 jevbench-after: bash scripts/remote/stack.sh up qwen3.8-27b && uv run python scripts/bench.py --profile qwen3.8-27b --jevbench-only
 index-after: bash scripts/remote/stack.sh up qwen3.8-27b && uv run python scripts/evaluate.py index --profile qwen3.8-27b --ids data/splits/vision-regression.json --run-dir .cache/index-runs/qwen3.8-27b/after-$(cat .cache/remote/run_tag) --strict
@@ -11,5 +10,4 @@ latency-after: bash scripts/remote/stack.sh up qwen3.8-27b && uv run python scri
 image-sharing: bash scripts/remote/stack.sh up qwen3.8-27b && uv run python scripts/image_share_probe.py --profile qwen3.8-27b
 vision-latency: bash scripts/remote/stack.sh up qwen3.8-27b && uv run python scripts/vision_run.py --profile qwen3.8-27b --gateway http://127.0.0.1:9000 --sample 300 --workers 1 --run-dir .cache/vision-runs/qwen3.8-27b/latency-$(cat .cache/remote/run_tag)
 vision-full: bash scripts/remote/stack.sh up qwen3.8-27b && uv run python scripts/vision_run.py --profile qwen3.8-27b --gateway http://127.0.0.1:9000 --run-dir .cache/vision-runs/qwen3.8-27b/full-$(cat .cache/remote/run_tag)
-stack-down: bash scripts/remote/stack.sh down
-vision-stock: bash scripts/vision_baseline.sh qwen3.8-27b
+vision-stock: bash scripts/remote/stack.sh down && python3 -m pip install -q --no-deps -e .cache/decision-index-vision/src && RUN_DIR=.cache/vision-runs/qwen3.8-27b/stock-$(cat .cache/remote/run_tag) bash scripts/vision_baseline.sh qwen3.8-27b

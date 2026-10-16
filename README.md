@@ -298,6 +298,8 @@ images. Both formats give the same prompt, with the images inside `Context:`:
   sent to a text-only profile give 400. A prompt over `SYSTEMONE_MAX_LEN` once the images
   are counted gives 422.
 
+How it works: [Images](docs/background/images.md).
+
 ## Settings
 
 - **Decision length cap:** `SYSTEMONE_MAX_LEN` (default 32,768, or `MAX_MODEL_LEN` if smaller)

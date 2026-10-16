@@ -1,6 +1,6 @@
 # Vision experiments harness design (DS-034)
 
-Date: 2026-10-16. Status: approved in brainstorming, pending spec review.
+Date: 2026-10-16. Status: approved. Plan: [2026-10-16-vision-experiments.md](../plans/2026-10-16-vision-experiments.md).
 Ticket: DS-034. Follow-ups that use it: DS-035 (prompt and layout), DS-036 (image budget and calibration),
 DS-037 (latency). Background: [images.md](../../background/images.md),
 [calibration.md](../../background/calibration.md), the text experiment tools (`scripts/collect.py`,

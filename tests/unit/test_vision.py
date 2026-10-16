@@ -42,7 +42,7 @@ def test_qwen_profile_vision():
 
 
 def test_vision_is_off_unless_asked():
-    assert load_vision(Settings.from_profile("gemma-4-31b")) is None
+    assert load_vision(Settings.from_profile("qwen3.6-27b")) is None  # a text-only profile
 
 
 def test_unknown_model_types_refuse_images(monkeypatch):

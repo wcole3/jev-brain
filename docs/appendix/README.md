@@ -15,6 +15,7 @@ status of the cited GitHub issues and PRs, the TypeSafe terms, the vLLM
 | [ds007-scheduling.md](ds007-scheduling.md) | Chat vs systemone contention on one vLLM: priority scheduling, step budgets, queuing, partitions (DS-007) |
 | [schema-audit-inference.md](schema-audit-inference.md) | Source-code audit of answer fields and `confidence` in 12 inference-technique servers |
 | [schema-audit-trained.md](schema-audit-trained.md) | Same audit for trained and diffusion servers |
+| [vision-research.md](vision-research.md) | Vision board entrants, the vision tower in vLLM 0.30, test-time techniques, round-2 candidates (2026-10-16) |
 
 Paths like `infer/...` or `trained/...` inside these notes point to raw scrapes in the
 local `.firecrawl/` cache, which is git-ignored.

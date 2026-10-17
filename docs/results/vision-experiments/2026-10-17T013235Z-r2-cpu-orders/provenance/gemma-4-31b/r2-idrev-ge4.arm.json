@@ -1,0 +1,19 @@
+{
+ "arm": "r2-idrev-ge4",
+ "orders": "identity+reversed if n >= 4 else identity",
+ "skipped": {},
+ "fallbacks": [],
+ "fit_on": null,
+ "collect": "/home/welb/devspace/jev-brain/.cache/vision-collect/gemma-4-31b/baseline/dev.jsonl.gz",
+ "collect_config": {
+  "profile": "gemma-4-31b",
+  "label": "baseline",
+  "layout": "header",
+  "orders": "identity+reversed",
+  "env": {},
+  "split": "dev",
+  "commit": "4648502"
+ },
+ "T": 4.262737987560785,
+ "second_read_share": 0.5595075239398085
+}

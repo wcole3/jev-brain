@@ -1,0 +1,41 @@
+{
+ "arm": "fit-T",
+ "orders": "identity",
+ "folds": {
+  "0": {
+   "fitted_on": "1",
+   "n": 774,
+   "T": 1.260306782578331,
+   "fallback": false
+  },
+  "1": {
+   "fitted_on": "0",
+   "n": 688,
+   "T": 1.3172989832539364,
+   "fallback": false
+  }
+ },
+ "fallbacks": [],
+ "skipped": {},
+ "scored": 1462,
+ "collect": "/home/welb/devspace/jev-brain/.cache/vision-collect/qwen3.8-27b/baseline/dev.jsonl.gz",
+ "collect_config": {
+  "profile": "qwen3.8-27b",
+  "label": "baseline",
+  "layout": "header",
+  "orders": "identity+reversed",
+  "env": {},
+  "split": "dev",
+  "commit": "4648502-dirty"
+ },
+ "fit_on": null,
+ "text_calibration": {
+  "path": "/home/welb/devspace/jev-brain/data/qwen3.8-27b/header/calibration.json",
+  "source": "qwen3.8-27b/header/calibration.json",
+  "T": 1.535520473719803,
+  "orders": "identity",
+  "stamp_checked": false
+ },
+ "fallback_T": 1.535520473719803,
+ "commit": "a306b77"
+}

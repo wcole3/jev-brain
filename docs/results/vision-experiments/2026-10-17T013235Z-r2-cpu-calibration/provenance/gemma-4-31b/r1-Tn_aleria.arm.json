@@ -1,0 +1,29 @@
+{
+ "arm": "r1-Tn_aleria",
+ "orders": "identity",
+ "skipped": {},
+ "fallbacks": [],
+ "fit_on": null,
+ "collect": "/home/welb/devspace/jev-brain/.cache/vision-collect/gemma-4-31b/baseline/dev.jsonl.gz",
+ "collect_config": {
+  "profile": "gemma-4-31b",
+  "label": "baseline",
+  "layout": "header",
+  "orders": "identity+reversed",
+  "env": {},
+  "split": "dev",
+  "commit": "4648502"
+ },
+ "method": "Tn_aleria",
+ "T_by_n": {
+  "2": 6.414796973608039,
+  "3": 6.130971397932323,
+  "4": 5.929593947216077,
+  "5": 5.773393461296131,
+  "6": 5.6457683715403615,
+  "7": 5.537862895661281,
+  "8": 5.444390920824116,
+  "9": 5.361942795864647,
+  "10": 5.288190434904168
+ }
+}

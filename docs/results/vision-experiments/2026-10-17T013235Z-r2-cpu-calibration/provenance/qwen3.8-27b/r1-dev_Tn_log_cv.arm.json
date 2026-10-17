@@ -1,0 +1,32 @@
+{
+ "arm": "r1-dev_Tn_log_cv",
+ "orders": "identity",
+ "skipped": {},
+ "fallbacks": [],
+ "fit_on": null,
+ "collect": "/home/welb/devspace/jev-brain/.cache/vision-collect/qwen3.8-27b/baseline/dev.jsonl.gz",
+ "collect_config": {
+  "profile": "qwen3.8-27b",
+  "label": "baseline",
+  "layout": "header",
+  "orders": "identity+reversed",
+  "env": {},
+  "split": "dev",
+  "commit": "4648502-dirty"
+ },
+ "method": "dev 2-fold cross-fit alpha+beta ln n (reference)",
+ "folds": {
+  "0": {
+   "fitted_on": "1",
+   "n": 774,
+   "alpha": 1.1962187880564334,
+   "beta": 0.04494825843315996
+  },
+  "1": {
+   "fitted_on": "0",
+   "n": 688,
+   "alpha": 1.3403005190664439,
+   "beta": -0.016470241777188657
+  }
+ }
+}

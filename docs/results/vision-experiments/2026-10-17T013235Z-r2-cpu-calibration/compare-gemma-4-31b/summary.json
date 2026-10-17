@@ -1,0 +1,709 @@
+{
+ "label": "r1-calibration-gemma-4-31b",
+ "created_utc": "2026-10-17T01:26:02Z",
+ "commit": "a306b77",
+ "baseline": "text",
+ "ids": "vision-dev",
+ "rows": 1462,
+ "benchmarks": {
+  "BLINK": 136,
+  "CV-Bench": 136,
+  "CharXiv": 136,
+  "InfographicVQA": 97,
+  "KIE (CORD+FUNSD)": 141,
+  "MMMU-Pro vision": 136,
+  "Mind2Web": 136,
+  "Moderation (Hateful Memes)": 136,
+  "R-Bench-M": 136,
+  "RealWorldQA": 136,
+  "Winoground": 136
+ },
+ "weights": {
+  "CV-Bench": 1.0,
+  "BLINK": 1.0,
+  "RealWorldQA": 1.0,
+  "CharXiv": 1.0,
+  "InfographicVQA": 1.0,
+  "Mind2Web": 1.0,
+  "Winoground": 1.0,
+  "KIE (CORD+FUNSD)": 1.0,
+  "Moderation (Hateful Memes)": 1.0,
+  "R-Bench-M": 0.5,
+  "MMMU-Pro vision": 0.25
+ },
+ "resamples": 10000,
+ "seed": 0,
+ "power_limit_w": null,
+ "configs": {
+  "text": {
+   "path": "/tmp/claude-1000/-home-welb-devspace-jev-brain/c9bee592-93bf-4c27-8257-5d2ce04812cb/scratchpad/r2-cpu/arms/gemma-4-31b/text-identity",
+   "kind": "offline",
+   "about": {
+    "arm": "text",
+    "orders": "identity",
+    "skipped": {},
+    "fallbacks": [],
+    "fit_on": null,
+    "split": "dev",
+    "errored": 0
+   },
+   "index": 77.06063961351246,
+   "skills": {
+    "BLINK": 0.63323782234957,
+    "CharXiv": 0.9215686274509803,
+    "KIE (CORD+FUNSD)": 0.9408284023668638,
+    "CV-Bench": 0.7836104988980166,
+    "Moderation (Hateful Memes)": 0.5735294117647058,
+    "InfographicVQA": 0.9587628865979382,
+    "Mind2Web": 0.8725490196078431,
+    "MMMU-Pro vision": 0.3140621954579977,
+    "R-Bench-M": 0.39999999999999986,
+    "RealWorldQA": 0.712574850299401,
+    "Winoground": 0.838235294117647
+   },
+   "accuracy": 0.8002735978112175,
+   "ece": 0.0807705736184709,
+   "nll": 0.6072366083561507,
+   "errored": 0,
+   "mean_input_tokens": 719.2544459644323,
+   "latency": null
+  },
+  "Tn_bucket": {
+   "path": "/tmp/claude-1000/-home-welb-devspace-jev-brain/c9bee592-93bf-4c27-8257-5d2ce04812cb/scratchpad/r2-cpu/arms/gemma-4-31b/r1-Tn_bucket",
+   "kind": "offline",
+   "about": {
+    "arm": "r1-Tn_bucket",
+    "orders": "identity",
+    "skipped": {},
+    "fallbacks": [],
+    "fit_on": null,
+    "split": "dev",
+    "errored": 0
+   },
+   "index": 77.06063961351246,
+   "skills": {
+    "BLINK": 0.63323782234957,
+    "CharXiv": 0.9215686274509803,
+    "KIE (CORD+FUNSD)": 0.9408284023668638,
+    "CV-Bench": 0.7836104988980166,
+    "Moderation (Hateful Memes)": 0.5735294117647058,
+    "InfographicVQA": 0.9587628865979382,
+    "Mind2Web": 0.8725490196078431,
+    "MMMU-Pro vision": 0.3140621954579977,
+    "R-Bench-M": 0.39999999999999986,
+    "RealWorldQA": 0.712574850299401,
+    "Winoground": 0.838235294117647
+   },
+   "accuracy": 0.8002735978112175,
+   "ece": 0.06696800287504812,
+   "nll": 0.5972847703559871,
+   "errored": 0,
+   "mean_input_tokens": 719.2544459644323,
+   "latency": null
+  },
+  "Tn_log": {
+   "path": "/tmp/claude-1000/-home-welb-devspace-jev-brain/c9bee592-93bf-4c27-8257-5d2ce04812cb/scratchpad/r2-cpu/arms/gemma-4-31b/r1-Tn_log",
+   "kind": "offline",
+   "about": {
+    "arm": "r1-Tn_log",
+    "orders": "identity",
+    "skipped": {},
+    "fallbacks": [],
+    "fit_on": null,
+    "split": "dev",
+    "errored": 0
+   },
+   "index": 77.06063961351246,
+   "skills": {
+    "BLINK": 0.63323782234957,
+    "CharXiv": 0.9215686274509803,
+    "KIE (CORD+FUNSD)": 0.9408284023668638,
+    "CV-Bench": 0.7836104988980166,
+    "Moderation (Hateful Memes)": 0.5735294117647058,
+    "InfographicVQA": 0.9587628865979382,
+    "Mind2Web": 0.8725490196078431,
+    "MMMU-Pro vision": 0.3140621954579977,
+    "R-Bench-M": 0.39999999999999986,
+    "RealWorldQA": 0.712574850299401,
+    "Winoground": 0.838235294117647
+   },
+   "accuracy": 0.8002735978112175,
+   "ece": 0.042017676670180755,
+   "nll": 0.5711613119552221,
+   "errored": 0,
+   "mean_input_tokens": 719.2544459644323,
+   "latency": null
+  },
+  "Tn_aleria": {
+   "path": "/tmp/claude-1000/-home-welb-devspace-jev-brain/c9bee592-93bf-4c27-8257-5d2ce04812cb/scratchpad/r2-cpu/arms/gemma-4-31b/r1-Tn_aleria",
+   "kind": "offline",
+   "about": {
+    "arm": "r1-Tn_aleria",
+    "orders": "identity",
+    "skipped": {},
+    "fallbacks": [],
+    "fit_on": null,
+    "split": "dev",
+    "errored": 0
+   },
+   "index": 77.06063961351246,
+   "skills": {
+    "BLINK": 0.63323782234957,
+    "CharXiv": 0.9215686274509803,
+    "KIE (CORD+FUNSD)": 0.9408284023668638,
+    "CV-Bench": 0.7836104988980166,
+    "Moderation (Hateful Memes)": 0.5735294117647058,
+    "InfographicVQA": 0.9587628865979382,
+    "Mind2Web": 0.8725490196078431,
+    "MMMU-Pro vision": 0.3140621954579977,
+    "R-Bench-M": 0.39999999999999986,
+    "RealWorldQA": 0.712574850299401,
+    "Winoground": 0.838235294117647
+   },
+   "accuracy": 0.8002735978112175,
+   "ece": 0.0477683558185973,
+   "nll": 0.5708295626859675,
+   "errored": 0,
+   "mean_input_tokens": 719.2544459644323,
+   "latency": null
+  },
+  "ref_dev_fitT": {
+   "path": "/tmp/claude-1000/-home-welb-devspace-jev-brain/c9bee592-93bf-4c27-8257-5d2ce04812cb/scratchpad/r2-cpu/arms/gemma-4-31b/fitT-identity",
+   "kind": "offline",
+   "about": {
+    "arm": "fit-T",
+    "orders": "identity",
+    "skipped": {},
+    "fallbacks": [],
+    "fit_on": null,
+    "split": "dev",
+    "errored": 0
+   },
+   "index": 77.06063961351246,
+   "skills": {
+    "BLINK": 0.63323782234957,
+    "CharXiv": 0.9215686274509803,
+    "KIE (CORD+FUNSD)": 0.9408284023668638,
+    "CV-Bench": 0.7836104988980166,
+    "Moderation (Hateful Memes)": 0.5735294117647058,
+    "InfographicVQA": 0.9587628865979382,
+    "Mind2Web": 0.8725490196078431,
+    "MMMU-Pro vision": 0.3140621954579977,
+    "R-Bench-M": 0.39999999999999986,
+    "RealWorldQA": 0.712574850299401,
+    "Winoground": 0.838235294117647
+   },
+   "accuracy": 0.8002735978112175,
+   "ece": 0.042556556194912505,
+   "nll": 0.5745891334563475,
+   "errored": 0,
+   "mean_input_tokens": 719.2544459644323,
+   "latency": null
+  },
+  "ref_dev_Tn_log": {
+   "path": "/tmp/claude-1000/-home-welb-devspace-jev-brain/c9bee592-93bf-4c27-8257-5d2ce04812cb/scratchpad/r2-cpu/arms/gemma-4-31b/r1-dev_Tn_log_cv",
+   "kind": "offline",
+   "about": {
+    "arm": "r1-dev_Tn_log_cv",
+    "orders": "identity",
+    "skipped": {},
+    "fallbacks": [],
+    "fit_on": null,
+    "split": "dev",
+    "errored": 0
+   },
+   "index": 77.06063961351246,
+   "skills": {
+    "BLINK": 0.63323782234957,
+    "CharXiv": 0.9215686274509803,
+    "KIE (CORD+FUNSD)": 0.9408284023668638,
+    "CV-Bench": 0.7836104988980166,
+    "Moderation (Hateful Memes)": 0.5735294117647058,
+    "InfographicVQA": 0.9587628865979382,
+    "Mind2Web": 0.8725490196078431,
+    "MMMU-Pro vision": 0.3140621954579977,
+    "R-Bench-M": 0.39999999999999986,
+    "RealWorldQA": 0.712574850299401,
+    "Winoground": 0.838235294117647
+   },
+   "accuracy": 0.8002735978112175,
+   "ece": 0.05115194739349784,
+   "nll": 0.5710125749873163,
+   "errored": 0,
+   "mean_input_tokens": 719.2544459644323,
+   "latency": null
+  }
+ },
+ "paired": {
+  "Tn_bucket": {
+   "n": 1462,
+   "delta_index": 0.0,
+   "ci": [
+    0.0,
+    0.0
+   ],
+   "delta_skill": {
+    "BLINK": {
+     "delta": 0.0,
+     "ci": [
+      0.0,
+      0.0
+     ]
+    },
+    "CV-Bench": {
+     "delta": 0.0,
+     "ci": [
+      0.0,
+      0.0
+     ]
+    },
+    "CharXiv": {
+     "delta": 0.0,
+     "ci": [
+      0.0,
+      0.0
+     ]
+    },
+    "InfographicVQA": {
+     "delta": 0.0,
+     "ci": [
+      0.0,
+      0.0
+     ]
+    },
+    "KIE (CORD+FUNSD)": {
+     "delta": 0.0,
+     "ci": [
+      0.0,
+      0.0
+     ]
+    },
+    "MMMU-Pro vision": {
+     "delta": 0.0,
+     "ci": [
+      0.0,
+      0.0
+     ]
+    },
+    "Mind2Web": {
+     "delta": 0.0,
+     "ci": [
+      0.0,
+      0.0
+     ]
+    },
+    "Moderation (Hateful Memes)": {
+     "delta": 0.0,
+     "ci": [
+      0.0,
+      0.0
+     ]
+    },
+    "R-Bench-M": {
+     "delta": 0.0,
+     "ci": [
+      0.0,
+      0.0
+     ]
+    },
+    "RealWorldQA": {
+     "delta": 0.0,
+     "ci": [
+      0.0,
+      0.0
+     ]
+    },
+    "Winoground": {
+     "delta": 0.0,
+     "ci": [
+      0.0,
+      0.0
+     ]
+    }
+   },
+   "b": 0,
+   "c": 0,
+   "mcnemar_p": 1.0,
+   "discordant_share": 0.0,
+   "agreement": 1.0,
+   "delta_ece": -0.013802570743422782,
+   "delta_nll": -0.009951838000163526
+  },
+  "Tn_log": {
+   "n": 1462,
+   "delta_index": 0.0,
+   "ci": [
+    0.0,
+    0.0
+   ],
+   "delta_skill": {
+    "BLINK": {
+     "delta": 0.0,
+     "ci": [
+      0.0,
+      0.0
+     ]
+    },
+    "CV-Bench": {
+     "delta": 0.0,
+     "ci": [
+      0.0,
+      0.0
+     ]
+    },
+    "CharXiv": {
+     "delta": 0.0,
+     "ci": [
+      0.0,
+      0.0
+     ]
+    },
+    "InfographicVQA": {
+     "delta": 0.0,
+     "ci": [
+      0.0,
+      0.0
+     ]
+    },
+    "KIE (CORD+FUNSD)": {
+     "delta": 0.0,
+     "ci": [
+      0.0,
+      0.0
+     ]
+    },
+    "MMMU-Pro vision": {
+     "delta": 0.0,
+     "ci": [
+      0.0,
+      0.0
+     ]
+    },
+    "Mind2Web": {
+     "delta": 0.0,
+     "ci": [
+      0.0,
+      0.0
+     ]
+    },
+    "Moderation (Hateful Memes)": {
+     "delta": 0.0,
+     "ci": [
+      0.0,
+      0.0
+     ]
+    },
+    "R-Bench-M": {
+     "delta": 0.0,
+     "ci": [
+      0.0,
+      0.0
+     ]
+    },
+    "RealWorldQA": {
+     "delta": 0.0,
+     "ci": [
+      0.0,
+      0.0
+     ]
+    },
+    "Winoground": {
+     "delta": 0.0,
+     "ci": [
+      0.0,
+      0.0
+     ]
+    }
+   },
+   "b": 0,
+   "c": 0,
+   "mcnemar_p": 1.0,
+   "discordant_share": 0.0,
+   "agreement": 1.0,
+   "delta_ece": -0.03875289694829014,
+   "delta_nll": -0.03607529640092855
+  },
+  "Tn_aleria": {
+   "n": 1462,
+   "delta_index": 0.0,
+   "ci": [
+    0.0,
+    0.0
+   ],
+   "delta_skill": {
+    "BLINK": {
+     "delta": 0.0,
+     "ci": [
+      0.0,
+      0.0
+     ]
+    },
+    "CV-Bench": {
+     "delta": 0.0,
+     "ci": [
+      0.0,
+      0.0
+     ]
+    },
+    "CharXiv": {
+     "delta": 0.0,
+     "ci": [
+      0.0,
+      0.0
+     ]
+    },
+    "InfographicVQA": {
+     "delta": 0.0,
+     "ci": [
+      0.0,
+      0.0
+     ]
+    },
+    "KIE (CORD+FUNSD)": {
+     "delta": 0.0,
+     "ci": [
+      0.0,
+      0.0
+     ]
+    },
+    "MMMU-Pro vision": {
+     "delta": 0.0,
+     "ci": [
+      0.0,
+      0.0
+     ]
+    },
+    "Mind2Web": {
+     "delta": 0.0,
+     "ci": [
+      0.0,
+      0.0
+     ]
+    },
+    "Moderation (Hateful Memes)": {
+     "delta": 0.0,
+     "ci": [
+      0.0,
+      0.0
+     ]
+    },
+    "R-Bench-M": {
+     "delta": 0.0,
+     "ci": [
+      0.0,
+      0.0
+     ]
+    },
+    "RealWorldQA": {
+     "delta": 0.0,
+     "ci": [
+      0.0,
+      0.0
+     ]
+    },
+    "Winoground": {
+     "delta": 0.0,
+     "ci": [
+      0.0,
+      0.0
+     ]
+    }
+   },
+   "b": 0,
+   "c": 0,
+   "mcnemar_p": 1.0,
+   "discordant_share": 0.0,
+   "agreement": 1.0,
+   "delta_ece": -0.0330022177998736,
+   "delta_nll": -0.03640704567018316
+  },
+  "ref_dev_fitT": {
+   "n": 1462,
+   "delta_index": 0.0,
+   "ci": [
+    0.0,
+    0.0
+   ],
+   "delta_skill": {
+    "BLINK": {
+     "delta": 0.0,
+     "ci": [
+      0.0,
+      0.0
+     ]
+    },
+    "CV-Bench": {
+     "delta": 0.0,
+     "ci": [
+      0.0,
+      0.0
+     ]
+    },
+    "CharXiv": {
+     "delta": 0.0,
+     "ci": [
+      0.0,
+      0.0
+     ]
+    },
+    "InfographicVQA": {
+     "delta": 0.0,
+     "ci": [
+      0.0,
+      0.0
+     ]
+    },
+    "KIE (CORD+FUNSD)": {
+     "delta": 0.0,
+     "ci": [
+      0.0,
+      0.0
+     ]
+    },
+    "MMMU-Pro vision": {
+     "delta": 0.0,
+     "ci": [
+      0.0,
+      0.0
+     ]
+    },
+    "Mind2Web": {
+     "delta": 0.0,
+     "ci": [
+      0.0,
+      0.0
+     ]
+    },
+    "Moderation (Hateful Memes)": {
+     "delta": 0.0,
+     "ci": [
+      0.0,
+      0.0
+     ]
+    },
+    "R-Bench-M": {
+     "delta": 0.0,
+     "ci": [
+      0.0,
+      0.0
+     ]
+    },
+    "RealWorldQA": {
+     "delta": 0.0,
+     "ci": [
+      0.0,
+      0.0
+     ]
+    },
+    "Winoground": {
+     "delta": 0.0,
+     "ci": [
+      0.0,
+      0.0
+     ]
+    }
+   },
+   "b": 0,
+   "c": 0,
+   "mcnemar_p": 1.0,
+   "discordant_share": 0.0,
+   "agreement": 1.0,
+   "delta_ece": -0.03821401742355839,
+   "delta_nll": -0.03264747489980313
+  },
+  "ref_dev_Tn_log": {
+   "n": 1462,
+   "delta_index": 0.0,
+   "ci": [
+    0.0,
+    0.0
+   ],
+   "delta_skill": {
+    "BLINK": {
+     "delta": 0.0,
+     "ci": [
+      0.0,
+      0.0
+     ]
+    },
+    "CV-Bench": {
+     "delta": 0.0,
+     "ci": [
+      0.0,
+      0.0
+     ]
+    },
+    "CharXiv": {
+     "delta": 0.0,
+     "ci": [
+      0.0,
+      0.0
+     ]
+    },
+    "InfographicVQA": {
+     "delta": 0.0,
+     "ci": [
+      0.0,
+      0.0
+     ]
+    },
+    "KIE (CORD+FUNSD)": {
+     "delta": 0.0,
+     "ci": [
+      0.0,
+      0.0
+     ]
+    },
+    "MMMU-Pro vision": {
+     "delta": 0.0,
+     "ci": [
+      0.0,
+      0.0
+     ]
+    },
+    "Mind2Web": {
+     "delta": 0.0,
+     "ci": [
+      0.0,
+      0.0
+     ]
+    },
+    "Moderation (Hateful Memes)": {
+     "delta": 0.0,
+     "ci": [
+      0.0,
+      0.0
+     ]
+    },
+    "R-Bench-M": {
+     "delta": 0.0,
+     "ci": [
+      0.0,
+      0.0
+     ]
+    },
+    "RealWorldQA": {
+     "delta": 0.0,
+     "ci": [
+      0.0,
+      0.0
+     ]
+    },
+    "Winoground": {
+     "delta": 0.0,
+     "ci": [
+      0.0,
+      0.0
+     ]
+    }
+   },
+   "b": 0,
+   "c": 0,
+   "mcnemar_p": 1.0,
+   "discordant_share": 0.0,
+   "agreement": 1.0,
+   "delta_ece": -0.029618626224973056,
+   "delta_nll": -0.036224033368834396
+  }
+ }
+}

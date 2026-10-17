@@ -1,0 +1,29 @@
+{
+ "arm": "r1-Tn_log",
+ "orders": "identity",
+ "skipped": {},
+ "fallbacks": [],
+ "fit_on": null,
+ "collect": "/home/welb/devspace/jev-brain/.cache/vision-collect/qwen3.8-27b/baseline/dev.jsonl.gz",
+ "collect_config": {
+  "profile": "qwen3.8-27b",
+  "label": "baseline",
+  "layout": "header",
+  "orders": "identity+reversed",
+  "env": {},
+  "split": "dev",
+  "commit": "4648502-dirty"
+ },
+ "method": "Tn_log",
+ "T_by_n": {
+  "2": 1.7312386177416912,
+  "3": 1.6993876517736672,
+  "4": 1.6767890317789031,
+  "5": 1.6592601803024973,
+  "6": 1.6449380658108792,
+  "7": 1.6328288905478479,
+  "8": 1.6223394458161153,
+  "9": 1.6130870998428553,
+  "10": 1.6048105943397093
+ }
+}

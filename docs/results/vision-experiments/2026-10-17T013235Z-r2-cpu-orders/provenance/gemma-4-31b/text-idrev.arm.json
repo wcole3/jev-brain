@@ -1,0 +1,28 @@
+{
+ "arm": "text",
+ "orders": "identity+reversed",
+ "folds": null,
+ "fallbacks": [],
+ "skipped": {},
+ "scored": 1462,
+ "collect": "/home/welb/devspace/jev-brain/.cache/vision-collect/gemma-4-31b/baseline/dev.jsonl.gz",
+ "collect_config": {
+  "profile": "gemma-4-31b",
+  "label": "baseline",
+  "layout": "header",
+  "orders": "identity+reversed",
+  "env": {},
+  "split": "dev",
+  "commit": "4648502"
+ },
+ "fit_on": null,
+ "text_calibration": {
+  "path": "/home/welb/devspace/jev-brain/data/gemma-4-31b/header/calibration.json",
+  "source": "gemma-4-31b/header/calibration.json",
+  "T": 4.262737987560785,
+  "orders": "identity",
+  "stamp_checked": false
+ },
+ "fallback_T": 4.262737987560785,
+ "commit": "a306b77"
+}

@@ -1,0 +1,29 @@
+{
+ "arm": "r1-Tn_bucket",
+ "orders": "identity",
+ "skipped": {},
+ "fallbacks": [],
+ "fit_on": null,
+ "collect": "/home/welb/devspace/jev-brain/.cache/vision-collect/gemma-4-31b/baseline/dev.jsonl.gz",
+ "collect_config": {
+  "profile": "gemma-4-31b",
+  "label": "baseline",
+  "layout": "header",
+  "orders": "identity+reversed",
+  "env": {},
+  "split": "dev",
+  "commit": "4648502"
+ },
+ "method": "Tn_bucket",
+ "T_by_n": {
+  "2": 4.668668186962053,
+  "3": 4.668668186962053,
+  "4": 4.804198096765761,
+  "5": 4.804198096765761,
+  "6": 3.5317778247129112,
+  "7": 3.5317778247129112,
+  "8": 3.5317778247129112,
+  "9": 7.743170283336842,
+  "10": 7.743170283336842
+ }
+}

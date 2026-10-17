@@ -1,0 +1,32 @@
+{
+ "arm": "r1-dev_Tn_log_cv",
+ "orders": "identity",
+ "skipped": {},
+ "fallbacks": [],
+ "fit_on": null,
+ "collect": "/home/welb/devspace/jev-brain/.cache/vision-collect/gemma-4-31b/baseline/dev.jsonl.gz",
+ "collect_config": {
+  "profile": "gemma-4-31b",
+  "label": "baseline",
+  "layout": "header",
+  "orders": "identity+reversed",
+  "env": {},
+  "split": "dev",
+  "commit": "4648502"
+ },
+ "method": "dev 2-fold cross-fit alpha+beta ln n (reference)",
+ "folds": {
+  "0": {
+   "fitted_on": "1",
+   "n": 774,
+   "alpha": 7.443893969955969,
+   "beta": -1.2108655913347843
+  },
+  "1": {
+   "fitted_on": "0",
+   "n": 688,
+   "alpha": 7.22625969841519,
+   "beta": -0.8968857070554205
+  }
+ }
+}

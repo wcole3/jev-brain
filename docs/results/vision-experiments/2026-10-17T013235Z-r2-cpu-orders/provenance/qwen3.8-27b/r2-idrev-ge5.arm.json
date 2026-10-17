@@ -1,0 +1,19 @@
+{
+ "arm": "r2-idrev-ge5",
+ "orders": "identity+reversed if n >= 5 else identity",
+ "skipped": {},
+ "fallbacks": [],
+ "fit_on": null,
+ "collect": "/home/welb/devspace/jev-brain/.cache/vision-collect/qwen3.8-27b/baseline/dev.jsonl.gz",
+ "collect_config": {
+  "profile": "qwen3.8-27b",
+  "label": "baseline",
+  "layout": "header",
+  "orders": "identity+reversed",
+  "env": {},
+  "split": "dev",
+  "commit": "4648502-dirty"
+ },
+ "T": 1.535520473719803,
+ "second_read_share": 0.1853625170998632
+}

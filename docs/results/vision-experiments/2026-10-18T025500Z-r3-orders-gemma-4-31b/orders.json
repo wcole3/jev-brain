@@ -1,0 +1,488 @@
+{
+ "meta": {
+  "timestamp": "2026-10-18T025500Z",
+  "commit": "995c64d",
+  "profile": "gemma-4-31b",
+  "collects": [
+   "/home/welb/devspace/jev-brain/.cache/vision-collect/gemma-4-31b/baseline/dev.jsonl.gz"
+  ],
+  "text fit": "/home/welb/devspace/jev-brain/docs/results/archive/2026-10-18T021201Z-r3-orders-text-gemma-4-31b/summary.json",
+  "arms dir": ".cache/vision-orders/gemma-4-31b/baseline",
+  "gate T (choice)": 4.262737987560785,
+  "notes": [
+   "Each arm uses its text fit on text calib (choice T, or tn-prob's \u03b1 + \u03b2 ln n); gates read the identity read at the shipped choice T.",
+   "A half policy without a text fit of its own uses the reversed policy's (ruling R3).",
+   "Orders: half = cyclic:2's second order; aleria adds cyclic:4's other shifts; shifts are round(i\u00b7n/k) (R6).",
+   "xfit arms: 2-fold group cross-fit on image dev (vision_offline.fold), a reference only; a fold under 30 questions keeps the text fit."
+  ]
+ },
+ "arms": {
+  "identity": {
+   "mean_reads": 1.0,
+   "share_paying": 0.0,
+   "mean_extra_suffix_tokens": 0.0,
+   "text_fit": {
+    "from": "identity",
+    "param": 4.262737987560785
+   }
+  },
+  "always reversed/mean-prob": {
+   "mean_reads": 2.0,
+   "share_paying": 1.0,
+   "mean_extra_suffix_tokens": 96.8358413132695,
+   "text_fit": {
+    "from": "always reversed/mean-prob",
+    "param": 4.090400852114957
+   }
+  },
+  "always reversed/mean-logprob": {
+   "mean_reads": 2.0,
+   "share_paying": 1.0,
+   "mean_extra_suffix_tokens": 96.8358413132695,
+   "text_fit": {
+    "from": "always reversed/mean-logprob",
+    "param": 4.1977325497020574
+   }
+  },
+  "always reversed/tn-prob": {
+   "mean_reads": 2.0,
+   "share_paying": 1.0,
+   "mean_extra_suffix_tokens": 96.8358413132695,
+   "text_fit": {
+    "from": "always reversed/tn-prob",
+    "param": {
+     "alpha": 7.0995314778921665,
+     "beta": -0.854829881408873
+    }
+   }
+  },
+  "top_p 0.5 reversed/mean-prob": {
+   "mean_reads": 1.0656634746922025,
+   "share_paying": 0.06566347469220246,
+   "mean_extra_suffix_tokens": 10.3187414500684,
+   "text_fit": {
+    "from": "top_p 0.5 reversed/mean-prob",
+    "param": 4.2662684387249055
+   }
+  },
+  "top_p 0.5 reversed/mean-logprob": {
+   "mean_reads": 1.0656634746922025,
+   "share_paying": 0.06566347469220246,
+   "mean_extra_suffix_tokens": 10.3187414500684,
+   "text_fit": {
+    "from": "top_p 0.5 reversed/mean-logprob",
+    "param": 4.281256126070201
+   }
+  },
+  "top_p 0.5 reversed/tn-prob": {
+   "mean_reads": 1.0656634746922025,
+   "share_paying": 0.06566347469220246,
+   "mean_extra_suffix_tokens": 10.3187414500684,
+   "text_fit": {
+    "from": "top_p 0.5 reversed/tn-prob",
+    "param": {
+     "alpha": 7.337677202645584,
+     "beta": -0.8716052515896789
+    }
+   }
+  },
+  "top_p 0.6 reversed/mean-prob": {
+   "mean_reads": 1.1135430916552667,
+   "share_paying": 0.11354309165526676,
+   "mean_extra_suffix_tokens": 17.744870041039672,
+   "text_fit": {
+    "from": "top_p 0.6 reversed/mean-prob",
+    "param": 4.262093134603009
+   }
+  },
+  "top_p 0.6 reversed/mean-logprob": {
+   "mean_reads": 1.1135430916552667,
+   "share_paying": 0.11354309165526676,
+   "mean_extra_suffix_tokens": 17.744870041039672,
+   "text_fit": {
+    "from": "top_p 0.6 reversed/mean-logprob",
+    "param": 4.273032887812875
+   }
+  },
+  "top_p 0.6 reversed/tn-prob": {
+   "mean_reads": 1.1135430916552667,
+   "share_paying": 0.11354309165526676,
+   "mean_extra_suffix_tokens": 17.744870041039672,
+   "text_fit": {
+    "from": "top_p 0.6 reversed/tn-prob",
+    "param": {
+     "alpha": 7.330779789316809,
+     "beta": -0.8717224854992299
+    }
+   }
+  },
+  "top_p 0.7 reversed/mean-prob": {
+   "mean_reads": 1.1607387140902872,
+   "share_paying": 0.16073871409028728,
+   "mean_extra_suffix_tokens": 25.674418604651162,
+   "text_fit": {
+    "from": "top_p 0.7 reversed/mean-prob",
+    "param": 4.250140872540695
+   }
+  },
+  "top_p 0.7 reversed/mean-logprob": {
+   "mean_reads": 1.1607387140902872,
+   "share_paying": 0.16073871409028728,
+   "mean_extra_suffix_tokens": 25.674418604651162,
+   "text_fit": {
+    "from": "top_p 0.7 reversed/mean-logprob",
+    "param": 4.271740164926968
+   }
+  },
+  "top_p 0.7 reversed/tn-prob": {
+   "mean_reads": 1.1607387140902872,
+   "share_paying": 0.16073871409028728,
+   "mean_extra_suffix_tokens": 25.674418604651162,
+   "text_fit": {
+    "from": "top_p 0.7 reversed/tn-prob",
+    "param": {
+     "alpha": 7.364640816428463,
+     "beta": -0.8876070085401407
+    }
+   }
+  },
+  "top_p 0.8 reversed/mean-prob": {
+   "mean_reads": 1.222298221614227,
+   "share_paying": 0.22229822161422708,
+   "mean_extra_suffix_tokens": 35.66347469220246,
+   "text_fit": {
+    "from": "top_p 0.8 reversed/mean-prob",
+    "param": 4.21002396949323
+   }
+  },
+  "top_p 0.8 reversed/mean-logprob": {
+   "mean_reads": 1.222298221614227,
+   "share_paying": 0.22229822161422708,
+   "mean_extra_suffix_tokens": 35.66347469220246,
+   "text_fit": {
+    "from": "top_p 0.8 reversed/mean-logprob",
+    "param": 4.23709125883885
+   }
+  },
+  "top_p 0.8 reversed/tn-prob": {
+   "mean_reads": 1.222298221614227,
+   "share_paying": 0.22229822161422708,
+   "mean_extra_suffix_tokens": 35.66347469220246,
+   "text_fit": {
+    "from": "top_p 0.8 reversed/tn-prob",
+    "param": {
+     "alpha": 7.3762923534495215,
+     "beta": -0.9058896534770818
+    }
+   }
+  },
+  "top_p 0.9 reversed/mean-prob": {
+   "mean_reads": 1.305061559507524,
+   "share_paying": 0.30506155950752395,
+   "mean_extra_suffix_tokens": 44.77017783857729,
+   "text_fit": {
+    "from": "top_p 0.9 reversed/mean-prob",
+    "param": 4.153892518545493
+   }
+  },
+  "top_p 0.9 reversed/mean-logprob": {
+   "mean_reads": 1.305061559507524,
+   "share_paying": 0.30506155950752395,
+   "mean_extra_suffix_tokens": 44.77017783857729,
+   "text_fit": {
+    "from": "top_p 0.9 reversed/mean-logprob",
+    "param": 4.235658133180153
+   }
+  },
+  "top_p 0.9 reversed/tn-prob": {
+   "mean_reads": 1.305061559507524,
+   "share_paying": 0.30506155950752395,
+   "mean_extra_suffix_tokens": 44.77017783857729,
+   "text_fit": {
+    "from": "top_p 0.9 reversed/tn-prob",
+    "param": {
+     "alpha": 7.312180425711837,
+     "beta": -0.9018160309763377
+    }
+   }
+  },
+  "min_n 3 reversed/mean-prob": {
+   "mean_reads": 1.631326949384405,
+   "share_paying": 0.6313269493844049,
+   "mean_extra_suffix_tokens": 77.48837209302326,
+   "text_fit": {
+    "from": "min_n 3 reversed/mean-prob",
+    "param": 4.092021288808954
+   }
+  },
+  "min_n 3 reversed/mean-logprob": {
+   "mean_reads": 1.631326949384405,
+   "share_paying": 0.6313269493844049,
+   "mean_extra_suffix_tokens": 77.48837209302326,
+   "text_fit": {
+    "from": "min_n 3 reversed/mean-logprob",
+    "param": 4.198852914532576
+   }
+  },
+  "min_n 3 reversed/tn-prob": {
+   "mean_reads": 1.631326949384405,
+   "share_paying": 0.6313269493844049,
+   "mean_extra_suffix_tokens": 77.48837209302326,
+   "text_fit": {
+    "from": "min_n 3 reversed/tn-prob",
+    "param": {
+     "alpha": 7.107394180439979,
+     "beta": -0.8567694796531453
+    }
+   }
+  },
+  "min_n 4 reversed/mean-prob": {
+   "mean_reads": 1.5595075239398084,
+   "share_paying": 0.5595075239398085,
+   "mean_extra_suffix_tokens": 72.78180574555404,
+   "text_fit": {
+    "from": "min_n 4 reversed/mean-prob",
+    "param": 4.091638697721178
+   }
+  },
+  "min_n 4 reversed/mean-logprob": {
+   "mean_reads": 1.5595075239398084,
+   "share_paying": 0.5595075239398085,
+   "mean_extra_suffix_tokens": 72.78180574555404,
+   "text_fit": {
+    "from": "min_n 4 reversed/mean-logprob",
+    "param": 4.192205896474456
+   }
+  },
+  "min_n 4 reversed/tn-prob": {
+   "mean_reads": 1.5595075239398084,
+   "share_paying": 0.5595075239398085,
+   "mean_extra_suffix_tokens": 72.78180574555404,
+   "text_fit": {
+    "from": "min_n 4 reversed/tn-prob",
+    "param": {
+     "alpha": 7.1050617257543065,
+     "beta": -0.8562473481356665
+    }
+   }
+  },
+  "min_n 5 reversed/mean-prob": {
+   "mean_reads": 1.1853625170998632,
+   "share_paying": 0.1853625170998632,
+   "mean_extra_suffix_tokens": 35.341997264021884,
+   "text_fit": {
+    "from": "min_n 5 reversed/mean-prob",
+    "param": 4.090400852114959
+   }
+  },
+  "min_n 5 reversed/mean-logprob": {
+   "mean_reads": 1.1853625170998632,
+   "share_paying": 0.1853625170998632,
+   "mean_extra_suffix_tokens": 35.341997264021884,
+   "text_fit": {
+    "from": "min_n 5 reversed/mean-logprob",
+    "param": 4.190937626220728
+   }
+  },
+  "min_n 5 reversed/tn-prob": {
+   "mean_reads": 1.1853625170998632,
+   "share_paying": 0.1853625170998632,
+   "mean_extra_suffix_tokens": 35.341997264021884,
+   "text_fit": {
+    "from": "min_n 5 reversed/tn-prob",
+    "param": {
+     "alpha": 7.100787851026905,
+     "beta": -0.8552221002542035
+    }
+   }
+  },
+  "min_n 6 reversed/mean-prob": {
+   "mean_reads": 1.1785225718194254,
+   "share_paying": 0.17852257181942544,
+   "mean_extra_suffix_tokens": 34.881668946648425,
+   "text_fit": {
+    "from": "min_n 6 reversed/mean-prob",
+    "param": 4.115691453915353
+   }
+  },
+  "min_n 6 reversed/mean-logprob": {
+   "mean_reads": 1.1785225718194254,
+   "share_paying": 0.17852257181942544,
+   "mean_extra_suffix_tokens": 34.881668946648425,
+   "text_fit": {
+    "from": "min_n 6 reversed/mean-logprob",
+    "param": 4.217882204726778
+   }
+  },
+  "min_n 6 reversed/tn-prob": {
+   "mean_reads": 1.1785225718194254,
+   "share_paying": 0.17852257181942544,
+   "mean_extra_suffix_tokens": 34.881668946648425,
+   "text_fit": {
+    "from": "min_n 6 reversed/tn-prob",
+    "param": {
+     "alpha": 7.197370935024439,
+     "beta": -0.8778899013673558
+    }
+   }
+  },
+  "min_n 8 reversed/mean-prob": {
+   "mean_reads": 1.0772913816689467,
+   "share_paying": 0.07729138166894665,
+   "mean_extra_suffix_tokens": 7.942544459644322,
+   "text_fit": {
+    "from": "min_n 8 reversed/mean-prob",
+    "param": 4.12586963785801
+   }
+  },
+  "min_n 8 reversed/mean-logprob": {
+   "mean_reads": 1.0772913816689467,
+   "share_paying": 0.07729138166894665,
+   "mean_extra_suffix_tokens": 7.942544459644322,
+   "text_fit": {
+    "from": "min_n 8 reversed/mean-logprob",
+    "param": 4.225848382392356
+   }
+  },
+  "min_n 8 reversed/tn-prob": {
+   "mean_reads": 1.0772913816689467,
+   "share_paying": 0.07729138166894665,
+   "mean_extra_suffix_tokens": 7.942544459644322,
+   "text_fit": {
+    "from": "min_n 8 reversed/tn-prob",
+    "param": {
+     "alpha": 7.2321008889276985,
+     "beta": -0.8858072858433728
+    }
+   }
+  },
+  "xfit always reversed/mean-prob": {
+   "mean_reads": 2.0,
+   "share_paying": 1.0,
+   "mean_extra_suffix_tokens": 96.8358413132695,
+   "text_fit": {
+    "from": "always reversed/mean-prob",
+    "param": 4.090400852114957
+   },
+   "folds": {
+    "0": {
+     "fitted_on": "1",
+     "n": 774,
+     "fallback": false,
+     "param": 5.401390524934919
+    },
+    "1": {
+     "fitted_on": "0",
+     "n": 688,
+     "fallback": false,
+     "param": 5.7918277629847505
+    }
+   }
+  },
+  "xfit always reversed/mean-logprob": {
+   "mean_reads": 2.0,
+   "share_paying": 1.0,
+   "mean_extra_suffix_tokens": 96.8358413132695,
+   "text_fit": {
+    "from": "always reversed/mean-logprob",
+    "param": 4.1977325497020574
+   },
+   "folds": {
+    "0": {
+     "fitted_on": "1",
+     "n": 774,
+     "fallback": false,
+     "param": 5.458006733292853
+    },
+    "1": {
+     "fitted_on": "0",
+     "n": 688,
+     "fallback": false,
+     "param": 5.7932457143769875
+    }
+   }
+  },
+  "xfit always reversed/tn-prob": {
+   "mean_reads": 2.0,
+   "share_paying": 1.0,
+   "mean_extra_suffix_tokens": 96.8358413132695,
+   "text_fit": {
+    "from": "always reversed/tn-prob",
+    "param": {
+     "alpha": 7.0995314778921665,
+     "beta": -0.854829881408873
+    }
+   },
+   "folds": {
+    "0": {
+     "fitted_on": "1",
+     "n": 774,
+     "fallback": false,
+     "param": {
+      "alpha": 6.8618348321808185,
+      "beta": -1.0302697953344266
+     }
+    },
+    "1": {
+     "fitted_on": "0",
+     "n": 688,
+     "fallback": false,
+     "param": {
+      "alpha": 7.257571784375823,
+      "beta": -1.0596180612380024
+     }
+    }
+   }
+  }
+ },
+ "skipped": {
+  "cyclic:2/mean-prob": "needs cyclic:4 collect (full_blink:val_Counting_105: missing perm [2, 3, 0, 1])",
+  "cyclic:2/mean-logprob": "needs cyclic:4 collect (full_blink:val_Counting_105: missing perm [2, 3, 0, 1])",
+  "cyclic:2/tn-prob": "needs cyclic:4 collect (full_blink:val_Counting_105: missing perm [2, 3, 0, 1])",
+  "cyclic:3/mean-prob": "needs perms no planned collect holds (full_blink:val_Counting_105: missing perm [1, 2, 3, 0])",
+  "cyclic:3/mean-logprob": "needs perms no planned collect holds (full_blink:val_Counting_105: missing perm [1, 2, 3, 0])",
+  "cyclic:3/tn-prob": "needs perms no planned collect holds (full_blink:val_Counting_105: missing perm [1, 2, 3, 0])",
+  "cyclic:4/mean-prob": "needs cyclic:4 collect (full_blink:val_Counting_105: missing perm [1, 2, 3, 0])",
+  "cyclic:4/mean-logprob": "needs cyclic:4 collect (full_blink:val_Counting_105: missing perm [1, 2, 3, 0])",
+  "cyclic:4/tn-prob": "needs cyclic:4 collect (full_blink:val_Counting_105: missing perm [1, 2, 3, 0])",
+  "aleria half/mean-prob": "needs cyclic:4 collect (full_blink:val_Counting_105: missing perm [2, 3, 0, 1])",
+  "aleria half/mean-logprob": "needs cyclic:4 collect (full_blink:val_Counting_105: missing perm [2, 3, 0, 1])",
+  "aleria half/tn-prob": "needs cyclic:4 collect (full_blink:val_Counting_105: missing perm [2, 3, 0, 1])",
+  "always half/mean-prob": "needs cyclic:4 collect (full_blink:val_Counting_105: missing perm [2, 3, 0, 1])",
+  "always half/mean-logprob": "needs cyclic:4 collect (full_blink:val_Counting_105: missing perm [2, 3, 0, 1])",
+  "always half/tn-prob": "needs cyclic:4 collect (full_blink:val_Counting_105: missing perm [2, 3, 0, 1])",
+  "top_p 0.5 half/mean-prob": "needs cyclic:4 collect (full_charxiv:38: missing perm [2, 3, 0, 1])",
+  "top_p 0.5 half/mean-logprob": "needs cyclic:4 collect (full_charxiv:38: missing perm [2, 3, 0, 1])",
+  "top_p 0.5 half/tn-prob": "needs cyclic:4 collect (full_charxiv:38: missing perm [2, 3, 0, 1])",
+  "top_p 0.6 half/mean-prob": "needs cyclic:4 collect (full_blink:val_Counting_91: missing perm [2, 3, 0, 1])",
+  "top_p 0.6 half/mean-logprob": "needs cyclic:4 collect (full_blink:val_Counting_91: missing perm [2, 3, 0, 1])",
+  "top_p 0.6 half/tn-prob": "needs cyclic:4 collect (full_blink:val_Counting_91: missing perm [2, 3, 0, 1])",
+  "top_p 0.7 half/mean-prob": "needs cyclic:4 collect (full_blink:val_Counting_91: missing perm [2, 3, 0, 1])",
+  "top_p 0.7 half/mean-logprob": "needs cyclic:4 collect (full_blink:val_Counting_91: missing perm [2, 3, 0, 1])",
+  "top_p 0.7 half/tn-prob": "needs cyclic:4 collect (full_blink:val_Counting_91: missing perm [2, 3, 0, 1])",
+  "top_p 0.8 half/mean-prob": "needs cyclic:4 collect (full_blink:val_Counting_19: missing perm [2, 3, 0, 1])",
+  "top_p 0.8 half/mean-logprob": "needs cyclic:4 collect (full_blink:val_Counting_19: missing perm [2, 3, 0, 1])",
+  "top_p 0.8 half/tn-prob": "needs cyclic:4 collect (full_blink:val_Counting_19: missing perm [2, 3, 0, 1])",
+  "top_p 0.9 half/mean-prob": "needs cyclic:4 collect (full_blink:val_Counting_19: missing perm [2, 3, 0, 1])",
+  "top_p 0.9 half/mean-logprob": "needs cyclic:4 collect (full_blink:val_Counting_19: missing perm [2, 3, 0, 1])",
+  "top_p 0.9 half/tn-prob": "needs cyclic:4 collect (full_blink:val_Counting_19: missing perm [2, 3, 0, 1])",
+  "min_n 3 half/mean-prob": "needs cyclic:4 collect (full_blink:val_Counting_105: missing perm [2, 3, 0, 1])",
+  "min_n 3 half/mean-logprob": "needs cyclic:4 collect (full_blink:val_Counting_105: missing perm [2, 3, 0, 1])",
+  "min_n 3 half/tn-prob": "needs cyclic:4 collect (full_blink:val_Counting_105: missing perm [2, 3, 0, 1])",
+  "min_n 4 half/mean-prob": "needs cyclic:4 collect (full_blink:val_Counting_105: missing perm [2, 3, 0, 1])",
+  "min_n 4 half/mean-logprob": "needs cyclic:4 collect (full_blink:val_Counting_105: missing perm [2, 3, 0, 1])",
+  "min_n 4 half/tn-prob": "needs cyclic:4 collect (full_blink:val_Counting_105: missing perm [2, 3, 0, 1])",
+  "min_n 5 half/mean-prob": "needs cyclic:4 collect (full_cvbench:1006: missing perm [3, 4, 5, 0, 1, 2])",
+  "min_n 5 half/mean-logprob": "needs cyclic:4 collect (full_cvbench:1006: missing perm [3, 4, 5, 0, 1, 2])",
+  "min_n 5 half/tn-prob": "needs cyclic:4 collect (full_cvbench:1006: missing perm [3, 4, 5, 0, 1, 2])",
+  "min_n 6 half/mean-prob": "needs cyclic:4 collect (full_cvbench:1006: missing perm [3, 4, 5, 0, 1, 2])",
+  "min_n 6 half/mean-logprob": "needs cyclic:4 collect (full_cvbench:1006: missing perm [3, 4, 5, 0, 1, 2])",
+  "min_n 6 half/tn-prob": "needs cyclic:4 collect (full_cvbench:1006: missing perm [3, 4, 5, 0, 1, 2])",
+  "min_n 8 half/mean-prob": "needs cyclic:4 collect (full_mmmu_pro_vision:test_Accounting_170: missing perm [4, 5, 6, 7, 8, 0, 1, 2, 3])",
+  "min_n 8 half/mean-logprob": "needs cyclic:4 collect (full_mmmu_pro_vision:test_Accounting_170: missing perm [4, 5, 6, 7, 8, 0, 1, 2, 3])",
+  "min_n 8 half/tn-prob": "needs cyclic:4 collect (full_mmmu_pro_vision:test_Accounting_170: missing perm [4, 5, 6, 7, 8, 0, 1, 2, 3])",
+  "xfit always half/mean-prob": "needs cyclic:4 collect (full_blink:val_Counting_105: missing perm [2, 3, 0, 1])",
+  "xfit always half/mean-logprob": "needs cyclic:4 collect (full_blink:val_Counting_105: missing perm [2, 3, 0, 1])",
+  "xfit always half/tn-prob": "needs cyclic:4 collect (full_blink:val_Counting_105: missing perm [2, 3, 0, 1])"
+ }
+}

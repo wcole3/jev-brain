@@ -1,5 +1,6 @@
 """Option labels (A..Z, then AA..), each exactly one token. Built once per tokenizer and layout."""
 
+import dataclasses
 import functools
 import hashlib
 import json
@@ -104,7 +105,9 @@ def build_labels(tok, layout: Layout) -> dict:
 def _build_set(tok, layout: Layout) -> dict:
     """An experiment layout's own names plus today's letters that survive this layout's slot as fallback."""
     names, ids = _own_names(tok, layout)
-    fallback_names, fallback_ids = _in_context(tok, layout, label_table(tok).names)
+    # unused shows its fallback as "A text" after a bare "Answer:", so that letter is read spaced
+    shown = dataclasses.replace(layout, answer_label=" {label}") if layout.labels == "unused" else layout
+    fallback_names, fallback_ids = _in_context(tok, shown, label_table(tok).names)
     read = None if layout.labels == "unused" else [layout.answer_label.format(label=n) for n in names]
     return {
         "layout": layout.name,
@@ -116,7 +119,7 @@ def _build_set(tok, layout: Layout) -> dict:
         "read": read,
         "fallback_names": fallback_names,
         "fallback_ids": fallback_ids,
-        "fallback_read": [layout.answer_label.format(label=n) for n in fallback_names],
+        "fallback_read": [shown.answer_label.format(label=n) for n in fallback_names],
     }
 
 
@@ -128,12 +131,15 @@ def labels_from_table(table: dict) -> Labels:
 
 
 def _content_reads(tok, layout: Layout, texts: list[str]) -> list[int] | None:
-    """Each option's first token after the answer slot; None if a text is empty, merges or shares a first token."""
+    """Each option's first token after the answer slot; None if a text is empty, merges, shares a first token
+    or starts with a bare whitespace token (gemma reads " " before a digit)."""
     slot = tok.encode(layout.answer, add_special_tokens=False)
     reads = tok([layout.answer + layout.answer_label.format(label=t) for t in texts], add_special_tokens=False)
     if any(not t for t in texts) or any(e[: len(slot)] != slot for e in reads["input_ids"]):
         return None
     firsts = [e[len(slot)] for e in reads["input_ids"]]
+    if any(not text.strip() for text in tok.batch_decode([[i] for i in firsts])):
+        return None
     return firsts if len(set(firsts)) == len(firsts) else None
 
 

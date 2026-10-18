@@ -107,3 +107,23 @@ def test_unused_spliced(gemma_tok):
         assert gemma_tok.convert_ids_to_tokens(row.label_ids) == [f"<unused{k}>" for k in range(n)]
         at = row.ids.index(lab.ids[0])
         assert row.ids.count(lab.ids[0]) == 1 and row.ids[at - 1 : at] == encode(gemma_tok, layout.option_open)
+
+
+def test_content_whitespace_read_falls_back(gemma_tok):
+    layout, lab = experiment(gemma_tok, "content")
+    names, ids, tag = question_labels(gemma_tok, layout, lab, ["5 apples", "pears"])
+    assert (names, ids, tag) == (["A) ", "B) "], lab.fallback.ids[:2], "fallback")
+
+
+def test_unused_fallback_reads_spaced_letter(gemma_tok):
+    layout, lab = experiment(gemma_tok, "unused")
+    slot = encode(gemma_tok, layout.answer)
+    assert lab.fallback.read[:2] == [" A", " B"]
+    assert lab.fallback.ids[:2] == [encode(gemma_tok, layout.answer + r)[len(slot)] for r in (" A", " B")]
+    two = dataclasses.replace(lab, names=lab.names[:2], ids=lab.ids[:2])
+    assert question_labels(gemma_tok, layout, two, ["x", "y", "z"]) == (["A", "B", "C"], lab.fallback.ids[:3], "fallback")
+
+
+def test_digits_boundary_at_nine(gemma_tok):
+    layout, lab = experiment(gemma_tok, "digits")
+    assert question_labels(gemma_tok, layout, lab, CITIES[:9]) == (lab.names, lab.ids, "set")

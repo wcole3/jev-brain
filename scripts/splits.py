@@ -124,7 +124,7 @@ def rows_for(name: str) -> list[dict]:
     split = load_split(name)
     if stale := sorted(k for k, v in pins().items() if split["meta"].get(k) != v):
         raise SystemExit(f"data/splits/{name}.json was cut from other {stale}: recut it with scripts/splits.py")
-    if name in ("calib", "eval"):
+    if name in ("calib", "eval", "calib-600"):  # index-dev-2k is Index rows, like index-dev
         return pick(name, extras(), split["ids"])
     ids = split["warmup"] + split["timed"] if name == "latency-v1" else split["ids"]
     return pick(name, index_rows(set(ids)), ids)

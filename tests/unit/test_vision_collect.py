@@ -20,6 +20,7 @@ from gateway.readout import GENERATE_PATH
 from gateway.schema import SystemOneRequest
 from gateway.vision import load_vision
 from scripts import build_labels as bl
+from scripts import experiment_layouts
 from scripts import vision_collect as vc
 from scripts import vision_splits as vs
 from scripts.collect import records
@@ -438,7 +439,7 @@ async def test_layout_file_whose_frame_merges_is_refused(suite, monkeypatch):
     def merging(tok, layout):
         raise ValueError(f"layout {layout.name}: the chat template tail merges with the answer slot")
 
-    monkeypatch.setattr(vc, "chat_frame", merging)
+    monkeypatch.setattr(experiment_layouts, "chat_frame", merging)
     fake = FakeVllm(vision_with({"max_soft_tokens": 560}))
     with pytest.raises(SystemExit, match="header-worded: the chat template tail merges"):
         await run(suite, "--layout-file", str(EXPERIMENT), fake=fake)
@@ -498,3 +499,12 @@ async def test_a_suite_split_then_rows_under_one_label_is_refused(suite):
     with pytest.raises(SystemExit, match="rows"):
         await run(suite, "--rows", str(rows_file), "--split", "calib")
     assert not out_file(suite, "calib").exists()
+
+
+async def test_vision_collect_records_label_tags(suite):
+    rows_file = write_rows(suite / "ten" / "rows.jsonl", [row(20, "pics/x.png", list("ABCDEFGHIJ"), "J")])
+    png(rows_file.parent / "pics" / "x.png", "white")
+    digits = ROOT / "prompts" / "experiments" / "labels-digits.toml"
+    await run(suite, "--rows", str(rows_file), "--split", "calib", "--layout-file", str(digits))
+    (rec,) = records(out_file(suite, "calib"))
+    assert rec["status"] == "ok" and rec["label_tags"] == {"answer": "fallback"}

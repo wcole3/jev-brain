@@ -26,19 +26,15 @@ import PIL.Image
 from pydantic import ValidationError
 
 from gateway.app import load_engine, vllm_client
-from gateway.calibration import UNCALIBRATED
 from gateway.config import ROOT, Settings, read_env_file
 from gateway.decide import build_batch, read_rows
-from gateway.labels import Labels
-from gateway.layouts import load_layout
 from gateway.orders import option_orders
-from gateway.prompts import chat_frame
 from gateway.questions import render_question
 from gateway.readout import GENERATE_PATH
 from gateway.schema import ImageError, Question, RequestError, SystemOneRequest
 from scripts import vision_splits
-from scripts.build_labels import table_for
 from scripts.collect import ATTEMPTS, BACKOFF, repair, stamp
+from scripts.experiment_layouts import add_layout_file, label_tags, repo_relative
 
 COLLECT = ROOT / ".cache" / "vision-collect"
 PROBE_SIZE = (1280, 1092)
@@ -63,24 +59,6 @@ def require_labels(s: Settings, layout: str) -> None:
 
 def disk_labels_sha256(s: Settings, layout: str) -> str:
     return hashlib.sha256((s.data_dir(layout) / "labels.json").read_bytes()).hexdigest()
-
-
-def add_layout_file(engine, path: Path) -> str:
-    """Register an experiment layout in the engine, labels built in memory; returns the table's sha256."""
-    try:
-        layout = load_layout(path)
-        if layout.name in engine.layouts:
-            raise SystemExit(f"{path}: {layout.name!r} is a prompts/ layout name; rename the experiment file")
-        table = table_for(engine.tokenizer, layout, engine.settings)
-        frame = chat_frame(engine.tokenizer, layout)
-    except (OSError, ValueError) as e:  # a bad file, or a label or frame that merges with the answer text
-        raise SystemExit(f"{path}: {e}") from e
-    engine.layouts[layout.name] = layout
-    engine.frames[layout.name] = frame
-    engine.labels[layout.name] = Labels(table["names"], table["ids"])
-    engine.calibration[layout.name] = UNCALIBRATED
-    # the bytes build_labels.py would write, so it matches a labels.json built on disk later
-    return hashlib.sha256((json.dumps(table, indent=1) + "\n").encode()).hexdigest()
 
 
 def run_stamp(engine, layout: str, commit: str, labels: str) -> dict:
@@ -153,7 +131,7 @@ async def collect_one(engine, row: dict, group: str, image_dir: Path, layout: st
         return rec | {"status": "invalid", "error": str(e).splitlines()[0]}
     except RequestError as e:  # includes ImageError: a missing, unreadable or refused image
         return rec | {"status": "unsupported", "error": str(e)}
-    return rec | {"status": "ok"} | token_fields(r) | {"reads": reads_of(r)}
+    return rec | {"status": "ok"} | token_fields(r) | {"reads": reads_of(r)} | label_tags(engine, layout, r.batch)
 
 
 def reads_of(r) -> list[dict]:
@@ -273,11 +251,6 @@ async def require_model(client: httpx.AsyncClient, s: Settings) -> None:
     served = [m["id"] for m in (await client.get("/v1/models")).json()["data"]]
     if s.served_model not in served:
         raise SystemExit(f"vLLM serves {served}, not {s.served_model}: start the {s.profile} profile first")
-
-
-def repo_relative(path: str) -> str:
-    p = Path(path).resolve()
-    return str(p.relative_to(ROOT)) if p.is_relative_to(ROOT) else str(p)
 
 
 def config_for(args, s: Settings, commit: str) -> dict:

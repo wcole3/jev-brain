@@ -1,10 +1,11 @@
+import hashlib
 import json
 import random
 from itertools import pairwise
 
 import pytest
 
-from scripts import splits
+from scripts import index_dev_2k, splits
 from scripts.decision_rows import state_key
 
 
@@ -115,3 +116,36 @@ def test_rows_for_refuses_ids_it_cannot_find(cut, monkeypatch):
     monkeypatch.setattr(splits, "extras", lambda: cut[1:])
     with pytest.raises(SystemExit, match=f"{name}: 1 listed ids are missing"):
         splits.rows_for(name)
+
+
+def test_index_dev_2k_subset_and_size():
+    small, dev = splits.load_split("index-dev-2k"), set(splits.load_split("index-dev")["ids"])
+    assert set(small["ids"]) <= dev and 1900 <= len(small["ids"]) <= 2100
+    assert small["meta"] == splits.pins() | {"from": "index-dev", "rule": index_dev_2k.RULE, "rows": len(small["ids"])}
+    rows = [meta(i, 1 + i // 4 % 3, group=f"g{i // 4}") for i in range(12000)]
+    ids = set(index_dev_2k.index_dev_2k(rows, [r["id"] for r in rows[:10000]]))
+    assert ids <= {r["id"] for r in rows[:10000]} and 1900 <= len(ids) <= 2100
+    for g in range(2500):
+        group = {f"r{4 * g + k}" for k in range(4)}
+        assert group <= ids or not group & ids
+
+
+def test_calib_600_proportional():
+    small = splits.load_split("calib-600")
+    assert len(small["ids"]) == 600 and set(small["ids"]) <= set(splits.load_split("calib")["ids"])
+    assert small["meta"] == splits.pins() | {"seed": "calib-600"}
+    rows = [row(i, family=f) for f, n in (("a", 1000), ("b", 700), ("c", 149), ("d", 1)) for i in range(n)]
+    rows = [r | {"id": f"{r['family']}:{r['id']}"} for r in rows]
+    ids = index_dev_2k.calib_600(rows)
+    assert len(ids) == len(set(ids)) == 600
+    for f, n in (("a", 1000), ("b", 700), ("c", 149), ("d", 1)):
+        mine = [r["id"] for r in rows if r["family"] == f]
+        kept = sorted(mine, key=lambda i: hashlib.sha256(f"calib-600:{i}".encode()).hexdigest())
+        got = [i for i in ids if i in set(mine)]
+        assert abs(len(got) - 600 * n / 1850) <= 1 and set(got) == set(kept[: len(got)])
+
+
+def test_rows_for_reads_calib_600(cut, tmp_path):
+    some = splits.load_split("calib")["ids"][:3]
+    (tmp_path / "calib-600.json").write_text(json.dumps({"meta": splits.pins() | {"seed": "calib-600"}, "ids": some}))
+    assert [r["id"] for r in splits.rows_for("calib-600")] == some

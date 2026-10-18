@@ -220,8 +220,8 @@ def notes(profile: str, stamp: dict) -> list[str]:
             " read at the shipped choice T."),
            "A half policy without a text fit of its own uses the reversed policy's (ruling R3).",
            "Orders: half = cyclic:2's second order; aleria adds cyclic:4's other shifts; shifts are round(i·n/k) (R6).",
-           f"{REFERENCE.strip()} arms: 2-fold group cross-fit on image dev (vision_offline.fold), a reference only;"
-           " a fold under 30 questions keeps the text fit."]
+           (f"{REFERENCE.strip()} arms: 2-fold group cross-fit on image dev (vision_offline.fold), a reference only;"
+            " a fold under 30 questions keeps the text fit.")]
     if stamp.get("prefix_pad", "off") != "off":
         out.append(f"{profile} pads its prefix (prefix_pad {stamp['prefix_pad']}): reads were padded for one order,"
                    " so two-order arms are not exactly live-equivalent (docs/background/vision-experiments.md §3).")

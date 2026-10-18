@@ -1,0 +1,23 @@
+{
+  "source": {
+    "model": "google/gemma-4-31B-it",
+    "revision": "842da3794eaa0b77d5f08bae87a17459d91ff475",
+    "shard": "model-00001-of-00002.safetensors",
+    "tensor": "model.language_model.embed_tokens.weight",
+    "commit": "53cf6cd"
+  },
+  "unused": {
+    "rows": 255,
+    "norm_min": 0.9560984969139099,
+    "norm_median": 0.9600867033004761,
+    "norm_max": 1.2833279371261597,
+    "mean_pairwise_cosine": 0.6030519008636475
+  },
+  "ordinary": {
+    "rows": 2000,
+    "norm_min": 0.888629674911499,
+    "norm_median": 1.1186959743499756,
+    "norm_max": 1.5796269178390503,
+    "mean_pairwise_cosine": 0.04146839678287506
+  }
+}

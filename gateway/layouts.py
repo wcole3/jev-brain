@@ -9,7 +9,7 @@ from gateway.config import ROOT
 
 PROMPTS_DIR = ROOT / "prompts"
 PARTS = ("questions", "context", "question", "options")
-LABEL_SETS = ("letters", "lower", "spaced", "digits", "symbols", "unused", "content")
+LABEL_SETS = ("letters", "lower", "spaced", "digits", "symbols", "unused", "content", "shuffled", "shuffled-q")
 REQUIRED = ("order", "context", "question", "option", "answer", "described", "noul", "noul_question")
 
 

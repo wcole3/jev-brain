@@ -17,6 +17,8 @@ NARROW = 10  # up to 10 options are rendered as plain text "(A) ..", as decider 
 _rest = [c for c in string.punctuation if c != "'"]
 random.Random("labels-symbols").shuffle(_rest)
 SYMBOLS = ["'", *_rest]
+SHUFFLED = list(string.ascii_uppercase)
+random.Random("labels-shuffled").shuffle(SHUFFLED)
 
 
 @dataclass(frozen=True)
@@ -76,6 +78,8 @@ def _own_names(tok, layout: Layout) -> tuple[list[str], list[int]]:
         "digits": list(string.digits[1:]),
         "symbols": SYMBOLS,
         "content": [],
+        "shuffled": SHUFFLED,
+        "shuffled-q": list(string.ascii_uppercase),
     }[layout.labels]
     names, ids = _in_context(tok, layout, candidates)
     if names != candidates:
@@ -152,11 +156,22 @@ def _fallback(layout: Layout, labels: Labels, texts: list[str]) -> tuple[list[st
     return names, fallback.ids[:n], "fallback"
 
 
+def _shuffled_per_question(labels: Labels, texts: list[str]) -> tuple[list[str], list[int]]:
+    """Seeded on the sorted texts, so a reversed read gives each option the same letter."""
+    order = list(range(len(labels.names)))
+    random.Random("labels-shuffled-q:" + "\x1f".join(sorted(texts))).shuffle(order)
+    rank = {k: r for r, k in enumerate(sorted(range(len(texts)), key=texts.__getitem__))}
+    pick = [order[rank[k]] for k in range(len(texts))]
+    return [labels.names[i] for i in pick], [labels.ids[i] for i in pick]
+
+
 def question_labels(tok, layout: Layout, labels: Labels, texts: list[str]) -> tuple[list[str], list[int], str]:
     """Shown names and read ids for one question's options in shown order, tagged "set" or "fallback"."""
     if layout.labels == "content":
         reads = _content_reads(tok, layout, texts)
         return (["- "] * len(texts), reads, "set") if reads is not None else _fallback(layout, labels, texts)
+    if layout.labels == "shuffled-q" and len(texts) <= len(labels.names):
+        return (*_shuffled_per_question(labels, texts), "set")
     if len(texts) <= len(labels.names):
         return labels.names[: len(texts)], labels.ids[: len(texts)], "set"
     return _fallback(layout, labels, texts)

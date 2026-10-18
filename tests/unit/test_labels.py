@@ -4,7 +4,16 @@ import string
 import pytest
 
 from gateway.config import Settings
-from gateway.labels import MAX_LABELS, SYMBOLS, build_labels, label_table, labels_from_table, load_labels, save_labels
+from gateway.labels import (
+    MAX_LABELS,
+    SHUFFLED,
+    SYMBOLS,
+    build_labels,
+    label_table,
+    labels_from_table,
+    load_labels,
+    save_labels,
+)
 from gateway.layouts import LABEL_SETS, PROMPTS_DIR, load_layouts
 from scripts.build_labels import table_for
 from tests.helpers import tokenizer_for
@@ -52,11 +61,18 @@ def test_every_set_has_a_layout():
 
 
 def test_set_sizes_and_fallback(gemma_tok):
-    sizes = {"lower": 26, "spaced": 26, "digits": 9, "symbols": 32}
+    sizes = {"lower": 26, "spaced": 26, "digits": 9, "symbols": 32, "shuffled": 26, "shuffled-q": 26}
     for name, size in sizes.items():
         lab = labels_from_table(build_labels(gemma_tok, experiment(name)))
         assert len(lab.names) == size and len(lab.fallback.names) >= 249
     assert SYMBOLS[0] == "'" and len(set(SYMBOLS)) == 32
+
+
+def test_shuffled_is_a_fixed_permutation(gemma_tok):
+    first = labels_from_table(build_labels(gemma_tok, experiment("shuffled")))
+    again = labels_from_table(build_labels(gemma_tok, experiment("shuffled")))
+    assert sorted(first.names) == list(string.ascii_uppercase) and first.names != list(string.ascii_uppercase)
+    assert first.names == again.names == SHUFFLED and first.fallback.names[0] == "A"
 
 
 def test_content_has_only_a_fallback(gemma_tok):

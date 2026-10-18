@@ -124,6 +124,37 @@ def test_unused_fallback_reads_spaced_letter(gemma_tok):
     assert question_labels(gemma_tok, layout, two, ["x", "y", "z"]) == (["A", "B", "C"], lab.fallback.ids[:3], "fallback")
 
 
+def test_shuffled_q_per_question_letters(gemma_tok):
+    layout, lab = experiment(gemma_tok, "shuffled-q")
+    texts = ["billing", "technical", "sales", "other"]
+    names, ids, tag = question_labels(gemma_tok, layout, lab, texts)
+    back, back_ids, _ = question_labels(gemma_tok, layout, lab, texts[::-1])
+    assert tag == "set" and len(set(names)) == 4 and names != lab.names[:4]
+    assert back == names[::-1] and back_ids == ids[::-1]
+    assert [lab.ids[lab.names.index(n)] for n in names] == ids
+    other = question_labels(gemma_tok, layout, lab, ["a", "b", "c", "d"])[0]
+    assert other != names
+    built = rows(gemma_tok, layout, lab, {"q": choice(texts)})
+    assert [r.label_ids for r in built] == [ids, ids[::-1]]
+    for name, text in zip(names, texts):
+        assert f"\n({name}) {text}" in gemma_tok.decode(built[0].ids)
+        assert f"\n({name}) {text}" in gemma_tok.decode(built[1].ids)
+
+
+def test_shuffled_q_fallback_past_26(gemma_tok):
+    layout, lab = experiment(gemma_tok, "shuffled-q")
+    _, ids, tag = question_labels(gemma_tok, layout, lab, [f"t{k}" for k in range(27)])
+    assert tag == "fallback" and ids == lab.fallback.ids[:27]
+    assert question_labels(gemma_tok, layout, lab, [f"t{k}" for k in range(26)])[2] == "set"
+
+
+def test_shuffled_fixed_letters_in_prompt(gemma_tok):
+    layout, lab = experiment(gemma_tok, "shuffled")
+    row = rows(gemma_tok, layout, lab, {"q": choice(CITIES[:4])}, ["identity"])[0]
+    assert row.label_ids == lab.ids[:4] and row.label_tag == "set"
+    assert f"\n({lab.names[0]}) City 0" in gemma_tok.decode(row.ids)
+
+
 def test_digits_boundary_at_nine(gemma_tok):
     layout, lab = experiment(gemma_tok, "digits")
     assert question_labels(gemma_tok, layout, lab, CITIES[:9]) == (lab.names, lab.ids, "set")

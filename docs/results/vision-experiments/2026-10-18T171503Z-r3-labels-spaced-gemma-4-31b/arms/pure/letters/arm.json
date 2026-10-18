@@ -1,0 +1,23 @@
+{
+ "arm": "letters",
+ "orders": "identity",
+ "skipped": {
+  "outside_subset": 0
+ },
+ "fallbacks": [],
+ "fit_on": null,
+ "T": 4.092403915671135,
+ "fit": "choice T on the arm's text calib-600 identity reads",
+ "subset": "pure",
+ "collect": ".cache/vision-collect/gemma-4-31b/baseline/dev.jsonl.gz",
+ "collect_config": {
+  "profile": "gemma-4-31b",
+  "label": "baseline",
+  "layout": "header",
+  "orders": "identity+reversed",
+  "env": {},
+  "split": "dev",
+  "commit": "4648502"
+ },
+ "commit": "b533859"
+}

@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from itertools import takewhile
 
 from gateway.images import Image
-from gateway.labels import NARROW, Labels
+from gateway.labels import NARROW, Labels, question_labels
 from gateway.layouts import Layout
 from gateway.padding import OFF, Padding
 from gateway.questions import Rendered
@@ -88,6 +88,7 @@ class Row:
     perm: list[int]  # perm[j] = index of the caller's option shown at position j
     ids: list[int]  # the full prompt, ending at the answer slot
     label_ids: list[int]  # tokens to read at the last position, one per shown option
+    label_tag: str = "set"  # "fallback" when an experiment set could not label this question
 
 
 @dataclass(frozen=True)
@@ -120,16 +121,29 @@ class Batch:
         return max(len(r.ids) for r in self.rows) + self.added
 
 
+def spliced(tok, layout: Layout, label_ids: list[int], texts: list[str]) -> list[int]:
+    """Option lines with each label's token id spliced in, so every label is one token."""
+    opening = encode(tok, layout.option_open)
+    closings = encode_each(tok, [layout.option_close.format(text=text) for text in texts])
+    return [i for label, closing in zip(label_ids, closings) for i in opening + [label] + closing]
+
+
 def option_ids(tok, layout: Layout, labels: Labels, texts: list[str]) -> list[int]:
     """Up to 10 options: one text encode. More: label token ids spliced in so every label is one token."""
     if len(texts) <= NARROW:
         return encode(tok, "".join(layout.option.format(label=labels.names[j], text=t) for j, t in enumerate(texts)))
-    opening = encode(tok, layout.option_open)
-    closings = encode_each(tok, [layout.option_close.format(text=text) for text in texts])
-    ids = []
-    for j, closing in enumerate(closings):
-        ids += opening + [labels.ids[j]] + closing
-    return ids
+    return spliced(tok, layout, labels.ids, texts)
+
+
+def options_and_reads(tok, layout: Layout, labels: Labels, texts: list[str]) -> tuple[list[int], list[int], str]:
+    """The options part, the ids to read and the label tag. Experiment sets encode each option line on its own."""
+    if layout.labels == "letters":
+        return option_ids(tok, layout, labels, texts), labels.ids[: len(texts)], "set"
+    names, reads, tag = question_labels(tok, layout, labels, texts)
+    if layout.labels == "unused" and tag == "set":
+        return spliced(tok, layout, reads, texts), reads, tag
+    lines = encode_each(tok, [layout.option.format(label=n, text=t) for n, t in zip(names, texts)])
+    return [i for line in lines for i in line], reads, tag
 
 
 def shared_parts(layout: Layout) -> list[str]:
@@ -224,11 +238,11 @@ def build_rows(
         parts["question"] = encode(tok, layout.question.format(question=q.text))
         for perm in perms[qid]:
             shown = [q.options[i] for i in perm]
-            parts["options"] = option_ids(tok, layout, labels, shown)
+            parts["options"], reads, tag = options_and_reads(tok, layout, labels, shown)
             ids = list(prefix)
             for part in rest:
                 ids += parts[part]
-            rows.append(Row(qid, perm, ids + frame.tail + answer, labels.ids[: len(shown)]))
+            rows.append(Row(qid, perm, ids + frame.tail + answer, reads, tag))
     if images is not None:
         check_placeholders(prefix, rows, images)
     return Batch(rows, len(prefix), unpadded_len, images, images_shared)

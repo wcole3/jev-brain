@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from gateway.layouts import Layout
+from gateway.schema import RequestError
 
 MAX_LABELS = 255
 NARROW = 10  # up to 10 options are rendered as plain text "(A) ..", as decider does
@@ -124,6 +125,35 @@ def labels_from_table(table: dict) -> Labels:
         return Labels(table["names"], table["ids"])
     fallback = Labels(table["fallback_names"], table["fallback_ids"], read=table["fallback_read"])
     return Labels(table["names"], table["ids"], table["set"], fallback, table["read"])
+
+
+def _content_reads(tok, layout: Layout, texts: list[str]) -> list[int] | None:
+    """Each option's first token after the answer slot; None if a text is empty, merges or shares a first token."""
+    slot = tok.encode(layout.answer, add_special_tokens=False)
+    reads = tok([layout.answer + layout.answer_label.format(label=t) for t in texts], add_special_tokens=False)
+    if any(not t for t in texts) or any(e[: len(slot)] != slot for e in reads["input_ids"]):
+        return None
+    firsts = [e[len(slot)] for e in reads["input_ids"]]
+    return firsts if len(set(firsts)) == len(firsts) else None
+
+
+def _fallback(layout: Layout, labels: Labels, texts: list[str]) -> tuple[list[str], list[int], str]:
+    n, fallback = len(texts), labels.fallback
+    if fallback is None or n > len(fallback.names):
+        size = 0 if fallback is None else len(fallback.names)
+        raise RequestError(f"{n} options exceed the {layout.labels} labels and their {size} fallback letters")
+    names = [f"{name}) " for name in fallback.names[:n]] if layout.labels == "content" else fallback.names[:n]
+    return names, fallback.ids[:n], "fallback"
+
+
+def question_labels(tok, layout: Layout, labels: Labels, texts: list[str]) -> tuple[list[str], list[int], str]:
+    """Shown names and read ids for one question's options in shown order, tagged "set" or "fallback"."""
+    if layout.labels == "content":
+        reads = _content_reads(tok, layout, texts)
+        return (["- "] * len(texts), reads, "set") if reads is not None else _fallback(layout, labels, texts)
+    if len(texts) <= len(labels.names):
+        return labels.names[: len(texts)], labels.ids[: len(texts)], "set"
+    return _fallback(layout, labels, texts)
 
 
 def save_labels(path: Path, table: dict) -> None:

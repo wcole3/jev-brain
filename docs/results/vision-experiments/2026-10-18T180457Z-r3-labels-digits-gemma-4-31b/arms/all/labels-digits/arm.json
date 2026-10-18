@@ -1,0 +1,24 @@
+{
+ "arm": "labels-digits",
+ "orders": "identity",
+ "skipped": {
+  "outside_subset": 0
+ },
+ "fallbacks": [],
+ "fit_on": null,
+ "T": 3.8761307950625126,
+ "fit": "choice T on the arm's text calib-600 identity reads",
+ "subset": "all",
+ "collect": ".cache/vision-collect/gemma-4-31b/labels-digits/dev.jsonl.gz",
+ "collect_config": {
+  "profile": "gemma-4-31b",
+  "label": "labels-digits",
+  "layout": "labels-digits",
+  "orders": "identity+reversed",
+  "env": {},
+  "split": "dev",
+  "commit": "37a70a9",
+  "layout_file": "prompts/experiments/labels-digits.toml"
+ },
+ "commit": "37a70a9"
+}

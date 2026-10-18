@@ -67,22 +67,34 @@ def questions_of(rec: dict) -> dict[str, list[dict]]:
     return rec["questions"] if "questions" in rec else {"answer": rec["reads"]}
 
 
-def tops(recs: list[dict]) -> dict[Key, int]:
-    """The identity read's top answer for every question of the ok records."""
+def tops(recs: list[dict]) -> dict[str, tuple[str, dict[str, int]]]:
+    """Per row: its status and, when ok, the identity read's top answer for each question."""
     out = {}
-    for rec in (r for r in recs if r["status"] == "ok"):
-        for qid, reads in questions_of(rec).items():
-            lp = next(r["logprobs"] for r in reads if r["perm"] == sorted(r["perm"]))
-            out[(rec["id"], qid)] = max(range(len(lp)), key=lp.__getitem__)
+    for rec in recs:
+        answers = {}
+        for qid, reads in (questions_of(rec) if rec["status"] == "ok" else {}).items():
+            lp = next((r["logprobs"] for r in reads if r["perm"] == sorted(r["perm"])), None)
+            if lp is None:
+                raise SystemExit(f"{rec['id']}/{qid}: no identity read")
+            answers[qid] = max(range(len(lp)), key=lp.__getitem__)
+        out[rec["id"]] = rec["status"], answers
     return out
 
 
-def agreement(control: dict[Key, int], other: dict[Key, int], rows: int = CHECK_ROWS, seed: int = CHECK_SEED) -> dict:
-    ids = sorted({k[0] for k in control} & {k[0] for k in other})
-    picked = set(random.Random(seed).sample(ids, min(rows, len(ids))))
-    keys = [k for k in sorted(control.keys() & other.keys()) if k[0] in picked]
-    same = sum(control[k] == other[k] for k in keys)
-    return {"rows": len(picked), "questions": len(keys), "agreement": same / len(keys) if keys else None}
+def agreement(control: dict, other: dict, rows: int = CHECK_ROWS, seed: int = CHECK_SEED) -> dict:
+    """Seeded rows both files hold (any status); a status mismatch or a one-sided question counts as disagreement."""
+    ids = sorted(control.keys() & other.keys())
+    picked = random.Random(seed).sample(ids, min(rows, len(ids)))
+    units = agree = status_mismatches = one_sided = 0
+    for rid in picked:
+        (status_c, c), (status_o, o) = control[rid], other[rid]
+        keys = c.keys() | o.keys()
+        units += max(len(keys), status_c != status_o)  # two different refusals still count once
+        agree += sum(c[k] == o[k] for k in c.keys() & o.keys())
+        status_mismatches += status_c != status_o
+        one_sided += len(keys - (c.keys() & o.keys())) if status_c == status_o else 0
+    return {"rows": len(picked), "questions": units, "agree": agree, "status_mismatches": status_mismatches,
+            "one_sided": one_sided, "agreement": agree / units if units else None}
 
 
 def check_paths(profile: str) -> dict[str, tuple[Path, Path]]:
@@ -93,13 +105,14 @@ def check_paths(profile: str) -> dict[str, tuple[Path, Path]]:
 
 
 def check(profile: str) -> dict:
+    paths = check_paths(profile)
     splits = {split: agreement(tops(load(control, CONTROL_LAYOUT)), tops(load(other, "labels-letters")))
-              for split, (control, other) in check_paths(profile).items()}
+              for split, (control, other) in paths.items()}
     passed = all(s["agreement"] is not None and s["agreement"] >= CHECK_MIN for s in splits.values())
     meta = {"timestamp": now(), "repo commit": git_revision(), "profile": profile,
-            "rule": f"identity top answer on {CHECK_ROWS} rows (seed {CHECK_SEED}) both collects hold, ≥ {CHECK_MIN}",
-            **{f"collects {split}": f"{repo_relative(c)} vs {repo_relative(o)}"
-               for split, (c, o) in check_paths(profile).items()}}
+            "rule": (f"identity top answer on {CHECK_ROWS} rows (seed {CHECK_SEED}) both collects hold, any status,"
+                     f" ≥ {CHECK_MIN}; a status mismatch or a question on one side only counts as disagreement"),
+            **{f"collects {split}": f"{repo_relative(c)} vs {repo_relative(o)}" for split, (c, o) in paths.items()}}
     return {"meta": meta, "splits": splits, "passed": passed}
 
 

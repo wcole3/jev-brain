@@ -51,15 +51,18 @@ def roots(tmp_path, monkeypatch):
     return tmp_path
 
 
-def check_collects(tmp, changed: int, count: int = 50) -> None:
-    """Control and letters-experiment collects that agree except for `changed` index-dev-2k questions."""
+def check_collects(tmp, changed: int, count: int = 50, refused: int = 0) -> None:
+    """Control and letters-experiment collects that agree except for `changed` index-dev-2k questions and
+    `refused` index-dev-2k rows the experiment run marks unsupported."""
     text, image = tmp / "collect" / "p", tmp / "vision-collect" / "p"
     for control, split in (("calib", "calib-600"), ("index-dev", "index-dev-2k")):
         write(text / f"{control}.jsonl.gz", [text_rec(i, "header", i % 3) for i in range(count)]
               + [text_rec(i, "decider_chat", 0) for i in range(count)])
         moved = changed if split == "index-dev-2k" else 0
-        write(text / f"{split}-letters.jsonl.gz",
-              [text_rec(i, "labels-letters", (i % 3 + (i < moved)) % 3) for i in range(count)])
+        recs = [text_rec(i, "labels-letters", (i % 3 + (i < moved)) % 3) for i in range(count)]
+        for r in recs[count - refused:] if split == "index-dev-2k" else []:
+            r |= {"status": "unsupported", "questions": {}}
+        write(text / f"{split}-letters.jsonl.gz", recs)
     write(image / "baseline" / "dev.jsonl.gz", [image_rec(i, "header", i % 3) for i in range(count)])
     write(image / "labels-letters" / "dev.jsonl.gz", [image_rec(i, "labels-letters", i % 3) for i in range(count)])
 
@@ -80,12 +83,35 @@ def test_check_agreement(roots):
         ls.main(["check", "--profile", "p"])
 
 
+def test_check_counts_a_refused_row_as_disagreement(roots):
+    check_collects(roots, changed=0, refused=1)
+    got = ls.main(["check", "--profile", "p"])["splits"]["index-dev-2k"]
+    assert got == {"rows": 50, "questions": 50, "agree": 49, "status_mismatches": 1, "one_sided": 0,
+                   "agreement": 0.98}
+    check_collects(roots, changed=1, refused=1)
+    ls.ARCHIVE = roots / "archive-2"
+    with pytest.raises(SystemExit, match="index-dev-2k"):
+        ls.main(["check", "--profile", "p"])
+
+
 def test_check_samples_rows_present_in_both():
-    control = {(f"r{i}", "c"): 0 for i in range(300)}
-    other = {(f"r{i}", "c"): 0 for i in range(100, 400)}
+    control = {f"r{i}": ("ok", {"c": 0}) for i in range(300)}
+    other = {f"r{i}": ("ok", {"c": 0}) for i in range(100, 400)}
     got = ls.agreement(control, other)
-    assert got == {"rows": 200, "questions": 200, "agreement": 1.0}
+    assert got == {"rows": 200, "questions": 200, "agree": 200, "status_mismatches": 0, "one_sided": 0,
+                   "agreement": 1.0}
     assert ls.agreement(control, other) == got  # seeded
+
+
+def test_check_counts_one_sided_questions_and_needs_identity():
+    control = {"r0": ("ok", {"c": 0, "y": 1}), "r1": ("unsupported", {}), "r2": ("unsupported", {})}
+    other = {"r0": ("ok", {"c": 0}), "r1": ("invalid", {}), "r2": ("unsupported", {})}
+    got = ls.agreement(control, other)
+    assert (got["questions"], got["agree"], got["one_sided"], got["status_mismatches"]) == (3, 1, 1, 1)
+    rec = text_rec(0, "header", 0)
+    rec["questions"]["c"] = rec["questions"]["c"][1:]  # the reversed read only
+    with pytest.raises(SystemExit, match="r0/c: no identity read"):
+        ls.tops([rec])
 
 
 def row(i: int) -> dict:

@@ -12,9 +12,10 @@ SUBSETS = ("all = every question both arms answered; pure = the questions the se
 
 def check_markdown(report: dict) -> str:
     lines = [f"# {report['meta']['profile']} R3 label pipeline check", "", provenance(report["meta"]),
-             "| split | rows | questions | agreement |", "|---|---|---|---|"]
-    lines += [f"| {split} | {s['rows']} | {s['questions']} | {fmt(s['agreement'])} |"
-              for split, s in report["splits"].items()]
+             "| split | rows | questions | agree | status mismatches | one-sided questions | agreement |",
+             "|---|---|---|---|---|---|---|"]
+    lines += [f"| {split} | {s['rows']} | {s['questions']} | {s['agree']} | {s['status_mismatches']} | {s['one_sided']}"
+              f" | {fmt(s['agreement'])} |" for split, s in report["splits"].items()]
     return "\n".join([*lines, "", f"**{'passed' if report['passed'] else 'FAILED'}**"]) + "\n"
 
 

@@ -510,3 +510,29 @@ git commit -m "docs(results): r3 <what>"
 git add docs/background/answer-labels.md docs/background/vision-experiments.md docs/background/prompt-layouts.md docs/background/README.md docs/development.md
 git commit -m "docs: round 3 orders and answer labels"
 ```
+
+### Task 8b: Shuffled-letter label sets (owner addition, 2026-10-18)
+
+Owner asked for shuffled letters after the main screen: keep the letter tokens, break the alphabetical sequence.
+
+**Files:**
+- Modify: `gateway/layouts.py` (`LABEL_SETS` gains `shuffled`, `shuffled-q`), `gateway/labels.py`
+- Create: `prompts/experiments/labels-shuffled.toml`, `prompts/experiments/labels-shuffled-q.toml` (both copy
+  `labels-letters.toml`: option `\n({label}) {text}`, answer `Answer: (`; only `labels` differs)
+- Test: `tests/unit/test_labels.py`, `tests/unit/test_prompts_label_sets.py`
+
+**Rules:**
+- `shuffled`: names = A..Z in the fixed order `random.Random("labels-shuffled").shuffle(list(A..Z))`; ids = the
+  in-context single tokens; size 26, then today's letters as fallback (tag `fallback`).
+- `shuffled-q`: per question, A..Z shuffled by `random.Random("labels-shuffled-q:" + "\x1f".join(sorted(texts)))`;
+  the first n go to shown positions 0..n-1. Seeding on the sorted option texts gives the same letter-to-position
+  mapping for identity and reversed reads of one question. Size 26, then fallback.
+- Neither changes served layouts or the `letters` path.
+
+- [ ] Step 1: failing tests — `shuffled` names are a fixed permutation of A..Z, not alphabetical, stable across
+  calls; `shuffled-q` gives the same names for two calls with the same texts in different order, different names for
+  different texts (on a fixed fixture), every name one token in context; 27 options → fallback.
+- [ ] Step 2: implement; Step 3: `uv run pytest -q`, `uv run ruff check .`; Step 4: commit
+  `feat(labels): shuffled letter sets`.
+- [ ] Step 5 (GPU, after the main Task 8 run): screens for `shuffled` and `shuffled-q` on both models (same three
+  collects + `label_screen.py screen`, cool-down between sets).

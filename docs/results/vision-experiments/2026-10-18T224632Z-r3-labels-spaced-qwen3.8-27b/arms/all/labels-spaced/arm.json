@@ -1,0 +1,24 @@
+{
+ "arm": "labels-spaced",
+ "orders": "identity",
+ "skipped": {
+  "outside_subset": 0
+ },
+ "fallbacks": [],
+ "fit_on": null,
+ "T": 1.304621062772498,
+ "fit": "choice T on the arm's text calib-600 identity reads",
+ "subset": "all",
+ "collect": ".cache/vision-collect/qwen3.8-27b/labels-spaced/dev.jsonl.gz",
+ "collect_config": {
+  "profile": "qwen3.8-27b",
+  "label": "labels-spaced",
+  "layout": "labels-spaced",
+  "orders": "identity+reversed",
+  "env": {},
+  "split": "dev",
+  "commit": "6b8f34f-dirty",
+  "layout_file": "prompts/experiments/labels-spaced.toml"
+ },
+ "commit": "6b8f34f-dirty"
+}

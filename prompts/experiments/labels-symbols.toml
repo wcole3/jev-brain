@@ -1,0 +1,13 @@
+# Experiment (never loaded by the gateway): header wording with the "symbols" answer-label set.
+labels = "symbols"
+answer_label = " {label}"
+order = ["questions", "context", "question", "options"]
+questions = "Questions that will be asked about the context:\n{questions}\n\n"
+question_item = "- {question}"
+context = "Context:\n{state}"
+question = "\n\nQuestion: {question}\nOptions:"
+option = "\n{label} {text}"
+answer = "Answer:"
+described = "{name}: {description}"
+noul = ["no", "yes"]
+noul_question = "Which answer fits the context?"

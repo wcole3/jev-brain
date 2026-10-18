@@ -9,6 +9,7 @@ from gateway.config import ROOT
 
 PROMPTS_DIR = ROOT / "prompts"
 PARTS = ("questions", "context", "question", "options")
+LABEL_SETS = ("letters", "lower", "spaced", "digits", "symbols", "unused", "content")
 REQUIRED = ("order", "context", "question", "option", "answer", "described", "noul", "noul_question")
 
 
@@ -27,6 +28,8 @@ class Layout:
     questions: str = ""
     question_item: str = ""
     image_label: str = ""
+    labels: str = "letters"
+    answer_label: str = "{label}"
 
     @property
     def option_open(self) -> str:
@@ -73,6 +76,10 @@ def _check(name: str, data: dict) -> None:
         raise ValueError(f"{name}: option needs {{text}} after {{label}}")
     if "image_label" in data:
         _check_image_label(name, data["image_label"])
+    if data.get("labels", "letters") not in LABEL_SETS:
+        raise ValueError(f"{name}: labels must be one of {LABEL_SETS}")
+    if "{label}" not in data.get("answer_label", "{label}"):
+        raise ValueError(f"{name}: answer_label needs {{label}}")
     if len(data["noul"]) != 2:
         raise ValueError(f"{name}: noul must be [false word, true word]")
 
@@ -95,6 +102,8 @@ def load_layout(path: Path) -> Layout:
         questions=data.get("questions", ""),
         question_item=data.get("question_item", ""),
         image_label=data.get("image_label", ""),
+        labels=data.get("labels", "letters"),
+        answer_label=data.get("answer_label", "{label}"),
     )
 
 

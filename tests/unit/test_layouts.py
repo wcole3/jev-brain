@@ -1,6 +1,8 @@
+import hashlib
+
 import pytest
 
-from gateway.layouts import PROMPTS_DIR, load_layout, load_layouts
+from gateway.layouts import LABEL_SETS, PROMPTS_DIR, load_layout, load_layouts
 
 
 def test_shipped_layouts_load():
@@ -62,8 +64,29 @@ def test_experiment_layouts_load_and_share_the_header_prefix_rule():
     from gateway.prompts import shared_parts
 
     layouts = load_layouts(EXPERIMENTS)
-    assert sorted(layouts) == ["header-imgfirst", "header-imgfirst-worded", "header-worded"]
+    assert {"header-imgfirst", "header-imgfirst-worded", "header-worded"} <= set(layouts)
     assert shared_parts(layouts["header-imgfirst"]) == ["context", "questions"]
     assert shared_parts(layouts["header-worded"]) == ["questions", "context"]
     assert layouts["header-worded"].image_label == "Image {n}:\n"
     assert layouts["header-imgfirst"].image_label == ""
+
+
+def test_served_layouts_have_no_new_keys_and_same_hash():
+    for name, layout in load_layouts().items():
+        assert layout.labels == "letters" and layout.answer_label == "{label}"
+        assert layout.sha256 == hashlib.sha256((PROMPTS_DIR / f"{name}.toml").read_bytes()).hexdigest()
+
+
+def test_unknown_label_set_refused(tmp_path):
+    bad = 'labels = "emoji"\n' + (PROMPTS_DIR / "header.toml").read_text()
+    (tmp_path / "bad.toml").write_text(bad)
+    with pytest.raises(ValueError, match="labels must be one of") as e:
+        load_layout(tmp_path / "bad.toml")
+    assert str(LABEL_SETS) in str(e.value)
+
+
+def test_answer_label_needs_label(tmp_path):
+    bad = 'answer_label = "x"\n' + (PROMPTS_DIR / "header.toml").read_text()
+    (tmp_path / "bad.toml").write_text(bad)
+    with pytest.raises(ValueError, match="answer_label needs"):
+        load_layout(tmp_path / "bad.toml")

@@ -1,0 +1,24 @@
+{
+ "arm": "labels-lower",
+ "orders": "identity",
+ "skipped": {
+  "outside_subset": 0
+ },
+ "fallbacks": [],
+ "fit_on": null,
+ "T": 1.4900655011906125,
+ "fit": "choice T on the arm's text calib-600 identity reads",
+ "subset": "pure",
+ "collect": ".cache/vision-collect/qwen3.8-27b/labels-lower/dev.jsonl.gz",
+ "collect_config": {
+  "profile": "qwen3.8-27b",
+  "label": "labels-lower",
+  "layout": "labels-lower",
+  "orders": "identity+reversed",
+  "env": {},
+  "split": "dev",
+  "commit": "e4d2608-dirty",
+  "layout_file": "prompts/experiments/labels-lower.toml"
+ },
+ "commit": "e4d2608-dirty"
+}

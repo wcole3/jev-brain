@@ -1,0 +1,11 @@
+# Experiment (never loaded by the gateway): header with an intro blurb.
+order = ["questions", "context", "question", "options"]
+questions = "You will be asked questions about the following context. Answer each with the letter of the best option.\n\nQuestions that will be asked about the context:\n{questions}\n\n"
+question_item = "- {question}"
+context = "Context:\n{state}"
+question = "\n\nQuestion: {question}\nOptions:"
+option = "\n({label}) {text}"
+answer = "Answer: ("
+described = "{name}: {description}"
+noul = ["no", "yes"]
+noul_question = "Which answer fits the context?"

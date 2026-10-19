@@ -1,0 +1,10 @@
+# Experiment (never loaded by the gateway): decider_chat with an intro blurb.
+# Each part in `order` is tokenized on its own, like decider. Literal braces must be written {{ }}.
+order = ["context", "question", "options"]
+context = "You will be asked questions about the following context. Answer each with the letter of the best option.\n\nContext:\n{state}"
+question = "\n\nQuestion: {question}\nOptions:"
+option = "\n({label}) {text}"
+answer = "Answer: ("
+described = "{name}: {description}"
+noul = ["no", "yes"]
+noul_question = "Which answer fits the context?"

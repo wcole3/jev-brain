@@ -1,0 +1,24 @@
+{
+ "arm": "labels-shuffled",
+ "orders": "identity",
+ "skipped": {
+  "outside_subset": 0
+ },
+ "fallbacks": [],
+ "fit_on": null,
+ "T": 3.90974159695031,
+ "fit": "choice T on the arm's text calib-600 identity reads",
+ "subset": "all",
+ "collect": ".cache/vision-collect/gemma-4-31b/labels-shuffled/dev.jsonl.gz",
+ "collect_config": {
+  "profile": "gemma-4-31b",
+  "label": "labels-shuffled",
+  "layout": "labels-shuffled",
+  "orders": "identity+reversed",
+  "env": {},
+  "split": "dev",
+  "commit": "111f0d1-dirty",
+  "layout_file": "prompts/experiments/labels-shuffled.toml"
+ },
+ "commit": "111f0d1-dirty"
+}

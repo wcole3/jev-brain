@@ -1,0 +1,24 @@
+{
+ "arm": "letters",
+ "orders": "identity",
+ "skipped": {
+  "outside_subset": 0
+ },
+ "fallbacks": [],
+ "fit_on": null,
+ "T": 3.9466281071084084,
+ "fit": "choice T on the arm's text calib-600 identity reads",
+ "subset": "all",
+ "collect": ".cache/vision-collect/gemma-4-31b/labels-letters/dev.jsonl.gz",
+ "collect_config": {
+  "profile": "gemma-4-31b",
+  "label": "labels-letters",
+  "layout": "labels-letters",
+  "orders": "identity+reversed",
+  "env": {},
+  "split": "dev",
+  "commit": "b784d38",
+  "layout_file": "prompts/experiments/labels-letters.toml"
+ },
+ "commit": "b953b23"
+}

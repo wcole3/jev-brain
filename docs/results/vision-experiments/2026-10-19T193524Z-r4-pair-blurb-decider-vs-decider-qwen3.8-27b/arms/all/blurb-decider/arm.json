@@ -1,0 +1,24 @@
+{
+ "arm": "blurb-decider",
+ "orders": "identity",
+ "skipped": {
+  "outside_subset": 0
+ },
+ "fallbacks": [],
+ "fit_on": null,
+ "T": 1.5456606498066825,
+ "fit": "choice T on the arm's text calib-600 identity reads",
+ "subset": "all",
+ "collect": ".cache/vision-collect/qwen3.8-27b/r4-blurb-decider/dev.jsonl.gz",
+ "collect_config": {
+  "profile": "qwen3.8-27b",
+  "label": "r4-blurb-decider",
+  "layout": "blurb-decider",
+  "orders": "identity+reversed",
+  "env": {},
+  "split": "dev",
+  "commit": "b953b23-dirty",
+  "layout_file": "prompts/experiments/blurb-decider.toml"
+ },
+ "commit": "b953b23-dirty"
+}

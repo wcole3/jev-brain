@@ -1,0 +1,205 @@
+{
+ "label": "compare-all",
+ "created_utc": "2026-10-19T17:15:43Z",
+ "commit": "b953b23-dirty",
+ "baseline": "blurb-header",
+ "ids": "vision-dev",
+ "rows": 1462,
+ "benchmarks": {
+  "BLINK": 136,
+  "CV-Bench": 136,
+  "CharXiv": 136,
+  "InfographicVQA": 97,
+  "KIE (CORD+FUNSD)": 141,
+  "MMMU-Pro vision": 136,
+  "Mind2Web": 136,
+  "Moderation (Hateful Memes)": 136,
+  "R-Bench-M": 136,
+  "RealWorldQA": 136,
+  "Winoground": 136
+ },
+ "weights": {
+  "CV-Bench": 1.0,
+  "BLINK": 1.0,
+  "RealWorldQA": 1.0,
+  "CharXiv": 1.0,
+  "InfographicVQA": 1.0,
+  "Mind2Web": 1.0,
+  "Winoground": 1.0,
+  "KIE (CORD+FUNSD)": 1.0,
+  "Moderation (Hateful Memes)": 1.0,
+  "R-Bench-M": 0.5,
+  "MMMU-Pro vision": 0.25
+ },
+ "resamples": 10000,
+ "seed": 0,
+ "power_limit_w": null,
+ "configs": {
+  "blurb-header": {
+   "path": "/home/welb/devspace/jev-brain/docs/results/vision-experiments/2026-10-19T171521Z-r4-pair-blurb-decider-vs-blurb-header-gemma-4-31b/arms/all/blurb-header",
+   "kind": "offline",
+   "about": {
+    "arm": "blurb-header",
+    "orders": "identity",
+    "skipped": {
+     "outside_subset": 0
+    },
+    "fallbacks": [],
+    "fit_on": null,
+    "split": "dev",
+    "errored": 0
+   },
+   "index": 78.25332390472045,
+   "skills": {
+    "BLINK": 0.6446991404011462,
+    "CharXiv": 0.9215686274509803,
+    "KIE (CORD+FUNSD)": 0.9526627218934911,
+    "CV-Bench": 0.8076537767982368,
+    "Moderation (Hateful Memes)": 0.6029411764705883,
+    "InfographicVQA": 0.9725085910652921,
+    "Mind2Web": 0.8823529411764706,
+    "MMMU-Pro vision": 0.32253056341530634,
+    "R-Bench-M": 0.35588235294117637,
+    "RealWorldQA": 0.748502994011976,
+    "Winoground": 0.838235294117647
+   },
+   "accuracy": 0.8050615595075239,
+   "ece": 0.08549478455598641,
+   "nll": 0.6152554959610499,
+   "errored": 0,
+   "mean_input_tokens": 740.2544459644323,
+   "latency": null
+  },
+  "blurb-decider": {
+   "path": "/home/welb/devspace/jev-brain/docs/results/vision-experiments/2026-10-19T171521Z-r4-pair-blurb-decider-vs-blurb-header-gemma-4-31b/arms/all/blurb-decider",
+   "kind": "offline",
+   "about": {
+    "arm": "blurb-decider",
+    "orders": "identity",
+    "skipped": {
+     "outside_subset": 0
+    },
+    "fallbacks": [],
+    "fit_on": null,
+    "split": "dev",
+    "errored": 0
+   },
+   "index": 77.13015771068426,
+   "skills": {
+    "BLINK": 0.6446991404011462,
+    "CharXiv": 0.9117647058823529,
+    "KIE (CORD+FUNSD)": 0.9408284023668638,
+    "CV-Bench": 0.7715888599479064,
+    "Moderation (Hateful Memes)": 0.588235294117647,
+    "InfographicVQA": 0.9862542955326461,
+    "Mind2Web": 0.8823529411764706,
+    "MMMU-Pro vision": 0.32253056341530634,
+    "R-Bench-M": 0.40882352941176453,
+    "RealWorldQA": 0.7005988023952094,
+    "Winoground": 0.8088235294117647
+   },
+   "accuracy": 0.801641586867305,
+   "ece": 0.08141028064984521,
+   "nll": 0.6168744171007304,
+   "errored": 0,
+   "mean_input_tokens": 693.2202462380301,
+   "latency": null
+  }
+ },
+ "paired": {
+  "blurb-decider": {
+   "n": 1462,
+   "delta_index": -1.1231661940361874,
+   "ci": [
+    -2.818006760496445,
+    0.4832495192566739
+   ],
+   "delta_skill": {
+    "BLINK": {
+     "delta": 0.0,
+     "ci": [
+      -0.05730659025787954,
+      0.056657223796033995
+     ]
+    },
+    "CV-Bench": {
+     "delta": -0.03606491685033042,
+     "ci": [
+      -0.08261211644374511,
+      0.0
+     ]
+    },
+    "CharXiv": {
+     "delta": -0.009803921568627416,
+     "ci": [
+      -0.049019607843137414,
+      0.02941176470588247
+     ]
+    },
+    "InfographicVQA": {
+     "delta": 0.013745704467354014,
+     "ci": [
+      0.0,
+      0.04123711340206193
+     ]
+    },
+    "KIE (CORD+FUNSD)": {
+     "delta": -0.01183431952662728,
+     "ci": [
+      -0.037815126050420034,
+      0.0
+     ]
+    },
+    "MMMU-Pro vision": {
+     "delta": 0.0,
+     "ci": [
+      -0.050270469756261316,
+      0.043581273887553396
+     ]
+    },
+    "Mind2Web": {
+     "delta": 0.0,
+     "ci": [
+      -0.04901960784313719,
+      0.04901960784313719
+     ]
+    },
+    "Moderation (Hateful Memes)": {
+     "delta": -0.014705882352941346,
+     "ci": [
+      -0.08823529411764719,
+      0.05882352941176472
+     ]
+    },
+    "R-Bench-M": {
+     "delta": 0.05294117647058816,
+     "ci": [
+      -0.026470588235294024,
+      0.13235294117647062
+     ]
+    },
+    "RealWorldQA": {
+     "delta": -0.04790419161676651,
+     "ci": [
+      -0.13108242303872875,
+      0.024439918533604832
+     ]
+    },
+    "Winoground": {
+     "delta": -0.02941176470588225,
+     "ci": [
+      -0.08823529411764719,
+      0.02941176470588225
+     ]
+    }
+   },
+   "b": 40,
+   "c": 35,
+   "mcnemar_p": 0.644463913894226,
+   "discordant_share": 0.05129958960328317,
+   "agreement": 0.9302325581395349,
+   "delta_ece": -0.004084503906141207,
+   "delta_nll": 0.0016189211396805403
+  }
+ }
+}

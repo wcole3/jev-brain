@@ -1,0 +1,23 @@
+{
+ "arm": "decider",
+ "orders": "identity",
+ "skipped": {
+  "outside_subset": 0
+ },
+ "fallbacks": [],
+ "fit_on": null,
+ "T": 3.875043678688768,
+ "fit": "choice T on the arm's text calib-600 identity reads",
+ "subset": "all",
+ "collect": ".cache/vision-collect/gemma-4-31b/r4-decider/dev.jsonl.gz",
+ "collect_config": {
+  "profile": "gemma-4-31b",
+  "label": "r4-decider",
+  "layout": "decider_chat",
+  "orders": "identity+reversed",
+  "env": {},
+  "split": "dev",
+  "commit": "b953b23"
+ },
+ "commit": "b953b23-dirty"
+}

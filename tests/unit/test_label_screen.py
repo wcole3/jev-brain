@@ -156,7 +156,7 @@ def test_pure_subset_excludes_fallback():
     assert pure["arms"]["letters"]["overall"]["all"]["n"] == 30
     assert report["fallback_share"]["overall"]["all"] == 0.25
     assert report["fallback_share"]["options"] == {"2": 0.0, "3-5": 0.0, "6-26": 1.0}
-    assert set(pure["vs_letters"]) == {"labels-digits"} and pure["vs_letters"]["labels-digits"]["overall"]["all"]["n"] == 30
+    assert set(pure["vs_base"]) == {"labels-digits"} and pure["vs_base"]["labels-digits"]["overall"]["all"]["n"] == 30
 
 
 def test_pairs_only_shared_questions():
@@ -164,7 +164,7 @@ def test_pairs_only_shared_questions():
     every = report["subsets"]["all"]
     assert every["n"] == 38
     assert every["arms"]["letters"]["overall"]["all"]["n"] == 38
-    assert every["vs_letters"]["labels-digits"]["overall"]["all"]["n"] == 38
+    assert every["vs_base"]["labels-digits"]["overall"]["all"]["n"] == 38
     assert report["questions"]["dev"] == {"letters": 40, "labels-digits": 38}
 
 

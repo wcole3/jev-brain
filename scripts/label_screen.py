@@ -168,10 +168,10 @@ def scored(items: dict[Key, Q], keys: list[Key], T: dict, order: str = "identity
     return out
 
 
-def subsets(base: dict[Key, Q], other: dict[Key, Q]) -> dict[str, list[Key]]:
+def subsets(base: dict[Key, Q], other: dict[Key, Q], pure: bool = True) -> dict[str, list[Key]]:
     """all: every question both arms answered; pure: those the set run showed with its own labels."""
     keys = sorted(base.keys() & other.keys())
-    return {"all": keys, "pure": [k for k in keys if other[k].tag == "set"]}
+    return {"all": keys} | ({"pure": [k for k in keys if other[k].tag == "set"]} if pure else {})
 
 
 def arm_view(items: dict[Key, Q], keys: list[Key], T: dict) -> dict:
@@ -192,19 +192,20 @@ def views_of(dev: dict[str, dict[Key, Q]], keys: list[Key], fits: dict) -> tuple
     return views, diag
 
 
-def text_report(calib: dict[str, dict[Key, Q]], dev: dict[str, dict[Key, Q]], pmap=map) -> dict:
-    """Arms keyed letters first: T fitted on calib, then dev on both subsets, paired against letters."""
+def text_report(calib: dict[str, dict[Key, Q]], dev: dict[str, dict[Key, Q]], pmap=map, base: str = BASE,
+                pure: bool = True) -> dict:
+    """Arms keyed base first: T fitted on calib, then dev on each subset, paired against base."""
     fits = {arm: fit_T(items) for arm, items in calib.items()}
-    other = next(arm for arm in dev if arm != BASE)
-    subs, out = subsets(dev[BASE], dev[other]), {}
+    other = next(arm for arm in dev if arm != base)
+    subs, out = subsets(dev[base], dev[other], pure), {}
     for name, keys in subs.items():
         views, diag = views_of(dev, keys, fits)
         identity = {arm: v["identity"] for arm, v in views.items()}
         out[name] = {"n": len(keys), "arms": {arm: per_group(s, BY_OPTIONS, summary) for arm, s in identity.items()},
-                     "vs_letters": compare_groups(identity[BASE], {other: identity[other]}, BY_OPTIONS, pmap), **diag}
+                     "vs_base": compare_groups(identity[base], {other: identity[other]}, BY_OPTIONS, pmap), **diag}
+    share = {"fallback_share": fallback_share(dev[other], scored(dev[other], subs["all"], fits[other]))} if pure else {}
     return {"fits": fits, "questions": {"calib": {a: len(i) for a, i in calib.items()},
-                                        "dev": {a: len(i) for a, i in dev.items()}},
-            "fallback_share": fallback_share(dev[other], scored(dev[other], subs["all"], fits[other])), "subsets": out}
+                                        "dev": {a: len(i) for a, i in dev.items()}}, **share, "subsets": out}
 
 
 def arm_rows(recs: dict[str, dict], items: dict[Key, Q], answers: dict[Key, Scored]) -> list[dict]:
@@ -222,10 +223,10 @@ def write_arm(folder: Path, rows: list[dict], arm: dict) -> Path:
     return folder
 
 
-def compare(dirs: dict[str, Path], label: str, out: Path) -> dict:
-    """vision_compare.py with letters as the baseline; its results dir lands inside out."""
+def compare(dirs: dict[str, Path], label: str, out: Path, base: str = BASE) -> dict:
+    """vision_compare.py with base as the baseline; its results dir lands inside out."""
     before = set(out.glob(f"*-{label}"))
-    s = vision_compare.main(["--baseline", f"{BASE}={dirs[BASE]}", *(f"{a}={d}" for a, d in dirs.items() if a != BASE),
+    s = vision_compare.main(["--baseline", f"{base}={dirs[base]}", *(f"{a}={d}" for a, d in dirs.items() if a != base),
                              "--out-label", label, "--out-root", str(out)])
     (made,) = set(out.glob(f"*-{label}")) - before
     return {"dir": made.name, "configs": {a: {k: c[k] for k in ("index", "accuracy", "ece", "nll")}
@@ -234,12 +235,13 @@ def compare(dirs: dict[str, Path], label: str, out: Path) -> dict:
                        for a, p in s["paired"].items()}}
 
 
-def image_report(fits: dict[str, dict], dev: dict[str, tuple[list, dict, str]], out: Path) -> dict:
-    """dev: per arm (records, collect config, path), letters first; arm dirs and compares go under out."""
+def image_report(fits: dict[str, dict], dev: dict[str, tuple[list, dict, str]], out: Path, base: str = BASE,
+                 pure: bool = True) -> dict:
+    """dev: per arm (records, collect config, path), base first; arm dirs and compares go under out."""
     items = {arm: image_items(recs) for arm, (recs, _, _) in dev.items()}
     by_id = {arm: {r["id"]: r for r in recs} for arm, (recs, _, _) in dev.items()}
-    other = next(arm for arm in dev if arm != BASE)
-    subs, data, commit = subsets(items[BASE], items[other]), {}, vision_splits.commit()
+    other = next(arm for arm in dev if arm != base)
+    subs, data, commit = subsets(items[base], items[other], pure), {}, vision_splits.commit()
     for name, keys in subs.items():
         views, diag = views_of(items, keys, fits)
         data[name] = {"n": len(keys), **diag}
@@ -253,10 +255,9 @@ def image_report(fits: dict[str, dict], dev: dict[str, tuple[list, dict, str]], 
                      "subset": name, "collect": str(path), "collect_config": config, "commit": commit}
             rows = arm_rows(by_id[arm], items[arm], views[arm]["identity"])
             dirs[arm] = write_arm(out / "arms" / name / arm, rows, about)
-        data[name]["compare"] = compare(dirs, f"compare-{name}", out)
-    return {"T": {arm: f["choice"] for arm, f in fits.items()},
-            "fallback_share": fallback_share(items[other], scored(items[other], subs["all"], fits[other])),
-            "subsets": data}
+        data[name]["compare"] = compare(dirs, f"compare-{name}", out, base)
+    share = {"fallback_share": fallback_share(items[other], scored(items[other], subs["all"], fits[other]))}
+    return {"T": {arm: f["choice"] for arm, f in fits.items()}, **(share if pure else {}), "subsets": data}
 
 
 def same_stamp(a: list[dict], b: list[dict], what: str) -> None:
@@ -306,11 +307,15 @@ def screen(profile: str, set_name: str, pmap=map) -> tuple[Path, Path]:
     image_dir.mkdir(parents=True)
     image = {"meta": meta, **image_report({a: text["fits"][a] for a in dev_image}, dev_image, image_dir)}
     text = {"meta": meta | {"run time": f"{time.monotonic() - start:.0f} s"}, **text}
+    write_summaries(text_dir, text, image_dir, image)
+    return text_dir, image_dir
+
+
+def write_summaries(text_dir: Path, text: dict, image_dir: Path, image: dict) -> None:
     for out, report, markdown in ((text_dir, text, text_markdown), (image_dir, image, image_markdown)):
         out.mkdir(parents=True, exist_ok=True)
         (out / "summary.json").write_text(json.dumps(report, indent=1) + "\n")
         (out / "summary.md").write_text(markdown(report))
-    return text_dir, image_dir
 
 
 def write_check(report: dict) -> Path:

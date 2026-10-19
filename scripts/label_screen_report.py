@@ -36,13 +36,18 @@ def diagnostics(data: dict) -> list[str]:
 
 
 def head(report: dict, what: str) -> list[str]:
-    meta = report["meta"]
-    return [f"# {meta['profile']} R3 label screen: {meta['set']} vs letters, {what}", "", provenance(meta), SUBSETS,
-            "Reports only; the owner picks.", "",
-            *by_bucket("Fallback share (all questions, set run)", {"share": report["fallback_share"]})]
+    meta, pure = report["meta"], "pure" in report["subsets"]
+    title = f"# {meta['profile']} {meta.get('title', 'R3 label screen')}: {meta['set']} vs {control(meta)}, {what}"
+    fallback = by_bucket("Fallback share (all questions, set run)", {"share": report["fallback_share"]}) if pure else []
+    return [title, "", provenance(meta), *([SUBSETS] if pure else []), "Reports only; the owner picks.", "", *fallback]
+
+
+def control(meta: dict) -> str:
+    return meta.get("control", "letters")
 
 
 def text_markdown(report: dict) -> str:
+    meta = report["meta"]
     lines = [*head(report, "text index-dev-2k"), "## Fits (calib-600)", "",
              "| arm | calib questions | index-dev-2k questions | " + " | ".join(TYPES) + " |",
              "|---|---|---|" + "---|" * len(TYPES)]
@@ -51,9 +56,9 @@ def text_markdown(report: dict) -> str:
               for arm, fit in report["fits"].items()]
     for name, data in report["subsets"].items():
         lines += ["", f"## {name} ({data['n']} questions)", "",
-                  "Δ is set − letters on the same questions, with a 95% paired-bootstrap CI.", ""]
+                  f"Δ is {meta['set']} − {control(meta)} on the same questions, with a 95% paired-bootstrap CI.", ""]
         for grouping in ("overall", "type", "options"):
-            lines += [*arm_table(grouping, grouping, data["arms"], data["vs_letters"]), ""]
+            lines += [*arm_table(grouping, grouping, data["arms"], data["vs_base"]), ""]
         lines += diagnostics(data)
     return "\n".join(lines) + "\n"
 

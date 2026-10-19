@@ -1,0 +1,23 @@
+{
+ "arm": "letters",
+ "orders": "identity",
+ "skipped": {
+  "outside_subset": 0
+ },
+ "fallbacks": [],
+ "fit_on": null,
+ "T": 1.4913325087501859,
+ "fit": "choice T on the arm's text calib-600 identity reads",
+ "subset": "pure",
+ "collect": ".cache/vision-collect/qwen3.8-27b/baseline/dev.jsonl.gz",
+ "collect_config": {
+  "profile": "qwen3.8-27b",
+  "label": "baseline",
+  "layout": "header",
+  "orders": "identity+reversed",
+  "env": {},
+  "split": "dev",
+  "commit": "4648502-dirty"
+ },
+ "commit": "8d38bd7-dirty"
+}

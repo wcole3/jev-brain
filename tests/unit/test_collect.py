@@ -158,3 +158,11 @@ def test_layout_file_needs_a_label(capsys):
     with pytest.raises(SystemExit):
         collect.parse_args(["--profile", PROFILE, "--split", "calib", "--layout-file", "x.toml"])
     assert "--label" in capsys.readouterr().err
+
+
+def test_reduced_orders_need_a_label(capsys):
+    with pytest.raises(SystemExit):
+        collect.parse_args(["--profile", PROFILE, "--split", "calib", "--orders", "identity"])
+    assert "--label" in capsys.readouterr().err
+    args = collect.parse_args(["--profile", PROFILE, "--split", "calib", "--orders", "identity", "--label", "x"])
+    assert (args.orders, args.label) == ("identity", "x")

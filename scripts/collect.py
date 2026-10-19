@@ -3,7 +3,8 @@
 usage: uv run python scripts/collect.py --profile qwen3.6-27b --split calib [--layouts decider_chat,header]
        [--layout-file prompts/experiments/X.toml] [--orders identity|identity+reversed|all] [--label L]
        [--vllm http://127.0.0.1:8000] [--concurrency 8] [--limit N] [--max-len N]
---label writes <split>-<label>.jsonl.gz (needed with --layout-file); --orders all (default) reads every arm's orders.
+--label writes <split>-<label>.jsonl.gz (needed with --layout-file or a reduced --orders); --orders all (default)
+reads every arm's orders.
 Needs the stack up and idle (owner ok: this is a long run). Resumes where it stopped.
 """
 
@@ -194,6 +195,8 @@ def parse_args(argv=None) -> argparse.Namespace:
     args = p.parse_args(argv)
     if args.layout_file and not args.label:
         p.error("--layout-file needs --label")
+    if args.orders != "all" and not args.label:  # never the <split>.jsonl.gz calibrate.py reads
+        p.error("--orders other than all needs --label")
     return args
 
 

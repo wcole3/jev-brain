@@ -1,11 +1,12 @@
 """Round-3 option-order policies on image dev, scored with the text-fitted parameters, then paired by vision_compare.
 
 usage: uv run python scripts/vision_orders.py --profile P --collect FILE [--collect FILE2] --text-fit SUMMARY
-       --out DIR
+       --out DIR [--out-label LABEL]
 Merges the collects' reads per row (same rows, same stamp except orders) and writes one arm dir per policy under DIR
 (scored.jsonl.gz + arm.json, as vision_offline.py writes), plus a 2-fold group cross-fit reference of
 `always <second>` per combine rule. Then vision_compare.py pairs every arm with identity into
-docs/results/vision-experiments/<UTC>-r3-orders-P/, beside orders.{md,json}: cost, fits and the skipped policies.
+docs/results/vision-experiments/<UTC>-LABEL/ (default r3-orders-P), beside orders.{md,json}: cost, fits and the
+skipped policies.
 SUMMARY is r3_orders.py's summary.json. Dev collects only; a policy needing an uncollected order is skipped, listed.
 """
 
@@ -202,11 +203,10 @@ def score_all(recs: list[dict], fit_summary: dict, policies: list[Policy], out: 
     return written, about, skipped
 
 
-def compare(written: dict[str, Path], profile: str, out_root: Path) -> tuple[dict, Path]:
+def compare(written: dict[str, Path], label: str, out_root: Path) -> tuple[dict, Path]:
     """vision_compare.py with identity as the baseline; returns its summary and the results dir it made."""
     if BASE not in written:
         raise SystemExit(f"no {BASE} arm to pair against")
-    label = f"r3-orders-{profile}"
     before = set(out_root.glob(f"*-{label}"))
     argv = ["--baseline", f"{BASE}={written[BASE]}", *(f"{n}={p}" for n, p in written.items() if n != BASE),
             "--out-label", label, "--out-root", str(out_root)]
@@ -240,7 +240,7 @@ def run(args, policies: list[Policy]) -> dict:
                                               "label": " + ".join(c["label"] for c in configs)},
               "commit": vision_splits.commit()}
     written, about, skipped = score_all(recs, fit_summary, policies, args.out, common)
-    summary, out = compare(written, args.profile, args.out_root)
+    summary, out = compare(written, args.out_label or f"r3-orders-{args.profile}", args.out_root)
     report = {"meta": {"timestamp": now(), "commit": common["commit"], "profile": args.profile,
                        "collects": common["collect"], "text fit": common["text_fit_path"], "arms dir": str(args.out),
                        "gate T (choice)": fit_summary["gate_T"]["choice"],
@@ -261,6 +261,7 @@ def parse_args(argv=None) -> argparse.Namespace:
     p.add_argument("--text-fit", type=Path, required=True, help="r3_orders.py summary.json of this profile")
     p.add_argument("--out", type=Path, required=True, help="where the arm dirs go")
     p.add_argument("--out-root", type=Path, default=vision_compare.OUT_ROOT)
+    p.add_argument("--out-label", help="the results dir's label (default r3-orders-<profile>)")
     return p.parse_args(argv)
 
 

@@ -92,10 +92,10 @@ def test_merge_refuses_other_rows_and_holdout(tmp_path):
         vor.merge([held])
 
 
-def run(tmp_path, collects: list, policies=PICKED):
+def run(tmp_path, collects: list, policies=PICKED, flags=()):
     picked = [p for p in IMAGE_POLICIES if p.name in policies]
     argv = ["--profile", "gemma-4-31b", "--text-fit", str(text_fit(tmp_path)), "--out", str(tmp_path / "arms"),
-            "--out-root", str(tmp_path / "results")]
+            "--out-root", str(tmp_path / "results"), *flags]
     for c in collects:
         argv += ["--collect", str(c)]
     return vor.main(argv, picked)
@@ -113,6 +113,11 @@ def test_arm_dirs_readable_by_compare(tmp_path):
     compare = json.loads((out / "summary.json").read_text())
     assert compare["baseline"] == "identity" and set(compare["paired"]) == set(result["arms"]) - {"identity"}
     assert (out / "orders.md").exists() and json.loads((out / "orders.json").read_text())["skipped"] == {}
+
+
+def test_out_label(tmp_path):
+    result = run(tmp_path, [baseline(tmp_path)], ["identity"], ["--out-label", "r4-orders-decider_chat-p"])
+    assert result["out"].name.endswith("-r4-orders-decider_chat-p")
 
 
 def test_extra_suffix_tokens(tmp_path):

@@ -81,8 +81,8 @@ vLLM letter logprobs  →  softmax(logprobs / T)  →  average over option order
   file and names the field, as it does for `labels.json`. To refit, move the stale file
   aside, recollect calib and eval (`collect.py` ignores calibration files), then rerun
   `calibrate.py`.
-- **A fit holds for one option-order setting** (`fit.orders`, `identity` today). Startup
-  and `evaluate.py offline` warn when another setting uses it.
+- **A fit holds for one option-order setting** (`fit.orders`, `identity` today); see
+  [option-ordering.md §1](option-ordering.md#1-how-the-gateway-shows-and-averages-orders).
 - vLLM returns logprobs over the whole vocabulary: `logprob = logit − log Z`. The
   `log Z / T` term is the same for every letter and cancels, so scaling logprobs equals
   scaling logits.
@@ -225,11 +225,8 @@ of Δ: **p(yes) ≥ 0.5 at any T exactly when it is at T = 1.**
 
 T pulls p(yes) towards or away from 0.5; it never moves it across.
 
-**Option-order averaging** ([`orders.py`](../../gateway/orders.py)) averages probabilities
-*after* the softmax. For noul the rule still holds: two orders average above 0.5 exactly
-when their two Δs sum above 0, whatever T is. With 3+ options it can break: a check on
-random synthetic logprobs found cases where T changed the averaged winner. Today's default
-is one order (`identity`), so current runs are unaffected.
+**Option-order averaging** and T (when T can change an averaged winner): moved to
+[option-ordering.md §1](option-ordering.md#1-how-the-gateway-shows-and-averages-orders).
 
 ## 4. Measuring calibration: ECE and Brier
 
@@ -339,8 +336,8 @@ so it must be fitted on labelled data to balance the two.
 | **Option-order averaging** ([`orders.py`](../../gateway/orders.py)) | Nothing: ask `no`-first and `yes`-first, average | no | yes | 2× rows. Cancels a lean to a position or letter, not to the word "no" |
 | Noul wording ([`decider_chat.toml`](../../prompts/decider_chat.toml)) | New `noul_question` or labels | to evaluate | yes | Needs rebuilt labels and a refit T |
 
-The noul layout always shows `no` first as `(A)`, so a lean to position A and a lean to the
-word "no" are mixed together; the option-order experiment would separate them. An offset
+Order vs the word "no" (`no` is always `(A)`), with M3's measurement:
+[option-ordering.md §4](option-ordering.md#4-noul-order-and-the-yesno-lean). An offset
 can trade false "no" for false "yes", so judge it on held-out rows, never on its fit rows.
 
 ## 7. The phase-2 plan (DS-002)
@@ -356,8 +353,8 @@ Items 2, 3 and 5 are done ([report](../results/archive/qwen3.6-27b/2026-10-03T00
    ([jev-notes.md §5](../appendix/jev-notes.md)).
 3. **Done: fit a noul offset** (Platt-style) on the same split, per profile and layout.
    It ships only when the eval split shows a gain (qwen3.6: `question_first` only).
-4. **Run the option-order experiment** (flip rate, accuracy, ECE) before changing the
-   `identity` default.
+4. **Done: the option-order experiment** (M3; round 3 awaits the owner's pick); `identity`
+   is the default today ([option-ordering.md](option-ordering.md)).
 5. **Done: stamp `calibration.json`** with tokenizer hash, layout hash, model revision and
    prefix padding; the gateway refuses stale files as it does for `labels.json`.
 

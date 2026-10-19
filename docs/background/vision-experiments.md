@@ -98,8 +98,7 @@ collected orders plus one calibration method:
   `calibration-<block>.json`). `arm.json` stores absolute paths.
 - **Fallbacks.** A fit on fewer than 30 questions uses the text T (listed in `arm.json` and the console).
   PriDe needs at least 30 reads per option count, else that option count is left undebiased.
-- **PriDe and orders.** With identity orders only, PriDe mixes the gold-position skew with the letter bias.
-  Cyclic orders put each option in every position and separate them.
+- **PriDe and orders:** see [option-ordering.md §3](option-ordering.md#3-pride).
 
 ## 5. Compare and how to read it
 
@@ -240,17 +239,8 @@ That is an observation, not a decision.
 
 ### Orders and PriDe (E5)
 
-Baseline `fitT_id`, dev, 1,462 rows. Results:
-[`2026-10-16T223919Z-r1-gemma-orders`](../results/vision-experiments/2026-10-16T223919Z-r1-gemma-orders/summary.md).
-
-| config | index | Δ index [95% CI] | ECE | NLL | mean input tokens |
-|---|---|---|---|---|---|
-| fitT_id | 77.02 | baseline | 0.0407 | 0.5742 | 719 |
-| pride_id | 76.76 | -0.26 [-1.07, +0.54] | 0.0406 | 0.5740 | 719 |
-| fitT_cyc | 77.00 | -0.02 [-1.23, +1.21] | 0.0340 | 0.5783 | 966 |
-| pride_cyc | 76.93 | -0.09 [-1.30, +1.15] | 0.0362 | 0.5776 | 966 |
-
-Cyclic orders read 966 tokens per row against 719 (+247, about +34%). No arm separates from the baseline.
+No order or PriDe arm separated from the baseline; the table moved to
+[option-ordering.md §6](option-ordering.md#round-1-e5-gemma-4-31b-2026-10-16).
 
 ### Latency probes (E6)
 
@@ -279,6 +269,11 @@ Round 1 gave no convincing reason to change anything, so the owner kept all defa
 max_pixels 1638400 (qwen3.8), the `header` layout, the text temperature for image rows, and identity orders.
 T_image and its calibration-set builder were removed from the code base (they are in git history). uuid-only
 image reuse was not built, and qwen3.8-27b's round 1 was not run.
+
+## 10. Round 3: orders and answer labels (2026-10-18/19)
+
+Both models, image dev and text. Option-order policies: [option-ordering.md §7-§9](option-ordering.md#7-round-3-the-policies);
+answer-label sets: [answer-labels.md](answer-labels.md). Reports; the owner picks.
 
 ## Caveats
 

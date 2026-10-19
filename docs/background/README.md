@@ -8,7 +8,9 @@ the order below goes from "how a request works" to "how good the answers are".
 |---|---|
 | [Decision readout](decision-readout.md) | One request traced through the code: label tables, piecewise tokens, one-token readout, softmax, Jev answers (real token ids) |
 | [Request lifecycle](request-lifecycle.md) | Client → gateway → vLLM sequence diagrams, auth, error codes, disconnect cancellation, timeouts |
-| [Prompt layouts](prompt-layouts.md) | The three layouts, where the question should go for long documents, option-order bias, and what each costs in prefix sharing |
+| [Prompt layouts](prompt-layouts.md) | The three layouts, where the question should go for long documents, and what each costs in prefix sharing |
+| [Option ordering](option-ordering.md) | Showing options in several orders and averaging back: position and letter bias, PriDe, cost, and the M3 and round 1-3 order results on text and images (DS-041) |
+| [Answer labels](answer-labels.md) | Which token the model answers with: letters vs lowercase, spaced, digits, symbols, unused, content and shuffled labels, their token checks and round 3 screen (DS-042) |
 | [Images](images.md) | How `/v1/systemone` decides about images: placeholders and soft-token counts per model, the token-in readout, image prompt sharing, and the vision suite (DS-024) |
 | [Vision experiments](vision-experiments.md) | The dev/holdout/latency splits of the vision suite, holdout rules, collect and offline arms, how to read the paired compare table, latency procedure (DS-034) |
 | [Prompt sharing](prompt-sharing.md) | Why hybrid Qwen reuses the shared state only in 784-token blocks, and what that costs in throughput |

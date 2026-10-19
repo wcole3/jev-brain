@@ -85,6 +85,9 @@ with [`scripts/build_labels.py`](../../scripts/build_labels.py):
 Only the first 10 letters are checked in context, and the gateway does not recheck at
 startup ([CLAUDE.md](../../CLAUDE.md) notes this). More than 10 options never rely on it, see §3.
 
+Other label sets (lowercase, digits, symbols, shuffled letters, each option's own first token) were screened against
+these letters in round 3: [answer-labels.md](answer-labels.md).
+
 ## 3. Piecewise tokenization: building the row ids
 
 [`prompts.py`](../../gateway/prompts.py) builds the token ids itself instead of sending
@@ -159,22 +162,9 @@ head plus context). `Batch.input_tokens` counts that prefix once, as Jev counts 
 
 ## 4. Option orders: fighting position bias
 
-Models lean toward some positions (often the first). [`orders.py`](../../gateway/orders.py)
-shows each question with several orderings of its options. `perm[j]` is the caller's option
-shown at position `j`.
-
-| Setting | Orders for 3 options |
-|---|---|
-| `identity` (default, `OPTION_ORDERS`) | `[0,1,2]` |
-| `identity+reversed` | `[0,1,2]`, `[2,1,0]` |
-| `cyclic:<k>` | `k` evenly spaced rotations, at most one per option |
-
-Each order is its own row, so 2 orders means twice the rows. The example above was built
-with `identity+reversed`: 3 questions gave 6 rows. `average_back` puts each row's
-probabilities back in the caller's positions and takes the mean; for
-`[.7,.2,.1]` in identity and `[.5,.3,.2]` in reversed order, the result is
-`[.45, .25, .30]`. A request may override the setting with `option_orders`
-(and `layout`); both are experiment hooks, not Jev API.
+The example above was built with `identity+reversed`: each order is its own row, so 3 questions gave 6 rows.
+How [`orders.py`](../../gateway/orders.py) builds the orders and averages them back, and what they buy:
+[option-ordering.md §1](option-ordering.md#1-how-the-gateway-shows-and-averages-orders).
 
 ## 5. Readout: one token, many logprobs
 

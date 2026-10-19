@@ -148,7 +148,7 @@ The two middle rows are linked: a model that can't compute an answer falls back 
 prior, so difficulty decides *where* it fails and the prior decides *which way*. This is why
 the lean flips between Qwen and gemma on the same rows.
 
-Background: position and letter bias in [ordering-and-layout.md](../appendix/ordering-and-layout.md)
+Background: position and letter bias in [option-ordering.md §2](option-ordering.md#2-position-and-letter-bias)
 (Zheng et al. find it is mostly a prior over option letters, not position alone), and why
 temperature can't move an answer across 0.5 in [calibration.md §3 and §6](calibration.md).
 
@@ -169,18 +169,8 @@ every result on the test half only. Keep a copy of today's run as the baseline.
    domain. Adopt only if accuracy rises and no domain drops by more than noise.
 4. Expected (from §2, an estimate): under 1 point for Qwen, 1–2 for gemma.
 
-**Experiment 2: `identity+reversed` for noul.**
-
-1. Run the noul rows with `OPTION_ORDERS=identity+reversed`. `orders.py` shows `yes` as
-   `(A)` in the second row and averages both back.
-2. Measure: accuracy, the lean, and the share of rows whose answer differs between the two
-   orders. A large, one-directional flip share means order matters.
-3. Cost: 2 rows instead of 1 per noul question. On a multi-question request the state
-   stays cached, so the extra cost is the question tail ([prompt-layouts.md](prompt-layouts.md)
-   measured 1.88× tokens for all types on a large request). `option_orders` is one global
-   setting today; a noul-only version would need a per-type setting.
-4. It swaps position and letter together, so it separates the word from the slot, not the
-   letter from the slot.
+**Experiment 2: `identity+reversed` for noul.** Moved, with M3's p(yes) under both orders:
+[option-ordering.md §4](option-ordering.md#4-noul-order-and-the-yesno-lean).
 
 **Experiment 3: contextual calibration (Zhao et al. 2021).**
 

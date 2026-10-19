@@ -1,4 +1,4 @@
-# Prompt layouts, option order and long documents
+# Prompt layouts and long documents
 
 Based on `prompts/*.toml`, the research notes in
 [ordering-and-layout.md](../appendix/ordering-and-layout.md), and a replay of one
@@ -18,8 +18,7 @@ the same method as [prompt-sharing.md](prompt-sharing.md) §4: it rebuilds the r
 - **Literature is split on where the question belongs.** Anthropic and Google say query last, OpenAI
   says both ends. For lookup-style tasks question-first can be more accurate, but it costs
   a full state prefill per question.
-- **Averaging option orders costs rows.** `identity+reversed` doubles the rows and computes
-  1.88x the tokens (`decider_chat`), not 2x, because the state stays cached.
+- **Option order** (bias, averaging and its cost) has its own doc: [option-ordering.md](option-ordering.md).
 - **Only qwen3.6 is calibrated.** All three of its layouts have our own fit; qwen3.8 and
   gemma run uncalibrated until their collects are fitted.
 
@@ -86,7 +85,7 @@ edit prompts/x.toml -> sha256 changes -> labels.json stale -> gateway refuses to
    (see CLAUDE.md, "Hard-won facts"). New wording shifts the logits, so the fit must be redone. Nothing in code
    detects this; the hash check covers labels only.
 
-## 2. Research: where to put the question, and option order
+## 2. Research: where to put the question
 
 Depth and sources are in [ordering-and-layout.md](../appendix/ordering-and-layout.md). The short version:
 
@@ -103,13 +102,7 @@ Depth and sources are in [ordering-and-layout.md](../appendix/ordering-and-layou
 Take-away: there is no universal answer, and the accuracy gain from question-first appears on
 retrieval-shaped questions. It is the layout that loses sharing (section 3).
 
-**Q1, option order.** Models favour certain option letters/positions regardless of content.
-Zheng et al. find it is mostly a token-ID prior, not only position, so where the right answer sits
-does not fully fix it. The usual fixes are permutation averaging (show options in 2+ orders and average
-probabilities back, which our `option_orders` does) and PriDe-style prior estimation. Evidence on averaging is mixed:
-reflex reports ECE 0.088 to 0.061 on a 27B model with two orders, while jobe found no accuracy gain on its hard tier
-because the flips were symmetric noise. The notes recommend `identity+reversed` as the standard
-profile and testing it per question type before making it default.
+**Q1, option order:** moved to [option-ordering.md §2](option-ordering.md#2-position-and-letter-bias).
 
 ## 3. What each layout costs in prefix sharing
 
@@ -172,21 +165,7 @@ question_first  [ q + options ][ state 2,0xx ]  every row unique from token 4 ->
 
 ### Adding option-order averaging
 
-`identity+reversed` gives each question two rows (32 in all). Reversed rows share the state with the
-identity rows, so the state stays cached.
-
-| Layout | Rows | Prompt | Cached | **Computed** | vs same layout, identity | vs `decider_chat` identity |
-|---|---|---|---|---|---|---|
-| `decider_chat` | 32 | 72,794 | 48,608 | **24,186** | 1.88x | 1.88x |
-| `header` | 32 | 78,618 | 48,608 | **30,010** | 1.90x | 2.33x |
-| `question_first` | 32 | 72,794 | 0 | **72,794** | 2.00x | 5.65x |
-
-- Averaging costs about 1.9x the computed tokens, close to the row count, not the "extra branch in one
-  shared-prefix pass" (~+50%) that reflex measured for small requests. The reason is the 784-token rule:
-  every additional row recomputes the 498 tail tokens of the state, too.
-- Since throughput here is set by computed tokens per request (prompt-sharing.md §5, where the GPU is saturated at ~6,000
-  computed tokens/s), 1.88x computed is, as an estimate, about half the requests per second. The
-  replay counts tokens, not time.
+Moved, with the same replay's token table: [option-ordering.md §1](option-ordering.md#what-a-second-order-costs-in-tokens).
 
 ### The trade-off
 
@@ -222,8 +201,8 @@ layout, each (model, layout) pair needs its own fit. Details and the fitting met
   ratios (the 784-token remainder is what matters).
 - **Cross-request reuse ignored.** Repeated requests can hit their own cached rows.
 - **Tokens, not time.** The throughput reading assumes the ~6,000 tokens/s prefill rate measured earlier.
-- **Accuracy figures are second-hand.** snapjudge, reflex and jobe numbers come from their READMEs (as summarised
-  in the appendix), on other models. We have not run our own layout comparison.
+- **Accuracy figures are second-hand.** snapjudge numbers come from its README (as summarised in the appendix), on
+  other models. M3 later ran our own layout comparison (§3, updates).
 - **Qwen only.** Block granularity differs on non-hybrid models such as Gemma 4.
 
 ## Sources
@@ -233,11 +212,8 @@ layout, each (model, layout) pair needs its own fit. Details and the fitting met
   [`readout.py`](../../gateway/readout.py), [`bench_data.py`](../../scripts/bench_data.py).
 - Our research: [ordering-and-layout.md](../appendix/ordering-and-layout.md),
   [prompt-sharing.md](prompt-sharing.md), [6-answer-compatibility.md](../6-answer-compatibility.md).
-- Zheng et al., Large Language Models Are Not Robust Multiple Choice Selectors: https://arxiv.org/abs/2309.03882
 - Liu et al., Lost in the Middle: https://arxiv.org/abs/2307.03172
 - Anthropic prompting best practices: https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices
 - OpenAI GPT-4.1 prompting guide: https://developers.openai.com/cookbook/examples/gpt4-1_prompting_guide
 - Gemini long-context docs: https://ai.google.dev/gemini-api/docs/long-context
 - snapjudge: https://github.com/Micha0827/snapjudge
-- reflex order averaging: https://github.com/kshetrajna12/reflex (`docs/results/order-averaging.md`)
-- jobe: https://github.com/MantisShrimpdev/jobe

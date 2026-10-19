@@ -7,8 +7,8 @@ How the gateway shows a question's options in more than one order and averages t
 
 ## Short answer
 
-- **Today every profile reads one order (`identity`).** The owner kept it after M3 (a second order was not worth 2×
-  reads, 2026-10-03) and after round 1 on images (2026-10-16).
+- **Today every profile reads one order (`identity`).** The owner kept it after M3 (2026-10-03; for gemma, two
+  orders were not worth 2× reads) and after round 1 on images (2026-10-16).
 - **A second order is one more row per question.** `average_back` maps each order's probabilities back to the
   caller's positions and takes the mean. On a 16-question request a token replay computed 1.88–1.90× the tokens (§1).
 - **Text, round 3:** a second order on every question adds 0.4–0.7 accuracy points on index-dev on both models.
@@ -16,11 +16,12 @@ How the gateway shows a question's options in more than one order and averages t
   low top probability keeps most of gemma's gain at 1.2–1.4 reads per question. Selective reads by option count keep
   less (§8).
 - **Image, round 3:** on gemma no arm separates from identity; the best is +0.37 index [−0.12, +0.87] at 1.19 reads.
-  On qwen3.8 the only CIs above 0 (4 of 82 arms) add the reversed read when a question has ≥ 3 or ≥ 4 options. The
+  On qwen3.8 the only CIs above 0 (4 of 81 arms) add the reversed read when a question has ≥ 3 or ≥ 4 options. The
   largest is `min_n 4 reversed/mean-logprob`, +2.04 [+0.67, +3.42] at 1.56 reads, with ECE 0.042 → 0.070. The CIs
   are not corrected for the comparisons (§9).
-- **`tn-prob` is a calibration effect, not an order effect.** On gemma it cuts text ECE by 0.04–0.05 on index-dev
-  in every arm. It does so even when only 4% of questions pay a second read. Round 2 saw the same with one read (§6).
+- **On gemma, `tn-prob`'s ECE gain comes from its T(n) fit, not from extra orders.** It cuts gemma's text ECE by
+  0.04–0.05 on index-dev in every arm, even when only 4% of questions pay a second read; round 2 saw the same with one
+  read (§6). On qwen3.8 it moves text ECE by −0.003 to +0.005 and raises image ECE (§8, §9).
 - **PriDe never helped.** It is a per-letter prior subtracted before the softmax. Its accuracy change was 0 or
   negative on text and −0.26 index on images, and the gateway cannot serve it (§3).
 
@@ -86,7 +87,7 @@ position, so where the right answer sits does not fully fix it. The usual fixes 
 
 Evidence on averaging is mixed. reflex reports ECE 0.088 to 0.061 on a 27B model with two orders. jobe found no
 accuracy gain on its hard tier because the flips were symmetric noise. The notes recommended `identity+reversed` as
-the standard profile, tested per question type before it became a default.
+the standard profile, to be tested per question type before making it the default; it never became one.
 
 **Our flip rates.** The share of questions whose top answer changes between the identity and the reversed read (noul
 left out), M3 on `header`:
@@ -124,7 +125,8 @@ together ([noul-bias.md](noul-bias.md)). `identity+reversed` shows `yes` as `(A)
 back. It swaps position and letter together, so it separates the word from the slot, not the letter from the slot.
 
 M3 measured p(yes) under both orders on `header`. If p(yes) moves with the order, the lean is to a position. If it
-stays put, the lean is to the word.
+stays put, the lean is to the word. M3's index-dev had 143 noul questions; round 3's has 154, because index-dev was
+recollected since (14,680–14,684 → 15,635 questions).
 
 | Profile | Split | Noul questions | p(yes), identity | p(yes), reversed | Gold yes |
 |---|---|---|---|---|---|
@@ -133,8 +135,10 @@ stays put, the lean is to the word.
 | qwen3.8-27b | index-dev | 143 | 0.581 | 0.589 | 0.399 |
 | qwen3.8-27b | eval | 666 | 0.329 | 0.360 | 0.359 |
 
-p(yes) moves by at most 0.031 when the order flips, so the measured lean on these splits is mostly to the word, not
-the slot. A noul-only second order would need a per-type setting; `option_orders` is one global setting today.
+On index-dev both models say "yes" more often than gold (mean p(yes) 0.50 and 0.58 against 0.40), and flipping the
+order moves mean p(yes) by at most 0.008 there, so that yes lean is not a lean to a slot. On any split the order moves
+mean p(yes) by at most 0.031. A noul-only second order would need a per-type setting; `option_orders` is one global
+setting today.
 
 Round 3's text summaries break each policy down per type. Always reversed (`mean-prob`) against identity, noul
 questions only, Δ accuracy in points:
@@ -143,6 +147,9 @@ questions only, Δ accuracy in points:
 |---|---|---|
 | gemma-4-31b | +0.6 [+0.0, +1.9] | +3.2 [+1.8, +4.7] |
 | qwen3.8-27b | −2.6 [−5.8, +0.0] | +0.8 [−0.6, +2.1] |
+
+A second order raises gemma's eval noul accuracy by 3.2 points [+1.8, +4.7], while its mean p(yes) differs by 0.021
+between the two orders.
 
 ## 5. M3: text arms (2026-10-03)
 
@@ -156,7 +163,8 @@ its own calib-fitted T (b = 0). Accuracy change against identity
 | qwen3.8-27b | keep identity: only cyclic:2 on eval | cyclic:2: +0.003 / +0.007; 2 reads |
 | gemma-4-31b | identity+reversed: +0.007 / +0.008; 2 reads | identity+reversed: +0.005 / +0.015; 2 reads |
 
-The owner kept `identity` for every profile: two orders were not worth 2× reads. qwen3.8's first-option bias
+The owner kept `identity` for every profile; for gemma the recorded reason is that two orders were not worth 2×
+reads. qwen3.8's first-option bias
 (DS-020): averaging recovers about +0.3 points on index-dev, far short of the 4.3-point gap to simple-jev.
 
 ## 6. Image orders, rounds 1 and 2
@@ -283,10 +291,10 @@ accuracy (%), ECE and approx skill. Columns 2–5 are index-dev (15,635 question
   eval only cyclic:2 has a CI above 0 (+0.7 [+0.1, +1.3]).
 - **Selective reads** (`min_n`) gain less than gating at similar cost. On gemma eval `min_n 3`/`4` raise ECE
   (+0.012, +0.014, CIs above 0).
-- **Combine rules.** Against `mean-prob`, `mean-logprob` moves accuracy by at most 0.3 point and ECE by at most
-  0.005, and `tn-prob` moves accuracy by at most 0.04 point. On gemma `tn-prob` cuts index-dev ECE by 0.042–0.053
-  and eval ECE by 0.009–0.024 in every policy, `top_p 0.5` (4% second reads) included. On qwen3.8 its index-dev ECE
-  change is −0.003 to +0.005.
+- **Combine rules.** Against each policy's `mean-prob` arm, `mean-logprob` moves accuracy by at most 0.3 point and
+  ECE by at most 0.005, and `tn-prob` moves accuracy by at most 0.04 point. On gemma `tn-prob` lowers ECE against
+  `mean-prob` by 0.036–0.044 on index-dev and 0.017–0.028 on eval in every policy, `top_p 0.5` (4% second reads)
+  included. On qwen3.8 the same difference is −0.003 to +0.005 on index-dev and +0.001 to +0.005 on eval.
 - **Fits.** Each policy's T is refitted on calib, so the identity row is not the shipped file. gemma's identity score
   T fits to 19.999, the search edge, against the shipped pooled 5.603 (the summaries' Fits tables).
 
@@ -377,7 +385,7 @@ combine rule and is left out below.
 ## Caveats
 
 - **Many comparisons.**
-  - Text: 45 arms per split and model; image: 82 arms per model. Every CI is unadjusted.
+  - Text: 45 arms per split and model; image: 75 policy arms plus 6 cross-fit references per model. Every CI is unadjusted.
   - At this count, a few CIs that exclude 0 are expected by chance. Dev's minimum detectable Δ index is about 3.5
     points ([vision-experiments.md §5](vision-experiments.md#5-compare-and-how-to-read-it)).
 - **Eval is a selection set.** The calibration gate and M3's verdicts chose on eval; index-dev is the cleaner text

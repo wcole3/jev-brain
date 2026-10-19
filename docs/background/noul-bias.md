@@ -21,6 +21,8 @@ lean comes from, and what to test in phase 2 (DS-002). Numbers come from the thr
   default is "no" for Qwen and "yes" for gemma on the same rows.
 - **Phase 2 should test** a per-profile offset, `identity+reversed` for noul and contextual
   calibration, each on a held-out split. None of them is likely to fix the arithmetic rows.
+  M3 has since run `identity+reversed` and measured p(yes) under both orders
+  ([option-ordering.md §4](option-ordering.md#4-noul-order-and-the-yesno-lean)).
 
 ## 1. The lean
 
@@ -139,7 +141,7 @@ and 67 of gemma's 78.
 
 | Cause | What the data says | How to test |
 |---|---|---|
-| **Option order.** `no` is always `(A)`, `yes` always `(B)` (`noul = ["no", "yes"]` in `prompts/decider_chat.toml`; `render_noul` in `gateway/questions.py`) | Can't explain opposite leans on the same prompt, or perfect atomic rows. It may still add a small push | Run with `yes` shown first (§5, experiment 2). The share of flipped answers measures the order effect |
+| **Option order.** `no` is always `(A)`, `yes` always `(B)` (`noul = ["no", "yes"]` in `prompts/decider_chat.toml`; `render_noul` in `gateway/questions.py`) | Can't explain opposite leans on the same prompt, or perfect atomic rows. It may still add a small push | Run with `yes` shown first (§5, experiment 2). M3 did, and compared p(yes) under both orders (flip rates leave noul out) |
 | **Fixed question wording.** The frame "Question: … Options: (A) no (B) yes Answer: (" is fixed. Each JevBench row brings its own instructions, so the default `noul_question` is never used | Some instructions are statements, not questions ("This invoice appears to duplicate…"); qwen3.6 misses all 17 of those gold yes. But "The invoice reconciles with…" is also a statement and qwen3.6 gets 96/100 | Rephrase the frame (e.g. "Is the following true? …"), rebuild labels, rerun the affected domains |
 | **Model priors.** Each model's default when unsure | Fits best: on the invoices rows Qwen defaults to "no", gemma to "yes". Papers find leans in both directions: a pull towards "no" across models and languages (Braun et al. 2025), and a lean towards the last-printed option plus the word "no" that varies by model (Huang 2026) | Contextual calibration (§5, experiment 3): score a content-free state and read the prior directly |
 | **Computed questions are hard.** Sums, averages and formal logic with no reasoning step (`max_tokens=1`) | Fits best: invoices, quant and logic hold 75–91% of each model's errors; atomic rows are 100% for everyone. Errors cluster where the arithmetic is closest (quant margins, $1 invoice gaps) | Compare accuracy with a reasoning pass on the same rows (chat model, thinking on). If accuracy jumps, the gap is compute, not bias |

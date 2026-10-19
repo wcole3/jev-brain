@@ -23,8 +23,9 @@ decision is added after the pick.
   - On qwen3.8 `spaced` raises text ECE by 0.017, and `content` by 0.026 on all questions. On `content`'s pure subset
     it is −0.016, CI includes 0.
 - **Every set needs a fallback past its size.** A question with more options than the set holds is shown with
-  today's letters: 5.6% of text questions for the 26-label sets, 17.9% for `digits`. Results are given on all
-  questions and on the pure subset.
+  today's letters: 5.6% of text questions for the 26-label sets, 5.2% for `symbols`, 17.9% for `digits`, and
+  21.0% for `content` (which also falls back on shared first tokens). Results are given on all questions and on the
+  pure subset.
 
 ## 1. The sets
 
@@ -95,7 +96,10 @@ option line, the answer slot and the `labels` key. The gateway never loads these
 
   gemma's 3 calib-600 disagreements are status mismatches. The control collect ran at the old max_len 32,768, so 10
   entity-alignment rows (~39k tokens) were unsupported then and are fine at today's 65,536. That is not a pipeline
-  difference (ruling R8). The set fits include those 10 rows; the letters fit does not (590 vs 600 calib questions).
+  difference (ruling R8). The 26-label, `digits` and `unused` set fits on gemma include those 10 rows; the letters fit
+  does not (590 vs 600 calib questions). The 10 rows are also among the 15 unsupported 255-option rows, so `spaced`,
+  `symbols` and `content` fit on 585. On qwen3.8 every collect, control and set, ran at the profile's max_len 32,768,
+  so the same 10 rows are unsupported in both arms (590; 585 for the spaced-slot sets).
 
 ## 3. The `unused` embedding check
 
@@ -202,8 +206,9 @@ one.
 
 - **Agreement** is the share of rows with the same top answer as letters. Away from the two collapsed sets it runs
   from 0.977 (`lower`, gemma) down to 0.855 (`shuffled`, qwen3.8).
-- **Shuffled letters.** Both sets read the same letter tokens as `letters`, only in another order. The gemma image
-  cost is therefore an effect of the alphabetical order, not of the tokens.
+- **Shuffled letters.** Both sets read the same letter tokens as `letters`; the gemma image cost comes with showing
+  them out of alphabetical order, which also moves each letter to another slot. It is one fixed permutation
+  (`shuffled`) and one CI among many unadjusted ones.
 - Each run dir holds the image `summary.md` with per-benchmark Δ skill under `*-compare-all/` and `*-compare-pure/`:
   gemma
   [lower](../results/vision-experiments/2026-10-18T163801Z-r3-labels-lower-gemma-4-31b/summary.md),

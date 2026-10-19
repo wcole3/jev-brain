@@ -536,3 +536,14 @@ Owner asked for shuffled letters after the main screen: keep the letter tokens, 
   `feat(labels): shuffled letter sets`.
 - [ ] Step 5 (GPU, after the main Task 8 run): screens for `shuffled` and `shuffled-q` on both models (same three
   collects + `label_screen.py screen`, cool-down between sets).
+
+### Task 9 change (owner, 2026-10-19): option-ordering background doc
+
+After all round-3 results are in, Task 9 also creates `docs/background/option-ordering.md`: one home for option
+order (how `gateway/orders.py` builds and averages orders, position and letter bias, PriDe, M3's text arms, round 1's
+image E5 arms, round 3's text and image policies with their cost columns, rulings R6/R7). Order material now in other
+background docs moves there and leaves a one-line link: candidates found by grep are `prompt-layouts.md` (§2 research
+on option order, §3 "Adding option-order averaging"), `calibration.md` (§2-§3 and §6 order notes, step 4 of §7),
+`decision-readout.md`, `noul-bias.md` (order vs yes/no lean), `vision-experiments.md` (§4 order arms, §9 E5) and
+`images.md` (§5 order notes); hits about bf16 "flips" in `determinism.md` stay. Round-3 orders results then go in
+the new doc instead of `vision-experiments.md` §10 / `prompt-layouts.md`; `docs/background/README.md` gains its line.

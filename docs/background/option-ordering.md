@@ -12,16 +12,17 @@ How the gateway shows a question's options in more than one order and averages t
 - **A second order is one more row per question.** `average_back` maps each order's probabilities back to the
   caller's positions and takes the mean. On a 16-question request a token replay computed 1.88–1.90× the tokens (§1).
 - **Text, round 3:** a second order on every question adds 0.4–0.7 accuracy points on index-dev on both models.
-  On eval, always reversed adds 1.5 points on gemma and 0.2 on qwen3.8 (CI includes 0). Gating the second read on a
-  low top probability keeps most of gemma's gain at 1.2–1.4 reads per question. Selective reads by option count keep
-  less (§8).
+  On eval, always reversed adds 1.5 points on gemma and 0.2 on qwen3.8, whose CI includes 0. Gating the second read
+  on a low top probability keeps most of gemma's gain at 1.2–1.4 reads per question. Selective reads by option count
+  keep less (§8).
 - **Image, round 3:** on gemma no arm separates from identity; the best is +0.37 index [−0.12, +0.87] at 1.19 reads.
   On qwen3.8 the only CIs above 0 (4 of 81 arms) add the reversed read when a question has ≥ 3 or ≥ 4 options. The
   largest is `min_n 4 reversed/mean-logprob`, +2.04 [+0.67, +3.42] at 1.56 reads, with ECE 0.042 → 0.070. The CIs
   are not corrected for the comparisons (§9).
-- **On gemma, `tn-prob`'s ECE gain comes from its T(n) fit, not from extra orders.** It cuts gemma's text ECE by
-  0.04–0.05 on index-dev in every arm, even when only 4% of questions pay a second read; round 2 saw the same with one
-  read (§6). On qwen3.8 it moves text ECE by −0.003 to +0.005 and raises image ECE (§8, §9).
+- **On gemma, `tn-prob`'s ECE gain comes from its T(n) fit, not from extra orders.** Against identity (one read at
+  its own refit T), it cuts gemma's text ECE by 0.04–0.05 on index-dev in every arm, even when only 4% of questions
+  pay a second read; round 2 saw the same with one read (§6). On qwen3.8 it moves text ECE by −0.003 to +0.005 and
+  raises image ECE (§8, §9).
 - **PriDe never helped.** It is a per-letter prior subtracted before the softmax. Its accuracy change was 0 or
   negative on text and −0.26 index on images, and the gateway cannot serve it (§3).
 
@@ -101,7 +102,7 @@ left out), M3 on `header`:
 
 On image dev the flip rate is 0.124 on gemma and 0.202 on qwen3.8 (round 3 label screens, letters arm). Round 3 also
 separated the letter from the alphabet: the `shuffled` label sets keep the letter tokens in a non-alphabetical order
-([answer-labels.md](answer-labels.md)).
+([answer-labels.md](answer-labels.md); on images the labels also clash with the options' own keys, see Caveats).
 
 ## 3. PriDe
 
@@ -221,9 +222,11 @@ reversed and cyclic:2/3/4 reads) and two image dev collects per model (DS-034 id
   - `tn-prob`: as `mean-prob` with T(n) = α + β ln n (round 2's fit; floor 0.05).
 - **Fits (ruling R2).** Each policy's T, or α and β, is fitted per question type on text calib, b = 0, as M3 did.
   Image arms use the choice parameters, since image rows are all choice.
-- **Image `half` arms (ruling R3)** borrow the text fit of the same family with second = reversed, because the text
-  collects hold no half-turn reads. A 2-fold group cross-fit on image dev (`xfit`) is reported beside them as a
-  reference only.
+- **Image `half` arms (ruling R3)** use the text fit of the same family with second = reversed. Their own text fit is
+  computable (`half` is cyclic:2's second order, and every text collect holds cyclic:2 reads) but was not run. Where
+  both fits exist they are close: gemma's always half `mean-prob` used T 4.090 against cyclic:2's 4.053 (the same
+  order pair), and `tn-prob` α 7.10 against 6.85; qwen3.8 1.457 against 1.462. A 2-fold group cross-fit on image dev
+  (`xfit`) is reported beside them as a reference only.
 - **cyclic:3 is not scored on images (ruling R7).** n = 5 needs shift 3, which neither image collect holds.
 - **Cost.**
   - Text: mean reads per question and the share paying a second read.
@@ -390,9 +393,15 @@ combine rule and is left out below.
     points ([vision-experiments.md §5](vision-experiments.md#5-compare-and-how-to-read-it)).
 - **Eval is a selection set.** The calibration gate and M3's verdicts chose on eval; index-dev is the cleaner text
   check, and image dev has been compared on many times (the holdout guards it).
-- **Each arm's own fit.** Text ECE baselines use each arm's refitted T, not the shipped file. Image `half` arms
-  borrow the reversed fit (R3), so their ECE column is biased; their index is not affected by T except in averaged
-  or gated rows.
+- **Each arm's own fit.** Text ECE baselines use each arm's refitted T, not the shipped file. Image `half` arms use
+  the reversed policy's text fit, not their own (R3, §7), so their ECE column is slightly off; their index is not
+  affected by T except in averaged or gated rows.
+- **Image options carry their own letter keys.** Every image dev question has criteria keys `A`, `B`, … with
+  descriptions, which the `described` format puts in the option text: the identity read shows `(A) A: 1`. Every
+  reversed, half or cyclic image read shows a label that disagrees with the key, e.g. `(A) D: 2`, so a second image
+  order changes the key/label agreement as well as the position. On text a quarter of index-dev's gold-labelled
+  choice questions are keyed the same way (3,870 of 15,482; eval has none). A CPU-only split of the text results by
+  keyed vs unkeyed questions is possible from the existing collects; it has not been run.
 - **qwen3.8 padding.** The profile pads its prefix; image reads were padded for one order, so two-order arms are not
   exactly what live would compute ([vision-experiments.md §3](vision-experiments.md#3-collect)).
 - **Cost is reads and tokens, not time.** No latency was measured for any round-3 arm; a second read's live cost
@@ -400,6 +409,9 @@ combine rule and is left out below.
 - **`tn-prob` on noul.** Noul has one option count, so its β is not identified; only T(2) matters.
 - **bf16 noise.** Probabilities move ~0.03 under load ([determinism.md](determinism.md)); offline numbers equal live
   within that noise.
+- **`-dirty` provenance.** The text runs record 9c8945e-dirty: their code was committed together with their results
+  as 90196a5. The image runs (§9) record 07cdb4a-dirty, with results committed right after as 849d7df; their check
+  also counts uncommitted results and untracked files.
 - **Replay, not measurement.** The token table in §1 comes from a simplified block-cache model of one request shape
   (prompt-layouts.md caveats).
 

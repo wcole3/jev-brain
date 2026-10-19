@@ -206,9 +206,23 @@ one.
 
 - **Agreement** is the share of rows with the same top answer as letters. Away from the two collapsed sets it runs
   from 0.977 (`lower`, gemma) down to 0.855 (`shuffled`, qwen3.8).
-- **Shuffled letters.** Both sets read the same letter tokens as `letters`; the gemma image cost comes with showing
-  them out of alphabetical order, which also moves each letter to another slot. It is one fixed permutation
-  (`shuffled`) and one CI among many unadjusted ones.
+- **Shuffled letters.** Both sets read the same letter tokens as `letters`. Two causes for the gemma image cost are
+  mixed and equally likely: the letters are out of alphabetical order (which also moves each letter to another slot),
+  and they clash with the options' own keys (next bullet). It is one fixed permutation (`shuffled`) and one CI among
+  many unadjusted ones.
+- **Image options carry their own letter keys.** Every image dev question has criteria keys `A`, `B`, … with
+  descriptions, which the `described` format puts in the option text: `letters` shows `(A) A: 1`.
+  - `digits`, `symbols`, `unused`, `shuffled` and `shuffled-q` show a label that disagrees with the key, e.g.
+    `(F) A: 1` (`shuffled`) or `(1) A: 1` (`digits`). `lower` and `spaced` keep the key's letter (`(a) A: 1`,
+    `A) A: 1`).
+  - `content` shows `- A: 1` and reads its first token, ` A`. On images it is effectively spaced key letters, not the
+    options' own first tokens, which is why it never falls back there.
+  - Every reversed image read shows a label that disagrees with the key, e.g. `(A) D: 2`, in every set but
+    `content`, so the flip rates and second-order reads carry the same clash.
+  - On text, 969 of index-dev-2k's 3,690 gold-labelled choice questions (26%) are keyed the same way: 897 as `A`,
+    `B`, … and 72 Amazon-ESCI as `E`, `S`, `C`, `I`. `content` reads the key letter on those too when it does not fall
+    back. A CPU-only split of the text screen by keyed vs unkeyed questions is possible from the existing collects; it
+    has not been run.
 - Each run dir holds the image `summary.md` with per-benchmark Δ skill under `*-compare-all/` and `*-compare-pure/`:
   gemma
   [lower](../results/vision-experiments/2026-10-18T163801Z-r3-labels-lower-gemma-4-31b/summary.md),
@@ -241,6 +255,11 @@ one.
 - **One permutation for `shuffled`.** Another seed could cost more or less; `shuffled-q` averages over permutations
   only across questions.
 - **bf16 noise.** Collects of the same config agree on 98.5–100% of top answers (§2).
+- **Keyed options.** Image options, and 26% of the text screen's choice questions, carry their own letter keys, which
+  most sets' labels contradict (§5).
+- **`-dirty` provenance.** 13 of the 17 label runs (gemma `symbols` onward) record a `-dirty` commit: the check counts
+  untracked files (a `.claude/` directory from 2026-10-18 18:23Z), and code was committed with or right after the
+  results; the shuffled sets' code is 07cdb4a, which the shuffled runs' commits (111f0d1, b6662bc, 8d38bd7) include.
 
 ## Sources
 

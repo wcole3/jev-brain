@@ -47,7 +47,6 @@ def control(meta: dict) -> str:
 
 
 def text_markdown(report: dict) -> str:
-    meta = report["meta"]
     lines = [*head(report, "text index-dev-2k"), "## Fits (calib-600)", "",
              "| arm | calib questions | index-dev-2k questions | " + " | ".join(TYPES) + " |",
              "|---|---|---|" + "---|" * len(TYPES)]
@@ -55,8 +54,9 @@ def text_markdown(report: dict) -> str:
     lines += [f"| {arm} | {q['calib'][arm]} | {q['dev'][arm]} | " + " | ".join(fmt(fit[t]) for t in TYPES) + " |"
               for arm, fit in report["fits"].items()]
     for name, data in report["subsets"].items():
+        (other,), base = data["vs_base"], next(arm for arm in data["arms"] if arm not in data["vs_base"])
         lines += ["", f"## {name} ({data['n']} questions)", "",
-                  f"Δ is {meta['set']} − {control(meta)} on the same questions, with a 95% paired-bootstrap CI.", ""]
+                  f"Δ is {other} − {base} on the same questions, with a 95% paired-bootstrap CI.", ""]
         for grouping in ("overall", "type", "options"):
             lines += [*arm_table(grouping, grouping, data["arms"], data["vs_base"]), ""]
         lines += diagnostics(data)

@@ -256,8 +256,8 @@ def image_report(fits: dict[str, dict], dev: dict[str, tuple[list, dict, str]], 
             rows = arm_rows(by_id[arm], items[arm], views[arm]["identity"])
             dirs[arm] = write_arm(out / "arms" / name / arm, rows, about)
         data[name]["compare"] = compare(dirs, f"compare-{name}", out, base)
-    share = {"fallback_share": fallback_share(items[other], scored(items[other], subs["all"], fits[other]))}
-    return {"T": {arm: f["choice"] for arm, f in fits.items()}, **(share if pure else {}), "subsets": data}
+    share = {"fallback_share": fallback_share(items[other], scored(items[other], subs["all"], fits[other]))} if pure else {}
+    return {"T": {arm: f["choice"] for arm, f in fits.items()}, **share, "subsets": data}
 
 
 def same_stamp(a: list[dict], b: list[dict], what: str) -> None:

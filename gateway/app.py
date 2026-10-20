@@ -23,6 +23,7 @@ from gateway.governor import Governor
 from gateway.images import MAX_BODY_BYTES
 from gateway.labels import load_labels
 from gateway.layouts import load_layouts
+from gateway.orders import option_orders
 from gateway.padding import load_padding
 from gateway.prompts import chat_frame
 from gateway.readout import Readout
@@ -41,20 +42,32 @@ def vllm_client(s: Settings, transport: httpx.AsyncBaseTransport | None) -> http
     return httpx.AsyncClient(base_url=s.vllm_url, headers=auth, timeout=600, transport=transport)
 
 
-def load_calibrations(s: Settings, tok, layouts: dict) -> dict:
-    """Each layout's stamped calibration; a fit made under other option orders is used, with a warning."""
+def load_calibrations(s: Settings, tok, layouts: dict, orders: str | None = None) -> dict:
+    """Each layout's stamped calibration for one order setting; the served layout must match it, others warn."""
+    setting = orders or s.option_orders
     out = {}
     for name, layout in layouts.items():
-        out[name] = load_calibration(s.calibration_path(name), stamp_for(tok, layout, s))
-        if warning := orders_warning(out[name], s.option_orders):
-            log.warning("%s", warning)
+        path = s.calibration_path(name, orders)
+        out[name] = load_calibration(path, stamp_for(tok, layout, s))
+        if not (warning := orders_warning(out[name], setting)):
+            continue
+        if name == s.prompt_layout and orders is None:  # other settings may fall back to the text file
+            raise RuntimeError(f"{path}: fitted under option orders {out[name].orders!r}, but the setting is {setting!r}")
+        log.warning("%s", warning)
     return out
+
+
+def load_other_calibrations(s: Settings, tok, layouts: dict) -> dict:
+    """A calibration set for every order setting in use except the text one."""
+    return {x: load_calibrations(s, tok, layouts, x) for x in s.orders_in_use() if x != s.option_orders}
 
 
 def load_engine(s: Settings, client: httpx.AsyncClient, calibrated: bool = True) -> Engine:
     """calibrated=False skips calibration files (T = 1): collect must run even when a file is stale."""
     if s.systemone_max_len > s.max_model_len:
         raise ValueError(f"SYSTEMONE_MAX_LEN {s.systemone_max_len} exceeds MAX_MODEL_LEN {s.max_model_len}")
+    for setting in s.orders_in_use():
+        option_orders(2, setting)  # a malformed setting fails here, not on the first request
     tok = AutoTokenizer.from_pretrained(s.hf_model, revision=s.hf_revision)
     layouts = load_layouts()
     governor = Governor(s.governor_duty, s.governor_wave)
@@ -69,6 +82,7 @@ def load_engine(s: Settings, client: httpx.AsyncClient, calibrated: bool = True)
         padding=load_padding(s, tok),
         governor=governor,
         vision=load_vision(s),
+        other_calibrations=load_other_calibrations(s, tok, layouts) if calibrated else {},
     )
 
 
@@ -176,6 +190,7 @@ def create_app(settings: Settings | None = None, transport: httpx.AsyncBaseTrans
             "hf_revision": s.hf_revision,
             "prompt_layout": s.prompt_layout,
             "option_orders": s.option_orders,
+            "option_orders_images": s.option_orders_images,
             "prefix_pad": s.prefix_pad,
             "prefix_block": s.prefix_block,
             "prefix_pad_always": s.prefix_pad_always,

@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from gateway.answers import answer
-from gateway.calibration import Calibration, softmax
+from gateway.calibration import UNCALIBRATED, Calibration, softmax
 from gateway.config import Settings
 from gateway.governor import Governor
 from gateway.images import context_items, image_items
@@ -35,6 +35,14 @@ class Engine:
     padding: Padding = OFF
     governor: Governor = field(default_factory=Governor)
     vision: Vision | None = None  # None: the profile serves text only
+    other_calibrations: dict[str, dict[str, Calibration]] = field(default_factory=dict)  # orders -> layout -> fit
+
+
+def calibration_for(engine: Engine, layout: str, orders: str) -> Calibration:
+    """The fit for an order setting; an unknown setting (request override) uses the text fit."""
+    if orders in engine.other_calibrations:
+        return engine.other_calibrations[orders].get(layout, UNCALIBRATED)
+    return engine.calibration[layout]
 
 
 OrderFn = Callable[[int], list[list[int]]]

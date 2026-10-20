@@ -5,6 +5,8 @@ import os
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from gateway.orders import gate
+
 ROOT = Path(__file__).resolve().parent.parent
 
 
@@ -48,6 +50,7 @@ class Settings:
     systemone_max_len: int = 32768  # decisions refuse prompts this long; <= max_model_len (DS-018)
     prompt_layout: str = "decider_chat"
     option_orders: str = "identity"
+    option_orders_images: str = ""  # the setting for requests with images; empty means option_orders
     vllm_url: str = "http://127.0.0.1:8000"
     api_key: str | None = field(default=None, repr=False)  # keys never show in logs or tracebacks
     vllm_api_key: str | None = field(default=None, repr=False)
@@ -76,6 +79,7 @@ class Settings:
             systemone_max_len=int(e.get("SYSTEMONE_MAX_LEN") or min(32768, max_model_len)),
             prompt_layout=e.get("PROMPT_LAYOUT") or "decider_chat",
             option_orders=e.get("OPTION_ORDERS") or "identity",
+            option_orders_images=e.get("OPTION_ORDERS_IMAGES") or "",
             vllm_url=e.get("VLLM_URL") or "http://127.0.0.1:8000",
             api_key=e.get("GATEWAY_API_KEY") or None,
             vllm_api_key=e.get("VLLM_API_KEY") or None,
@@ -99,7 +103,25 @@ class Settings:
     def data_dir(self, layout: str) -> Path:
         return self.data_root / self.profile / layout
 
-    def calibration_path(self, layout: str) -> Path:
-        """calibration-<prefix_block>.json when the layout has one, else calibration.json."""
+    @property
+    def image_orders(self) -> str:
+        return self.option_orders_images or self.option_orders
+
+    def orders_in_use(self) -> list[str]:
+        """Text setting, then the image setting, then identity when any of them is gated."""
+        used = [self.option_orders]
+        if self.systemone_images:
+            used.append(self.image_orders)
+        if any(gate(x) is not None for x in used):
+            used.append("identity")  # a gate reads its temperature from the identity fit
+        return list(dict.fromkeys(used))
+
+    def calibration_path(self, layout: str, orders: str | None = None) -> Path:
+        """calibration-<slug of orders>.json for another setting when present; else the block-size rule."""
+        if orders not in (None, self.option_orders):
+            slug = orders.replace(":", "-").replace("+", "-")
+            own = self.data_dir(layout) / f"calibration-{slug}.json"
+            if own.exists():
+                return own
         sized = self.data_dir(layout) / f"calibration-{self.prefix_block}.json"
         return sized if sized.exists() else self.data_dir(layout) / "calibration.json"

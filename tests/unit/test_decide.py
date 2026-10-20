@@ -8,8 +8,8 @@ import PIL.Image
 import pytest
 
 import gateway.decide
-from gateway.calibration import Calibration, softmax
-from gateway.decide import answers_for, blend, build_batch, combine, decide, probabilities, read_rows
+from gateway.calibration import UNCALIBRATED, Calibration, softmax
+from gateway.decide import answers_for, blend, build_batch, calibration_for, combine, decide, probabilities, read_rows
 from gateway.images import decode_image
 from gateway.orders import option_orders
 from gateway.padding import Padding, newline_token
@@ -214,3 +214,14 @@ def test_combine_averages_logprobs_then_softmaxes():
 def test_combine_puts_the_yes_offset_on_caller_yes_in_a_reversed_noul():
     reads = [([-0.5, -1.0], [0, 1]), ([-1.0, -0.5], [1, 0])]
     assert combine(reads, 2.0, 0.25) == pytest.approx(softmax([-0.5, -1.0 + 0.5], 2.0))
+
+
+def test_calibration_for_picks_the_fit_of_the_setting(engine):
+    text = "top_p:0.9+reversed"
+    ident = Calibration({"choice": 2.0, "score": 2.0, "noul": 2.0}, orders="identity")
+    s = dataclasses.replace(engine.settings, option_orders=text)
+    e = dataclasses.replace(engine, settings=s, other_calibrations={"identity": {"decider_chat": ident}})
+    assert calibration_for(e, "decider_chat", text) is e.calibration["decider_chat"]
+    assert calibration_for(e, "decider_chat", "identity") is ident
+    assert calibration_for(e, "header", "identity") == UNCALIBRATED
+    assert calibration_for(e, "decider_chat", "cyclic:3") is e.calibration["decider_chat"]

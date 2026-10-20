@@ -412,10 +412,10 @@ OLD_STAMP = {"tokenizer_sha256": "t", "layout_sha256": "l", "hf_revision": "old"
              "prefix_block": 0}
 
 
-def write_calibration(s, name="calibration.json", **fit):
+def write_calibration(s, name="calibration.json", layout="decider_chat", **fit):
     """A v2 file stamped OLD_STAMP: stale for the real tokenizer and revision."""
     types = {"choice": {"T": 1.5}, "score": {"T": 1.5}, "noul": {"T": 1.5, "b": 0.0}}
-    path = s.data_dir("decider_chat") / name
+    path = s.data_dir(layout) / name
     path.write_text(json.dumps({"format": 2, "stamp": OLD_STAMP, "types": types, "fit": fit}))
 
 
@@ -436,7 +436,33 @@ def test_stale_calibration_refuses_the_gateway_but_not_collect(qwen_settings):
 
 def test_startup_warns_when_a_fit_was_made_under_other_orders(qwen_settings, caplog, monkeypatch):
     monkeypatch.setattr(gateway.app, "stamp_for", lambda tok, layout, s: OLD_STAMP)  # the file is current
-    write_calibration(qwen_settings, orders="identity")
+    write_calibration(qwen_settings, layout="header", orders="identity")
     engine = load_engine(dataclasses.replace(qwen_settings, option_orders="identity+reversed"), None)
-    assert engine.calibration["decider_chat"].T["choice"] == 1.5
+    assert engine.calibration["header"].T["choice"] == 1.5
     assert "fitted under option orders 'identity', used here with 'identity+reversed'" in caplog.text
+
+
+def test_served_layout_with_wrong_fit_orders_refuses_startup(qwen_settings, caplog, monkeypatch):
+    monkeypatch.setattr(gateway.app, "stamp_for", lambda tok, layout, s: OLD_STAMP)
+    s = dataclasses.replace(qwen_settings, option_orders="min_n:4+reversed")
+    write_calibration(s, orders="identity")
+    with pytest.raises(RuntimeError, match=r"calibration\.json.*'identity'.*'min_n:4\+reversed'"):
+        load_engine(s, None)
+    (s.data_dir("decider_chat") / "calibration.json").rename(s.data_dir("header") / "calibration.json")
+    load_engine(s, None)  # the same file under a layout nobody serves only warns
+    assert "fitted under option orders 'identity'" in caplog.text
+
+
+def test_malformed_env_orders_fail_at_startup(qwen_settings):
+    with pytest.raises(ValueError, match="min_n:4\\+half"):
+        load_engine(dataclasses.replace(qwen_settings, option_orders="min_n:4+half"), None)
+
+
+def test_engine_loads_a_calibration_per_setting_in_use(qwen_settings, monkeypatch):
+    monkeypatch.setattr(gateway.app, "stamp_for", lambda tok, layout, s: OLD_STAMP)
+    write_calibration(qwen_settings, "calibration-identity.json", orders="identity")
+    s = dataclasses.replace(qwen_settings, option_orders="top_p:0.9+reversed")
+    engine = load_engine(s, None)
+    assert engine.other_calibrations["identity"]["decider_chat"].orders == "identity"
+    assert engine.other_calibrations["identity"]["header"] == UNCALIBRATED
+    assert "top_p:0.9+reversed" not in engine.other_calibrations

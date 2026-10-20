@@ -189,3 +189,37 @@ def test_image_profiles_raise_vllms_sample_logprobs_cap(name):
     args = read_env_file(ROOT / "profiles" / f"{name}.env")["EXTRA_ARGS"].split()
     assert "--max-logprobs" in args, "image rows need --max-logprobs 128 in EXTRA_ARGS"
     assert int(args[args.index("--max-logprobs") + 1]) >= 128
+
+
+def orders_settings(tmp_path, **env):
+    base = {"PROFILE": "p", "HF_MODEL": "m", "HF_REVISION": "r", "SERVED_MODEL": "s", "MAX_MODEL_LEN": "1024",
+            "DATA_ROOT": str(tmp_path)}
+    return Settings.from_env(base | env)
+
+
+def test_orders_in_use_adds_identity_for_a_gate_and_the_image_setting():
+    gemma = orders_settings("x", OPTION_ORDERS="top_p:0.9+reversed", OPTION_ORDERS_IMAGES="identity", SYSTEMONE_IMAGES="1")
+    assert gemma.orders_in_use() == ["top_p:0.9+reversed", "identity"]
+    qwen = orders_settings("x", OPTION_ORDERS="min_n:4+reversed")
+    assert qwen.orders_in_use() == ["min_n:4+reversed"]
+    assert orders_settings("x", OPTION_ORDERS="identity").orders_in_use() == ["identity"]
+
+
+def test_image_orders_fall_back_to_the_text_setting():
+    assert orders_settings("x", OPTION_ORDERS="identity+reversed").image_orders == "identity+reversed"
+    assert orders_settings("x", OPTION_ORDERS_IMAGES="identity", OPTION_ORDERS="cyclic:2").image_orders == "identity"
+
+
+def test_calibration_path_per_setting_falls_back_to_the_default_file(tmp_path):
+    s = orders_settings(tmp_path, OPTION_ORDERS="top_p:0.9+reversed")
+    d = tmp_path / "p" / "L"
+    d.mkdir(parents=True)
+    (d / "calibration.json").write_text("{}")
+    assert s.calibration_path("L", "identity") == d / "calibration.json"
+    (d / "calibration-identity.json").write_text("{}")
+    assert s.calibration_path("L", "identity") == d / "calibration-identity.json"
+    assert s.calibration_path("L", "top_p:0.9+reversed") == d / "calibration.json"
+    assert s.calibration_path("L") == d / "calibration.json"
+    (d / "calibration-top_p-0.9-reversed.json").write_text("{}")
+    assert s.calibration_path("L", "top_p:0.9+reversed") == d / "calibration.json"  # the text setting keeps today's rule
+    assert s.calibration_path("L", "min_n:4+reversed") == d / "calibration.json"

@@ -88,6 +88,20 @@ def test_chosen_reads_picks_the_arm_orders_and_refuses_missing_ones():
         chosen_reads(q, REC["questions"]["c"], "cyclic:3")
 
 
+def test_chosen_reads_top_p_adds_reversed_under_tau():
+    q = render_question(Question(**ROW["questions"]["c"]), LAYOUTS["decider_chat"])
+    reads = REC["questions"]["c"]
+    assert len(chosen_reads(q, reads, "top_p:0.9+reversed", 1.0)) == 2  # identity top prob ~0.72
+    assert len(chosen_reads(q, reads, "top_p:0.5+reversed", 1.0)) == 1
+    assert len(chosen_reads(q, reads, "top_p:0.9+reversed", 0.1)) == 1  # sharp at T = 0.1
+
+
+def test_chosen_reads_gated_without_gate_T_raises():
+    q = render_question(Question(**ROW["questions"]["c"]), LAYOUTS["decider_chat"])
+    with pytest.raises(ValueError, match="gate_T"):
+        chosen_reads(q, REC["questions"]["c"], "top_p:0.9+reversed")
+
+
 def test_keyed_maps_row_and_question_to_scored():
     got = keyed([REC], {"r1": ROW}, Arm(), LAYOUTS)
     assert set(got) == {("r1", "c"), ("r1", "n")}

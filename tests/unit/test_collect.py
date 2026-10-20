@@ -96,10 +96,34 @@ async def test_a_lasting_failure_is_raised_not_recorded(engine, monkeypatch, tmp
     assert collect.done_keys(tmp_path / "out.jsonl.gz") == set()
 
 
-async def test_collect_refuses_a_non_identity_profile(engine, tmp_path):
-    other = dataclasses.replace(engine, settings=dataclasses.replace(engine.settings, option_orders="identity+reversed"))
-    with pytest.raises(SystemExit, match="option_orders"):
-        await collect.collect(other, [ROW], ["decider_chat"], tmp_path / "out.jsonl.gz")
+def choice(*names):
+    return {"type": "choice", "instructions": "pick", "criteria": dict.fromkeys(names)}
+
+
+async def pad_rows_seen(engine, orders, monkeypatch):
+    seen = []
+    real = collect.read_rows
+
+    async def spy(engine, request, order_fn=None, pad_rows=None):
+        seen.append(pad_rows)
+        return await real(engine, request, order_fn, pad_rows)
+
+    monkeypatch.setattr(collect, "read_rows", spy)
+    row = ROW | {"questions": {"two": choice("a", "b"), "five": choice("a", "b", "c", "d", "e")}}
+    live = dataclasses.replace(engine, settings=dataclasses.replace(engine.settings, option_orders=orders))
+    await collect.collect_one(live, row, "decider_chat")
+    return seen
+
+
+async def test_collect_pads_like_the_live_min_n_request(engine, monkeypatch):
+    assert await pad_rows_seen(engine, "min_n:4+reversed", monkeypatch) == [3]
+    assert await pad_rows_seen(engine, "identity", monkeypatch) == [2]
+
+
+async def test_collect_accepts_a_gated_profile(engine, tmp_path):
+    gated = dataclasses.replace(engine, settings=dataclasses.replace(engine.settings, option_orders="top_p:0.9+reversed"))
+    path = tmp_path / "out.jsonl.gz"
+    assert await collect.collect(gated, [ROW], ["decider_chat"], path) == 1
 
 
 PROFILE = "qwen3.6-27b"

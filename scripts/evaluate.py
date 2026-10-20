@@ -23,7 +23,7 @@ from pathlib import Path
 import httpx
 
 from gateway.app import load_engine
-from gateway.calibration import STAMP_KEYS, TYPES, UNCALIBRATED, Calibration, load_calibration, orders_warning
+from gateway.calibration import TYPES, UNCALIBRATED, Calibration, load_calibration, orders_warning
 from gateway.config import ROOT, Settings
 from scripts import board, host_info, index_run, metrics
 from scripts.bench import CHAT_PROMPTS, chat_once, git_revision
@@ -33,7 +33,7 @@ from scripts.collect import COLLECT, records
 from scripts.decision_rows import index_meta, index_rows
 from scripts.index_suite import EDITION, EXPORT, HARNESS_SHA, harness_env
 from scripts.lengths import NAMES, bucket_counts, real_lengths
-from scripts.offline import Arm, evaluate, markdown
+from scripts.offline import Arm, collect_stamp, evaluate, identity_gate, markdown
 from scripts.splits import SPLITS, rows_for
 
 RUNS = ROOT / ".cache" / "index-runs"
@@ -67,12 +67,6 @@ def check_coverage(got: int, want: int, layout: str, allow_partial: bool) -> Non
         raise SystemExit(f"only {got} of {want} rows collected: collect the rest, or pass --allow-partial")
 
 
-def collect_stamp(recs: list[dict], layout: str) -> dict | None:
-    """The stamp the layout's records were collected under, for checking a calibration file against."""
-    seen = next((r["stamp"] for r in recs if r["layout"] == layout), None)
-    return {k: seen.get(k) for k in STAMP_KEYS} if seen else None
-
-
 def offline_calibration(args, s: Settings, expect: dict | None) -> Calibration:
     """The arm's calibration: T = 1, one T for every type (no offset), or the layout's file."""
     if args.uncalibrated:
@@ -94,7 +88,8 @@ def cmd_offline(args) -> None:
     cal = offline_calibration(args, s, collect_stamp(recs, args.layout))
     if warning := orders_warning(cal, args.orders):
         print(f"warning: {warning}")
-    arm = Arm(args.layout, args.orders, cal)
+    gate = identity_gate(s, args.layout, args.orders, collect_stamp(recs, args.layout))
+    arm = Arm(args.layout, args.orders, cal, gate)
     got, want = coverage(recs, set(rows), args.layout)
     check_coverage(got, want, args.layout, args.allow_partial)
     report = evaluate(recs, rows, arm)

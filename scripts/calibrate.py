@@ -1,7 +1,7 @@
 """Fit calibration from collected logprobs: T per type (+ noul yes-offset when it earns its place on eval).
 
 usage: uv run python scripts/calibrate.py --profile qwen3.6-27b [--layouts decider_chat,header] [--orders identity]
-       [--comment TEXT] [--dry-run]
+       [--collect-label L] [--comment TEXT] [--dry-run]
 Fits on data/splits/calib.json only (never Jev outputs, never Index rows); judges on eval.
 --dry-run writes nothing: the report goes to stdout.
 """
@@ -36,7 +36,7 @@ def split_sha256() -> str:
     return hashlib.sha256(SPLIT.read_bytes()).hexdigest()
 
 
-def questions_by_type(recs, rows, layout: str, orders: str):
+def questions_by_type(recs, rows, layout: str, orders: str, gate: Calibration | None = None):
     layouts, by_type, stamp = load_layouts(), {t: [] for t in TYPES}, None
     for rec in recs:
         if rec["layout"] != layout or rec["status"] != "ok":
@@ -47,7 +47,7 @@ def questions_by_type(recs, rows, layout: str, orders: str):
         elif this != stamp:
             changed = [k for k in STAMP_KEYS if this[k] != stamp[k]]
             raise SystemExit(f"{layout}: records disagree on {', '.join(changed)}; recollect before fitting")
-        for _, q_type, chosen, gold in offline.questions(rec, rows[rec["id"]], layout, orders, layouts):
+        for _, q_type, chosen, gold in offline.questions(rec, rows[rec["id"]], layout, orders, layouts, gate):
             by_type[q_type].append((chosen, gold))
     return by_type, stamp
 
@@ -163,8 +163,8 @@ def default_comment(path: Path, orders: str) -> str:
     return f"refit on calib (orders {orders})"
 
 
-def split_questions(recs, rows, layout: str, orders: str, name: str):
-    by_type, stamp = questions_by_type(recs, rows, layout, orders)
+def split_questions(recs, rows, layout: str, orders: str, name: str, gate: Calibration | None = None):
+    by_type, stamp = questions_by_type(recs, rows, layout, orders, gate)
     if stamp is None:
         raise SystemExit(f"{layout}: no ok records in {name}")
     return by_type, stamp
@@ -207,13 +207,14 @@ def gate_outcome(r: LayoutResult) -> str:
 
 def calibrate_layout(args, s, layout, recs, rows) -> list[str]:
     """Fit one layout, write its file (unless dry run) and return its report lines."""
-    calib, stamp = split_questions(recs["calib"], rows["calib"], layout, args.orders, "calib")
-    held, eval_stamp = split_questions(recs["eval"], rows["eval"], layout, args.orders, "eval")
+    gate = offline.identity_gate(s, layout, args.orders, offline.collect_stamp(recs["calib"], layout))
+    calib, stamp = split_questions(recs["calib"], rows["calib"], layout, args.orders, "calib", gate)
+    held, eval_stamp = split_questions(recs["eval"], rows["eval"], layout, args.orders, "eval", gate)
     if stamp != eval_stamp:
         raise SystemExit(f"{layout}: calib and eval were collected under different stamps")
     r = fit_and_judge(layout, calib, held)
     b_decision = {"ship": r.ship, "acc": list(r.stats["acc"]), "ece": list(r.stats["ece"]), "b_fitted": r.b_fitted}
-    path = s.calibration_path(layout)
+    path = s.setting_file(layout, args.orders)
     comment = f"{args.comment or default_comment(path, args.orders)}; {gate_outcome(r)}"
     data = calibration_file(r.fit, stamp, args.orders, {t: len(calib[t]) for t in TYPES},
                             {"calib": moves(r, "calib"), "eval": moves(r, "eval")},
@@ -229,19 +230,22 @@ def main(argv=None) -> None:
     p.add_argument("--profile", required=True)
     p.add_argument("--layouts")
     p.add_argument("--orders", default="identity")
+    p.add_argument("--collect-label", help="read <split>-<label>.jsonl.gz instead of <split>.jsonl.gz")
     p.add_argument("--comment", help="one line for this file's change history")
     p.add_argument("--dry-run", action="store_true")
     args = p.parse_args(argv)
     s = Settings.from_profile(args.profile)
     rows = {n: {r["id"]: r for r in rows_for(n)} for n in ("calib", "eval")}
-    recs = {n: list(records(COLLECT / args.profile / f"{n}.jsonl.gz")) for n in ("calib", "eval")}
+    suffix = f"-{args.collect_label}" if args.collect_label else ""
+    recs = {n: list(records(COLLECT / args.profile / f"{n}{suffix}.jsonl.gz")) for n in ("calib", "eval")}
     layouts = args.layouts.split(",") if args.layouts else sorted(load_layouts())
     stamp_utc = datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%dT%H%M%SZ")
     revision = git_revision()  # before any file is written, so our own output doesn't read as "dirty"
     lines = [line for layout in layouts for line in calibrate_layout(args, s, layout, recs, rows)]
     meta = {"timestamp": stamp_utc, "repo commit": revision, "profile": args.profile, "orders": args.orders,
             "calib split sha256": split_sha256(),
-            "collect": (COLLECT / args.profile).relative_to(ROOT) / "{calib,eval}.jsonl.gz"}
+            "collect label": args.collect_label or "(none)",
+            "collect": (COLLECT / args.profile).relative_to(ROOT) / f"{{calib,eval}}{suffix}.jsonl.gz"}
     report = f"# {args.profile} calibration\n\n{provenance(meta)}\n" + "\n".join(lines) + "\n"
     if args.dry_run:  # results are committed deliberately: a dry run leaves nothing behind
         print(report)

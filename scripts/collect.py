@@ -25,7 +25,8 @@ from gateway.app import load_engine, vllm_client
 from gateway.calibration import stamp_for
 from gateway.config import ROOT, Settings
 from gateway.decide import OrderFn, read_rows
-from gateway.orders import option_orders
+from gateway.orders import live_rows, option_orders
+from gateway.questions import render_question
 from gateway.schema import RequestError, SystemOneRequest
 from scripts.experiment_layouts import add_layout_file, label_tags, repo_relative
 from scripts.splits import rows_for
@@ -62,6 +63,12 @@ def stamp(engine, layout: str) -> dict:
     }
 
 
+def live_pad_rows(engine, request: SystemOneRequest, layout: str) -> int:
+    """Rows the live first pass would read, so the collected pad matches live."""
+    counts = [len(render_question(q, engine.layouts[layout]).options) for q in request.questions.values()]
+    return live_rows(counts, engine.settings.option_orders)
+
+
 async def collect_one(engine, row: dict, layout: str, rec_stamp: dict | None = None,
                       orders: OrderFn = all_orders) -> dict:
     rec = {"id": row["id"], "layout": layout, "stamp": rec_stamp or stamp(engine, layout)}
@@ -69,8 +76,7 @@ async def collect_one(engine, row: dict, layout: str, rec_stamp: dict | None = N
         request = SystemOneRequest.model_validate(
             {"state": row["state"], "questions": row["questions"], "layout": layout}
         )
-        # pad as the live default request would (one identity row per question), so offline matches live
-        r = await read_rows(engine, request, orders, pad_rows=len(request.questions))
+        r = await read_rows(engine, request, orders, pad_rows=live_pad_rows(engine, request, layout))
     except ValidationError as e:
         return rec | {"status": "invalid", "error": str(e).splitlines()[0]}
     except RequestError as e:
@@ -132,8 +138,6 @@ def repair(
 async def collect(engine, rows: list[dict], layouts: list[str], path, concurrency: int = 8, orders: str = "all",
                   extra: dict | None = None) -> int:
     """extra: stamp keys an experiment layout adds; its file then holds that one layout only."""
-    if engine.settings.option_orders != "identity":  # pad_rows mirrors the identity live arm
-        raise SystemExit(f"option_orders is {engine.settings.option_orders!r}: collect needs an identity profile")
     path.parent.mkdir(parents=True, exist_ok=True)
     extra = (extra or {}) | ({} if orders == "all" else {"orders": orders})
     stamps = {layout: stamp(engine, layout) | extra for layout in layouts}

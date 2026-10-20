@@ -300,3 +300,62 @@ def test_gate_ships_a_candidate_with_a_negative_point_change():
     held = {"choice": underconfident_choice(), "score": [], "noul": []}
     g = calibrate.gate_temperatures(gate_fit(0.5, 15.0), held)["choice"]
     assert g["ece"][0] < 0 and g["source"] == "fitted" and g["shipped_T"] == 0.5
+
+
+def collect_files(tmp_path, monkeypatch):
+    """calib/eval collects labelled "blurb": 30 sure choice questions and 30 unsure ones with a reversed read."""
+    import gzip
+
+    from scripts import collect
+
+    rows, recs = [], []
+    for i in range(60):
+        sure = i % 2 == 0
+        lp = [-0.01, -6.0] if sure else [-0.7, -0.7]
+        reads = [{"perm": [0, 1], "logprobs": lp}] + ([] if sure else [{"perm": [1, 0], "logprobs": [-0.7, -0.7]}])
+        rows.append(row(i, "choice", "a"))
+        recs.append(rec(i, lp, [0, 1]) | {"questions": {"q": reads}})
+    out = tmp_path / "collect" / "p"
+    out.mkdir(parents=True)
+    for name in ("calib", "eval"):
+        with gzip.open(out / f"{name}-blurb.jsonl.gz", "wt") as f:
+            f.writelines(json.dumps(r) + "\n" for r in recs)
+    monkeypatch.setattr(collect, "COLLECT", tmp_path / "collect")
+    monkeypatch.setattr(calibrate, "COLLECT", tmp_path / "collect")
+    monkeypatch.setattr(calibrate, "rows_for", lambda name: rows)
+    monkeypatch.setattr(calibrate, "RESULTS", tmp_path / "results")
+    monkeypatch.setattr(calibrate, "git_revision", lambda: "rev")
+    (tmp_path / "calib.json").write_text("[]")
+    monkeypatch.setattr(calibrate, "ROOT", tmp_path)
+    monkeypatch.setattr(calibrate, "SPLIT", tmp_path / "calib.json")
+    monkeypatch.setattr(calibrate, "split_sha256", lambda: "sha")
+    s = Settings.from_env({"PROFILE": "p", "HF_MODEL": "m", "HF_REVISION": "r", "SERVED_MODEL": "s", "MAX_MODEL_LEN": "1024",
+                           "OPTION_ORDERS": "top_p:0.9+reversed", "DATA_ROOT": str(tmp_path / "data")})
+    monkeypatch.setattr(calibrate.Settings, "from_profile", lambda name: s)
+    return tmp_path / "data" / "p" / LAYOUT
+
+
+def run_calibrate(*argv):
+    calibrate.main(["--profile", "p", "--layouts", LAYOUT, "--collect-label", "blurb", *argv])
+
+
+def test_calibrate_reads_the_labelled_collect_and_writes_the_setting_file(tmp_path, monkeypatch):
+    data = collect_files(tmp_path, monkeypatch)
+    run_calibrate("--orders", "identity")
+    assert json.loads((data / "calibration-identity.json").read_text())["fit"]["orders"] == "identity"
+    assert not (data / "calibration.json").exists()
+    run_calibrate("--orders", "top_p:0.9+reversed")
+    assert json.loads((data / "calibration.json").read_text())["fit"]["orders"] == "top_p:0.9+reversed"
+    summary = max((tmp_path / "results").rglob("summary.md")).read_text()  # the gated run, last
+    assert "blurb" in summary and "top_p:0.9+reversed" in summary
+
+
+def test_calibrate_gated_refuses_without_identity_fit(tmp_path, monkeypatch):
+    data = collect_files(tmp_path, monkeypatch)
+    with pytest.raises(SystemExit, match="identity"):
+        run_calibrate("--orders", "top_p:0.9+reversed")
+    data.mkdir(parents=True)  # a fit that was made under other orders is no gate either
+    (data / "calibration-identity.json").write_text(json.dumps({
+        "format": 2, "stamp": STAMP, "types": {t: {"T": 1.0} for t in calibrate.TYPES}, "fit": {"orders": "cyclic:2"}}))
+    with pytest.raises(SystemExit, match="identity"):
+        run_calibrate("--orders", "top_p:0.9+reversed")

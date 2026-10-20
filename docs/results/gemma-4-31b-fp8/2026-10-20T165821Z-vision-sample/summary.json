@@ -1,0 +1,25 @@
+{
+  "status": {
+    "ok": 300
+  },
+  "latency_ms": {
+    "median": 313.4108316153288,
+    "mean": 359.1205806906025,
+    "p80": 408.62851217389107
+  },
+  "calibration": {
+    "ece": 0.09897241679257267,
+    "accuracy": 0.78,
+    "n": 300
+  },
+  "power_limit_w": 600.0,
+  "power_limit_w_end": 600.0,
+  "telemetry": {
+    "samples": 23,
+    "median_sm_clock": 2377.0,
+    "median_power": 326.84,
+    "median_temp": 50.0,
+    "median_util": 71.0,
+    "throttled_share": 0.0
+  }
+}

@@ -19,8 +19,8 @@ the same method as [prompt-sharing.md](prompt-sharing.md) §4: it rebuilds the r
   says both ends. For lookup-style tasks question-first can be more accurate, but it costs
   a full state prefill per question.
 - **Option order** (bias, averaging and its cost) has its own doc: [option-ordering.md](option-ordering.md).
-- **Every profile has a calibration file for all three layouts** (`data/<profile>/<layout>/calibration.json`, §4).
-  Experiment layouts have none.
+- **`decider_chat`, `header` and `question_first` have a calibration file per profile** (`data/<profile>/<layout>/calibration.json`, §4).
+  `blurb_header` is the default on all 7 profiles and stays uncalibrated (T = 1) until the stage 1 collects are fitted. Experiment layouts have none.
 - **An intro blurb** (one sentence before the prompt, round 4) moves text accuracy by +0.2 to +1.0 points; only
   gemma's `decider_chat` gain has a CI above 0. No image CI excludes 0. `decider_chat` trails `header` on text by
   1.5–3.6 points on both models, with or without the blurb (§5).
@@ -182,11 +182,13 @@ share, so it is free), and A/B `header` on long, multi-question states.
 Update 2026-10-03: M3 measured `header` and the owner made it qwen3.6's default layout; qwen3.8 and gemma kept
 `decider_chat`.
 
-Update 2026-10-04: `header` ships for all three profiles. Full Decision Index runs beat `decider_chat` by 3.4 to 4.5
+Update 2026-10-04: `header` ships for all three profiles (since superseded by `blurb_header`, round 4). Full Decision Index runs beat `decider_chat` by 3.4 to 4.5
 points on each (the offline index-dev and eval splits had understated it), at +10–17 ms median latency and 7–11
 refused rows per profile ([m3-recommendations.md](../results/archive/m3-recommendations.md)).
 
 ## 4. Calibration status per layout
+
+`blurb_header` has no calibration file yet; its profiles run at T = 1 until one is fitted.
 
 Files in `data/<profile>/<layout>/` (date of the current fit):
 

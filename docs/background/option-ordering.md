@@ -48,7 +48,7 @@ orders spreads that lean across options.
 
 | Setting | Orders for 3 options |
 |---|---|
-| `identity` (default, `OPTION_ORDERS`) | `[0,1,2]` |
+| `identity` (`OPTION_ORDERS`; the default varies by profile) | `[0,1,2]` |
 | `identity+reversed` | `[0,1,2]`, `[2,1,0]` |
 | `cyclic:<k>` | `k` evenly spaced rotations, at most one per option |
 | `min_n:<k>+reversed` | `[0,1,2]`, plus `[2,1,0]` when the question has ≥ k options |
@@ -65,10 +65,9 @@ orders spreads that lean across options.
 - **Calibration.** A fit holds for one option-order setting (`fit.orders`); the gateway refuses another setting's file. gemma
   keeps `calibration-identity.json` beside `calibration.json` for its image requests ([calibration.md](calibration.md)).
 
-**Temperature and averaging.** Averaging happens *after* the softmax. For noul the "T never changes the winner" rule
-still holds: two orders average above 0.5 exactly when their two Δs sum above 0, whatever T is. With 3+ options it
-can break: a check on random synthetic logprobs found cases where T changed the averaged winner. Today's default is
-one order (`identity`), so current runs are unaffected. Why T alone never moves an answer:
+**Temperature and averaging.** The gateway averages raw logprobs first and takes one softmax at T. Dividing by T
+keeps the order of the averaged logprobs, so T alone never changes the winner, with any number of orders or options.
+The noul offset b is the exception: it is added after the division, so it can flip a close noul answer. Why T alone never moves an answer:
 [calibration.md §3](calibration.md#3-why-temperature-never-changes-the-winner).
 
 ### What a second order costs in tokens

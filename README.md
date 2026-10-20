@@ -26,8 +26,8 @@ Tests, benchmarks, evaluation and the repository map are in
   [decision readout](docs/background/decision-readout.md).
 - **Prompt format is data, not code.** Wording and part order live in `prompts/<layout>.toml`.
   The default `blurb_header` layout is `header` with an intro blurb: question list, then the
-  state, then one question per row, so every row of a request shares one long prefix. Profiles set the orders:
-  gemma `top_p:0.9+reversed` (images `identity`), qwen3.8 `min_n:4+reversed`, qwen3.6 `identity`.
+  state, then one question per row, so every row of a request shares one long
+  prefix. Profiles set the orders: gemma `top_p:0.9+reversed` (images `identity`), qwen3.8 `min_n:4+reversed`, qwen3.6 `identity`.
   [Prompt layouts](docs/background/prompt-layouts.md).
 - **Token-exact rows.** Rows are built piecewise from token ids, and each label letter must
   be one token in context (checked by `scripts/build_labels.py`). Identical prefixes hit the

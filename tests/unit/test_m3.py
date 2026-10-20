@@ -24,9 +24,12 @@ def row(prefix: str, i: int) -> dict:
             "gold": {"c": "ab"[i % 2]}}
 
 
+LEANS = {"decider_chat": 0, "header": 1, "question_first": 2, "blurb_header": 3}  # by name, not by index
+
+
 def record(row_id: str, i: int, layout: str) -> dict:
     """Every collected order: the model likes one option, and shown position 0 by a lean that varies by row."""
-    liked, lean = i % 3 % 2, (i % 5) * 0.4 + LAYOUTS.index(layout) * 0.2
+    liked, lean = i % 3 % 2, (i % 5) * 0.4 + LEANS[layout] * 0.2
     reads = [{"perm": perm, "logprobs": [(perm[0] == liked) + lean, float(perm[1] == liked)]} for perm in all_orders(2)]
     return {"id": row_id, "layout": layout, "status": "ok", "stamp": {}, "questions": {"c": reads}}
 
@@ -77,7 +80,7 @@ def test_orders_data_reports_read_costs_and_order_diagnostics(orders):
 def test_pride_divides_out_a_prior_from_calib(orders):
     assert orders["pride_prior_options"] == [2]  # 40 calib questions of two options
     identity, pride = orders["arms"]["identity"]["overall"]["all"], orders["arms"]["pride"]["overall"]["all"]
-    assert (identity["accuracy"], pride["accuracy"]) == pytest.approx((0.525, 0.525))  # fixture leans moved with the layout index
+    assert (identity["accuracy"], pride["accuracy"]) == pytest.approx((0.55, 0.525))  # one answer flips
     assert pride["ece"] == pytest.approx(0.012751, abs=1e-6) and pride["nll"] < identity["nll"]
 
 

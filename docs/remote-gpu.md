@@ -239,10 +239,9 @@ rows move nvfp4 reads by up to 0.23 while the same composition is bit-identical.
    - qwen3.6: `identity` (one order, answers stay bit-identical).
 4. The owner commits the calibration files and results by explicit path.
 
-**Stage 2: appended after calibration.** The calibrated files must be on the box first. Append
-these lines to each job file (they are written after calibration, not now): `restack`,
+**Stage 2: already in the job files, after `collect-eval`:** `restack`,
 `latency-before` (`--layout header --option-orders identity`), `latency-after`, `vision-setup`,
-`vision-latency` (`--sample 300 --workers 1`), `index`, `vision-full`. Then re-push to the same
+`vision-latency` (`--sample 300 --workers 1`), `index`, `vision-full` (`vision-*` on the vision profiles only). The calibrated files must be on the box first: re-push to the same
 box (`push.sh ... PROFILE`), adding `--vision` for the 5 vision profiles (gemma-4-31b,
 gemma-4-31b-fp8, qwen3.8-27b, qwen3.8-27b-fp8, qwen3.8-27b-nvfp4) before `vision-setup`,
 `vision-latency` and `vision-full` run. qwen3.6 boxes push without it. The queue skips done jobs and runs the new ones; running
@@ -257,7 +256,7 @@ jobs keep their old code (see Push).
 | `gemma-4-31b`, `gemma-4-31b-fp8`, `qwen3.8-27b`, `qwen3.8-27b-fp8`, `qwen3.8-27b-nvfp4` | stack, live-images, collect-calib, collect-eval |
 | `qwen3.6-27b`, `qwen3.6-27b-fp8` | stack, collect-calib, collect-eval |
 
-Stage 2 lines are appended after calibration (see the two-stage section above).
+Stage 2 jobs follow `collect-eval` in each file (see the two-stage section above).
 
 Earlier queues (host-compare, latency, Index runs, DS-024 phase B) are in git history.
 

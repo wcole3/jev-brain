@@ -1,6 +1,13 @@
 # gemma-4-31b box queue: blurb_header default + round 4 orders, stage 1 collect, 2026-10-20.
-# Stage 2 (restack, latency, index) is appended after calibration.
+# Stage 2 (restack, latency, index) runs after calibration.
 stack: bash scripts/remote/stack.sh up gemma-4-31b
 live-images: bash scripts/remote/stack.sh up gemma-4-31b && uv run pytest -m live tests/live/test_image_decisions.py -v
 collect-calib: bash scripts/remote/stack.sh up gemma-4-31b && uv run python scripts/collect.py --profile gemma-4-31b --split calib --layouts blurb_header --orders identity+reversed --label blurb
 collect-eval: bash scripts/remote/stack.sh up gemma-4-31b && uv run python scripts/collect.py --profile gemma-4-31b --split eval --layouts blurb_header --orders identity+reversed --label blurb
+restack: bash scripts/remote/stack.sh down; bash scripts/remote/stack.sh up gemma-4-31b
+latency-before: bash scripts/remote/stack.sh up gemma-4-31b && uv run python scripts/latency.py --profile gemma-4-31b --layout header --option-orders identity
+latency-after: bash scripts/remote/stack.sh up gemma-4-31b && uv run python scripts/latency.py --profile gemma-4-31b
+vision-setup: python3 -m pip install -q --no-deps -e .cache/decision-index-vision/src
+vision-latency: bash scripts/remote/stack.sh up gemma-4-31b && uv run python scripts/vision_run.py --profile gemma-4-31b --gateway http://127.0.0.1:9000 --sample 300 --workers 1 --run-dir .cache/vision-runs/gemma-4-31b/latency-$(cat .cache/remote/run_tag)
+index: bash scripts/remote/stack.sh up gemma-4-31b && uv run python scripts/evaluate.py index --profile gemma-4-31b --shards 4 --run-dir .cache/index-runs/gemma-4-31b/$(cat .cache/remote/run_tag) --strict
+vision-full: bash scripts/remote/stack.sh up gemma-4-31b && uv run python scripts/vision_run.py --profile gemma-4-31b --gateway http://127.0.0.1:9000 --run-dir .cache/vision-runs/gemma-4-31b/full-$(cat .cache/remote/run_tag)

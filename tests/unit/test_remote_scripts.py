@@ -26,7 +26,7 @@ def test_scripts_parse(script):
     subprocess.run(["bash", "-n", str(script)], check=True)
 
 
-# Box queues: stage 1 of the blurb_header default + round 4 orders campaign (2026-10-20); stage 2 is appended later.
+# Box queues: stage 1 of the blurb_header default + round 4 orders campaign (2026-10-20); stage 2 (restack onward) follows.
 JOBS = {
     profile: ("collect-calib", "collect-eval")
     for profile in ["gemma-4-31b", "gemma-4-31b-fp8", "qwen3.8-27b", "qwen3.8-27b-fp8", "qwen3.8-27b-nvfp4",
@@ -45,7 +45,7 @@ def test_every_profile_has_a_job_file():
 @pytest.mark.parametrize("path", JOB_FILES, ids=lambda p: p.name)
 def test_job_files_parse_with_unique_names_starting_at_stack(path):
     images = ["live-images"] if "live-images" in job_names(path) else []
-    assert job_names(path) == ["stack", *images, *JOBS[path.stem]]
+    assert job_names(path)[: 1 + len(images) + 2] == ["stack", *images, *JOBS[path.stem]]
     assert jobs_of(path)["stack"] == f"bash scripts/remote/stack.sh up {path.stem}"
 
 
@@ -691,3 +691,14 @@ def test_pull_makes_the_box_dirs_before_fetching(tmp_path):
     ssh_calls = (tmp_path / "rsync-calls.ssh").read_text()
     assert out.returncode == 0 and "mkdir -p" in ssh_calls and f"{BOX}/.cache/collect/{PROFILE}" in ssh_calls
     assert f"{BOX}/.cache/vision-runs/{PROFILE}" in ssh_calls
+
+
+STAGE_2 = ["restack", "latency-before", "latency-after", "vision-setup", "vision-latency", "index", "vision-full"]
+
+
+@pytest.mark.parametrize("path", JOB_FILES, ids=lambda p: p.name)
+def test_stage_2_follows_stage_1_with_vision_jobs_only_on_vision_profiles(path):
+    names = job_names(path)
+    vision = read_env_file(REMOTE.parents[1] / "profiles" / f"{path.stem}.env").get("SYSTEMONE_IMAGES") == "1"
+    assert names[names.index("collect-eval") + 1 :] == [n for n in STAGE_2 if vision or not n.startswith("vision-")]
+    assert len(names) == len(set(names))

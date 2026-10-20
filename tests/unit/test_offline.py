@@ -112,3 +112,10 @@ def test_keyed_skips_other_layouts_and_refusals():
     other = REC | {"layout": "header"}
     refused = REC | {"id": "r2", "status": "unsupported"}
     assert keyed([other, refused], {"r1": ROW, "r2": ROW}, Arm(), LAYOUTS) == {}
+
+
+def test_chosen_reads_from_a_min_n_collect():
+    q = render_question(Question(**ROW["questions"]["c"]), LAYOUTS["decider_chat"])
+    small_only = [REC["questions"]["c"][0]]  # a min_n:4 collect read this 3-option question once
+    assert chosen_reads(q, small_only, "min_n:4+reversed") == [([0.0, -1.0, -5.0], [0, 1, 2])]
+    assert len(chosen_reads(q, REC["questions"]["c"], "min_n:3+reversed")) == 2

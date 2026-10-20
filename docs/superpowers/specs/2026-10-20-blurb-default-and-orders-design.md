@@ -127,8 +127,10 @@ One vast box per profile, all 7 rented and run in parallel (owner, 2026-10-20).
 
 1. `stack` (bootstrap, weights, vLLM up). Quant profiles with vision also run one image request before the
    collects; a vLLM start or image error stops the queue there.
-2. `collect-calib` and `collect-eval`: `collect.py --layouts blurb_header --orders identity+reversed --label
-   blurb`. Those two orders cover every setting in section 2.
+2. `collect-calib` and `collect-eval`: `collect.py --layouts blurb_header --orders X --label blurb`, with X the
+   profile's live setting (qwen3.8 `min_n:4+reversed`, qwen3.6 `identity`) and `identity+reversed` for gemma, whose
+   `top_p` gate reads reversed only for some questions. Reason (owner, 2026-10-20): same row composition as live
+   requests; extra co-batched rows move nvfp4 reads by up to 0.23, same composition is bit-identical.
 3. Pull. Locally: `calibrate.py` per section 4. The owner reviews and commits the calibration files.
 
 **Stage 2, latency and Index.** Push the committed tree to the same box; the queue restarts the stack (new

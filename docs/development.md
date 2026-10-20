@@ -109,6 +109,7 @@ uv run python scripts/splits.py                # data/splits/*.json (committed)
 uv run python scripts/collect.py --profile qwen3.6-27b --split eval       # raw letter logprobs, stack up
 uv run python scripts/calibrate.py --profile qwen3.6-27b                  # fit T (+ noul offset) on calib, judge on eval; CPU only
 uv run python scripts/calibrate.py --profile qwen3.6-27b --orders identity+reversed --collect-label L  # a setting's fit from <split>-L.jsonl.gz; writes that setting's file
+# collect --orders takes all or a fixed setting (min_n:4+reversed); a gated one needs identity+reversed
 # gated settings (top_p:<tau>+reversed) gate on the identity fit: gemma runs --orders identity first, then --orders top_p:0.9+reversed
 uv run python scripts/evaluate.py offline --profile qwen3.6-27b --split eval --orders identity+reversed
 uv run python scripts/evaluate.py index --profile qwen3.6-27b             # full Index via the upstream harness, 8 shards

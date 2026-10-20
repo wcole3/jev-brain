@@ -224,8 +224,11 @@ parallel; renting and destroying need the owner's ok. Calibration runs here, on 
 the stages.
 
 **Stage 1: collect.** Each job file holds `stack`, `live-images` (the 5 vision profiles only),
-`collect-calib` and `collect-eval`. The collects use `--layouts blurb_header --orders identity+reversed
---label blurb`, so they write `calib-blurb.jsonl.gz` and `eval-blurb.jsonl.gz`.
+`collect-calib` and `collect-eval`. The collects use `--layouts blurb_header --orders X
+--label blurb`, so they write `calib-blurb.jsonl.gz` and `eval-blurb.jsonl.gz`. X is the profile's live order setting
+(qwen3.8: `min_n:4+reversed`; qwen3.6: `identity`), except gemma's gated `top_p:0.9+reversed`, which
+collects `identity+reversed`. Reason: reads must have the live row composition, since extra co-batched
+rows move nvfp4 reads by up to 0.23 while the same composition is bit-identical.
 
 1. Push each box without `--vision`: `live-images` uses synthetic PNGs. (`--vision` is for stage 2.)
 2. Pull in a loop until `QUEUE_DONE`: `pull.sh ssh://... PROFILE --loop 1800`.

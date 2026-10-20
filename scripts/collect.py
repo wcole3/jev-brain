@@ -1,7 +1,7 @@
 """Raw letter logprobs for every row, layout and option order, read from vLLM with the gateway's own code.
 
 usage: uv run python scripts/collect.py --profile qwen3.6-27b --split calib [--layouts decider_chat,header]
-       [--layout-file prompts/experiments/X.toml] [--orders identity|identity+reversed|all] [--label L]
+       [--layout-file prompts/experiments/X.toml] [--orders all|identity|identity+reversed|min_n:4+reversed|...] [--label L]
        [--vllm http://127.0.0.1:8000] [--concurrency 8] [--limit N] [--max-len N]
 --label writes <split>-<label>.jsonl.gz (needed with --layout-file or a reduced --orders); --orders all (default)
 reads every arm's orders.
@@ -25,7 +25,7 @@ from gateway.app import load_engine, vllm_client
 from gateway.calibration import stamp_for
 from gateway.config import ROOT, Settings
 from gateway.decide import OrderFn, read_rows
-from gateway.orders import live_rows, option_orders
+from gateway.orders import gate, live_rows, option_orders
 from gateway.questions import render_question
 from gateway.schema import RequestError, SystemOneRequest
 from scripts.experiment_layouts import add_layout_file, label_tags, repo_relative
@@ -33,7 +33,6 @@ from scripts.splits import rows_for
 
 COLLECT = ROOT / ".cache" / "collect"
 ARMS = ("identity", "identity+reversed", "cyclic:2", "cyclic:3", "cyclic:4")
-ORDERS = ("identity", "identity+reversed", "all")
 SPLITS = ("calib", "eval", "index-dev", "latency-v1", "index-dev-2k", "calib-600")
 ATTEMPTS = 3
 BACKOFF = 2.0  # seconds before the first retry, doubling after
@@ -45,6 +44,19 @@ def all_orders(n: int) -> list[list[int]]:
     for arm in ARMS:
         out += [perm for perm in option_orders(n, arm) if perm not in out]
     return out
+
+
+def orders_setting(name: str) -> str:
+    """argparse type: all, or a fixed order setting; a gated one reads reversed only for some questions."""
+    if name == "all":
+        return name
+    try:
+        option_orders(2, name)
+    except ValueError as e:
+        raise argparse.ArgumentTypeError(str(e)) from None
+    if gate(name) is not None:
+        raise argparse.ArgumentTypeError(f"{name} is gated: its fit needs an identity+reversed collect")
+    return name
 
 
 def orders_for(name: str) -> OrderFn:
@@ -190,7 +202,7 @@ def parse_args(argv=None) -> argparse.Namespace:
     which = p.add_mutually_exclusive_group()
     which.add_argument("--layouts")
     which.add_argument("--layout-file", help="an experiment layout .toml kept outside prompts/ (needs --label)")
-    p.add_argument("--orders", default="all", choices=ORDERS)
+    p.add_argument("--orders", default="all", type=orders_setting)
     p.add_argument("--label", help="output <split>-<label>.jsonl.gz")
     p.add_argument("--vllm", default=os.environ.get("VLLM_URL", "http://127.0.0.1:8000"))
     p.add_argument("--concurrency", type=int, default=8)

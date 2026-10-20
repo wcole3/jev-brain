@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 
 from gateway.config import read_env_file
+from gateway.orders import gate
 
 REMOTE = Path(__file__).parents[2] / "scripts" / "remote"
 JOB_FILES = sorted((REMOTE / "jobs").glob("*.txt"))
@@ -48,13 +49,19 @@ def test_job_files_parse_with_unique_names_starting_at_stack(path):
     assert jobs_of(path)["stack"] == f"bash scripts/remote/stack.sh up {path.stem}"
 
 
+def collect_orders(profile: str) -> str:
+    """The profile's live text setting; a gated one is fitted from an identity+reversed collect."""
+    live = read_env_file(REMOTE.parents[1] / "profiles" / f"{profile}.env")["OPTION_ORDERS"]
+    return "identity+reversed" if gate(live) is not None else live
+
+
 @pytest.mark.parametrize("path", JOB_FILES, ids=lambda p: p.name)
 def test_collect_jobs_run_their_split_for_their_profile(path):
     for name, command in jobs_of(path).items():
         if name.startswith("collect-"):
             split = name.removeprefix("collect-")
             tail = f"scripts/collect.py --profile {path.stem} --split {split} --layouts blurb_header"
-            assert command.endswith(f"{tail} --orders identity+reversed --label blurb")
+            assert command.endswith(f"{tail} --orders {collect_orders(path.stem)} --label blurb")
 
 
 @pytest.mark.parametrize("path", JOB_FILES, ids=lambda p: p.name)

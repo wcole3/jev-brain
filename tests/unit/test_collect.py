@@ -190,3 +190,15 @@ def test_reduced_orders_need_a_label(capsys):
     assert "--label" in capsys.readouterr().err
     args = collect.parse_args(["--profile", PROFILE, "--split", "calib", "--orders", "identity", "--label", "x"])
     assert (args.orders, args.label) == ("identity", "x")
+
+
+def test_orders_accept_fixed_settings_and_refuse_gated_or_malformed(capsys):
+    base = ["--profile", PROFILE, "--split", "calib", "--label", "x", "--orders"]
+    assert collect.parse_args([*base, "min_n:4+reversed"]).orders == "min_n:4+reversed"
+    assert collect.orders_for("min_n:4+reversed")(5) == [[0, 1, 2, 3, 4], [4, 3, 2, 1, 0]]
+    with pytest.raises(SystemExit):
+        collect.parse_args([*base, "top_p:0.9+reversed"])
+    assert "identity+reversed collect" in capsys.readouterr().err
+    with pytest.raises(SystemExit):
+        collect.parse_args([*base, "min_n:x+reversed"])
+    assert "bad option_orders" in capsys.readouterr().err

@@ -51,7 +51,7 @@ def load_calibrations(s: Settings, tok, layouts: dict, orders: str | None = None
         out[name] = load_calibration(path, stamp_for(tok, layout, s))
         if not (warning := orders_warning(out[name], setting)):
             continue
-        if name == s.prompt_layout and orders is None:  # other settings may fall back to the text file
+        if name == s.prompt_layout:
             raise RuntimeError(f"{path}: fitted under option orders {out[name].orders!r}, but the setting is {setting!r}")
         log.warning("%s", warning)
     return out

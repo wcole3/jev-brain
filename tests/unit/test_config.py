@@ -223,3 +223,13 @@ def test_calibration_path_per_setting_falls_back_to_the_default_file(tmp_path):
     (d / "calibration-top_p-0.9-reversed.json").write_text("{}")
     assert s.calibration_path("L", "top_p:0.9+reversed") == d / "calibration.json"  # the text setting keeps today's rule
     assert s.calibration_path("L", "min_n:4+reversed") == d / "calibration.json"
+
+
+def test_setting_file_is_the_write_target_without_a_fallback(tmp_path):
+    s = orders_settings(tmp_path, OPTION_ORDERS="top_p:0.9+reversed")
+    d = tmp_path / "p" / "L"
+    d.mkdir(parents=True)
+    (d / "calibration.json").write_text("{}")
+    assert s.setting_file("L", "identity") == d / "calibration-identity.json"
+    assert s.calibration_path("L", "identity") == d / "calibration.json"
+    assert s.setting_file("L", "top_p:0.9+reversed") == d / "calibration.json"

@@ -116,12 +116,16 @@ class Settings:
             used.append("identity")  # a gate reads its temperature from the identity fit
         return list(dict.fromkeys(used))
 
+    def setting_file(self, layout: str, orders: str) -> Path:
+        """Where the fit of an order setting is written: the default rule for the text setting, else its slug file."""
+        if orders == self.option_orders:
+            return self.calibration_path(layout)
+        slug = orders.replace(":", "-").replace("+", "-")
+        return self.data_dir(layout) / f"calibration-{slug}.json"
+
     def calibration_path(self, layout: str, orders: str | None = None) -> Path:
-        """calibration-<slug of orders>.json for another setting when present; else the block-size rule."""
-        if orders not in (None, self.option_orders):
-            slug = orders.replace(":", "-").replace("+", "-")
-            own = self.data_dir(layout) / f"calibration-{slug}.json"
-            if own.exists():
-                return own
+        """The setting's own file when it exists, else calibration-<prefix_block>.json, else calibration.json."""
+        if orders not in (None, self.option_orders) and self.setting_file(layout, orders).exists():
+            return self.setting_file(layout, orders)
         sized = self.data_dir(layout) / f"calibration-{self.prefix_block}.json"
         return sized if sized.exists() else self.data_dir(layout) / "calibration.json"

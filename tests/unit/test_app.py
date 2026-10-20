@@ -466,3 +466,12 @@ def test_engine_loads_a_calibration_per_setting_in_use(qwen_settings, monkeypatc
     assert engine.other_calibrations["identity"]["decider_chat"].orders == "identity"
     assert engine.other_calibrations["identity"]["header"] == UNCALIBRATED
     assert "top_p:0.9+reversed" not in engine.other_calibrations
+
+
+def test_served_layout_refuses_an_identity_fallback_to_a_gated_fit(qwen_settings, monkeypatch):
+    monkeypatch.setattr(gateway.app, "stamp_for", lambda tok, layout, s: OLD_STAMP)
+    s = dataclasses.replace(qwen_settings, option_orders="top_p:0.9+reversed", option_orders_images="identity",
+                            systemone_images=True)
+    write_calibration(s, orders="top_p:0.9+reversed")  # no calibration-identity.json
+    with pytest.raises(RuntimeError, match=r"'top_p:0.9\+reversed'.*'identity'"):
+        load_engine(s, None)

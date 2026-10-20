@@ -89,13 +89,28 @@ class FavourFirstLabel:
         self.calls = []
         self.image_calls = []
 
+    def logprobs(self, ids: list[int]) -> list[float]:
+        return [-float(j) for j in range(len(ids))]
+
     async def letter_logprobs(self, prompts, label_ids, shared_len):
         self.calls.append((prompts, label_ids, shared_len))
-        return [[-float(j) for j in range(len(ids))] for ids in label_ids]
+        return [self.logprobs(ids) for ids in label_ids]
 
     async def image_logprobs(self, prompts, label_ids, shared_len, shared_tokens, parts, prefix_parts):
         self.image_calls.append((prompts, label_ids, shared_len, shared_tokens, parts, prefix_parts))
-        return [[-float(j) for j in range(len(ids))] for ids in label_ids]
+        return [self.logprobs(ids) for ids in label_ids]
+
+
+class SureOf(FavourFirstLabel):
+    """FavourFirstLabel, but questions with one of these option counts read 0, -10, -20, ...: sure at any tau."""
+
+    def __init__(self, *counts: int):
+        super().__init__()
+        self.counts = counts
+
+    def logprobs(self, ids: list[int]) -> list[float]:
+        gap = 10.0 if len(ids) in self.counts else 1.0
+        return [-gap * j for j in range(len(ids))]
 
 
 SSE = b'data: {"choices": []}\n\ndata: [DONE]\n\n'

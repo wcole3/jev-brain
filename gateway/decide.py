@@ -3,7 +3,7 @@
 import asyncio
 import functools
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any
 
 from gateway.answers import answer
@@ -13,7 +13,7 @@ from gateway.governor import Governor
 from gateway.images import context_items, image_items
 from gateway.labels import Labels
 from gateway.layouts import Layout
-from gateway.orders import average_back, option_orders
+from gateway.orders import average_back, gate, option_orders
 from gateway.padding import OFF, Padding
 from gateway.prompts import Batch, ChatFrame, build_rows, image_context
 from gateway.questions import Rendered, render_question, render_state
@@ -56,11 +56,18 @@ class Reads:
     input_tokens: int
     shared_len: int  # leading ids every row shares, pad included
     padded: bool  # the shared prefix carries a pad
-    batch: Batch  # the rows as built, for tools that need per-row token counts
+    batch: Batch  # the first pass's rows as built, for tools that need per-row token counts
+    orders: str  # the order setting of the request (a caller's orders function reads other orders)
 
 
 def has_images(request: SystemOneRequest) -> bool:
     return bool(request.images) or bool(image_items(request.state))
+
+
+def setting_for(engine: Engine, request: SystemOneRequest) -> str:
+    """The request's override, else the image setting for a request with images, else the text setting."""
+    s = engine.settings
+    return request.option_orders or (s.image_orders if has_images(request) else s.option_orders)
 
 
 def decode_then_build(
@@ -77,9 +84,14 @@ def decode_then_build(
 
 
 async def build_batch(
-    engine: Engine, request: SystemOneRequest, orders: OrderFn | None = None, pad_rows: int | None = None
+    engine: Engine,
+    request: SystemOneRequest,
+    orders: OrderFn | None = None,
+    pad_rows: int | None = None,
+    perms: dict[str, list[list[int]]] | None = None,
 ):
-    """Render and tokenize every row. Refuses bad requests, but not long ones: read_rows does that."""
+    """Render and tokenize every row. Refuses bad requests, but not long ones: read_rows does that.
+    perms, when given, replaces orders; a question with [] gets no rows but stays in the shared prefix."""
     s = engine.settings
     if not request.questions:
         raise RequestError("questions must not be empty")
@@ -88,12 +100,12 @@ async def build_batch(
         raise RequestError(f"unknown layout {name!r}; available: {sorted(engine.layouts)}")
     layout = engine.layouts[name]
     questions = {qid: render_question(q, layout) for qid, q in request.questions.items()}
-    if orders is None:
-        orders = functools.partial(option_orders, setting=request.option_orders or s.option_orders)
-    try:
-        perms = {qid: orders(len(q.options)) for qid, q in questions.items()}
-    except ValueError as e:
-        raise RequestError(str(e)) from e
+    if perms is None:
+        orders = orders or functools.partial(option_orders, setting=setting_for(engine, request))
+        try:
+            perms = {qid: orders(len(q.options)) for qid, q in questions.items()}
+        except ValueError as e:
+            raise RequestError(str(e)) from e
     images = has_images(request)
     if images and engine.vision is None:
         raise ImageError("this profile serves text only")
@@ -109,29 +121,59 @@ async def build_batch(
     return name, questions, batch
 
 
-async def read_batch(readout, batch: Batch) -> list[list[float]]:
-    """Text rows read as before; image rows go through the image path with their images attached."""
+async def read_batch(readout, batch: Batch, warm: bool = True) -> list[list[float]]:
+    """Text rows read as before; image rows go through the image path with their images attached.
+    warm=False reports no shared prefix, so the readout does not warm a prefix that is already cached."""
     ids, labels = [r.ids for r in batch.rows], [r.label_ids for r in batch.rows]
     if batch.images is None:
-        return await readout.letter_logprobs(ids, labels, batch.shared_len)
+        return await readout.letter_logprobs(ids, labels, batch.shared_len if warm else 0)
     parts = [image.part() for image in batch.images.images]
     prefix_parts = parts if batch.images_shared else []
-    return await readout.image_logprobs(ids, labels, batch.shared_len, batch.shared_tokens, parts, prefix_parts)
+    shared_tokens = batch.shared_tokens if warm else 0
+    return await readout.image_logprobs(ids, labels, batch.shared_len, shared_tokens, parts, prefix_parts)
+
+
+async def read_into(reads: dict[str, list], engine: Engine, batch: Batch, warm: bool = True) -> None:
+    """Refuse a batch over the decision cap, else read it and append each row's (logprobs, perm) to its question."""
+    limit = engine.settings.systemone_max_len
+    if batch.longest >= limit:
+        raise RequestError(f"prompt is longer than the maximum context length ({batch.longest} >= {limit} tokens)")
+    logprobs = await read_batch(engine.readout, batch, warm)
+    for row, lp in zip(batch.rows, logprobs, strict=True):
+        reads[row.question_id].append((lp, row.perm))
+
+
+def gated_questions(reads: dict[str, list], questions: dict[str, Rendered], cal: Calibration, tau: float) -> set[str]:
+    """The questions whose first read, softmaxed at the identity fit's T (no b), tops out under tau."""
+    return {qid for qid, q in questions.items() if max(softmax(reads[qid][0][0], cal.T[q.type])) < tau}
+
+
+async def second_pass(engine: Engine, request: SystemOneRequest, r: Reads, tau: float) -> int:
+    """Read the reversed order of the questions under tau into r.reads; returns the input tokens it used."""
+    kept = gated_questions(r.reads, r.questions, calibration_for(engine, r.layout, "identity"), tau)
+    if not kept:
+        return 0
+    perms = {qid: [list(range(len(q.options)))[::-1]] if qid in kept else [] for qid, q in r.questions.items()}
+    # pad as the first pass did: it read one identity row per question
+    _, _, batch = await build_batch(engine, request, pad_rows=len(request.questions), perms=perms)
+    await read_into(r.reads, engine, batch, warm=False)
+    return batch.input_tokens
 
 
 async def read_rows(
     engine: Engine, request: SystemOneRequest, orders: OrderFn | None = None, pad_rows: int | None = None
 ) -> Reads:
+    """Read every row; a top_p setting then reads the reversed order of the unsure questions, unless orders is given."""
     name, questions, batch = await build_batch(engine, request, orders, pad_rows)
-    limit = engine.settings.systemone_max_len
-    if batch.longest >= limit:
-        raise RequestError(f"prompt is longer than the maximum context length ({batch.longest} >= {limit} tokens)")
-    logprobs = await read_batch(engine.readout, batch)
     reads: dict[str, list] = {qid: [] for qid in questions}
-    for row, lp in zip(batch.rows, logprobs, strict=True):
-        reads[row.question_id].append((lp, row.perm))
+    await read_into(reads, engine, batch)
     padded = batch.shared_len != batch.unpadded_len
-    return Reads(name, questions, reads, batch.input_tokens, batch.shared_len, padded, batch)
+    setting = setting_for(engine, request)
+    r = Reads(name, questions, reads, batch.input_tokens, batch.shared_len, padded, batch, setting)
+    tau = None if orders else gate(setting)  # build_batch has refused a malformed setting
+    if tau is None:
+        return r
+    return replace(r, input_tokens=r.input_tokens + await second_pass(engine, request, r, tau))
 
 
 def blend(reads: list[tuple[list[float], list[int]]], temperature: float, yes_offset: float = 0.0) -> list[float]:
@@ -164,6 +206,6 @@ async def decide(engine: Engine, request: SystemOneRequest) -> dict:
     r = await read_rows(engine, request)
     return {
         "model": engine.settings.served_model,
-        "answers": answers_for(r.questions, r.reads, engine.calibration[r.layout]),
+        "answers": answers_for(r.questions, r.reads, calibration_for(engine, r.layout, r.orders)),
         "usage": {"input_tokens": r.input_tokens, "output_tokens": 0},
     }

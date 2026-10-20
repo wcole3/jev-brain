@@ -8,8 +8,9 @@ How the gateway shows a question's options in more than one order and averages t
 
 ## Short answer
 
-- **Today every profile reads one order (`identity`).** The owner kept it after M3 (2026-10-03; for gemma, two
-  orders were not worth 2× reads) and after round 1 on images (2026-10-16).
+- **Profiles read their own orders (owner, 2026-10-20).** gemma reads `top_p:0.9+reversed` on text and `identity`
+  on images. qwen3.8 reads `min_n:4+reversed` on text and images. qwen3.6 reads `identity`. Every setting combines
+  with `mean-logprob`. Before, every profile read `identity`, kept after M3 (2026-10-03) and round 1 on images.
 - **A second order is one more row per question.** `average_back` maps each order's probabilities back to the
   caller's positions and takes the mean. On a 16-question request a token replay computed 1.88–1.90× the tokens (§1).
 - **Text, round 3:** a second order on every question adds 0.4–0.7 accuracy points on index-dev on both models.
@@ -50,6 +51,8 @@ orders spreads that lean across options.
 | `identity` (default, `OPTION_ORDERS`) | `[0,1,2]` |
 | `identity+reversed` | `[0,1,2]`, `[2,1,0]` |
 | `cyclic:<k>` | `k` evenly spaced rotations, at most one per option |
+| `min_n:<k>+reversed` | `[0,1,2]`, plus `[2,1,0]` when the question has ≥ k options |
+| `top_p:<τ>+reversed` | `[0,1,2]`, plus `[2,1,0]` in a second pass when the identity top probability is < τ |
 
 - **Rotations.** `cyclic:k` uses the shifts `round(i·n/k) mod n` for i < min(k, n). Python rounds halves to even, so
   `cyclic:2` on 3 options shifts by 2, and `cyclic:4` on 5 options shifts by 1, 2 and 4.

@@ -14,7 +14,7 @@ from gateway.images import decode_image
 from gateway.orders import option_orders
 from gateway.padding import Padding, newline_token
 from gateway.schema import ImageError, RequestError, SystemOneRequest
-from tests.helpers import QUICKSTART, STATE, vision_for
+from tests.helpers import QUICKSTART, STATE, SureOf, vision_for
 
 
 def request(**kw):
@@ -225,3 +225,99 @@ def test_calibration_for_picks_the_fit_of_the_setting(engine):
     assert calibration_for(e, "decider_chat", "identity") is ident
     assert calibration_for(e, "header", "identity") == UNCALIBRATED
     assert calibration_for(e, "decider_chat", "cyclic:3") is e.calibration["decider_chat"]
+
+
+TOP_P = "top_p:0.9+reversed"
+
+
+def gated(engine, readout=None, **settings):
+    """The engine on top_p text orders (other settings as given), reading through `readout` when given."""
+    s = dataclasses.replace(engine.settings, **({"option_orders": TOP_P} | settings))
+    return dataclasses.replace(engine, settings=s, readout=readout or engine.readout)
+
+
+async def test_top_p_reads_reversed_only_for_questions_under_tau(engine):
+    e = gated(engine, SureOf(3))  # the 3-option question is sure, the yes/no one reads 0.73 < 0.9
+    req = request(questions={"sure": QUICKSTART["department"], "unsure": QUICKSTART["is_urgent"]})
+    r = await read_rows(e, req)
+    assert [len(r.reads[q]) for q in ("sure", "unsure")] == [1, 2]
+    assert r.reads["unsure"][1][1] == [1, 0]
+    assert [len(prompts) for prompts, _, _ in e.readout.calls] == [2, 1]
+    _, _, first = await build_batch(e, req)
+    _, _, second = await build_batch(e, req, pad_rows=2, perms={"sure": [], "unsure": [[1, 0]]})
+    assert r.input_tokens == first.input_tokens + second.input_tokens
+    assert r.orders == TOP_P and r.batch.rows == first.rows
+
+
+async def test_top_p_with_every_question_confident_sends_one_call(engine):
+    e = gated(engine, SureOf(2, 3))
+    r = await read_rows(e, request())
+    assert len(e.readout.calls) == 1
+    assert all(len(reads) == 1 for reads in r.reads.values())
+
+
+async def test_gated_override_without_identity_file_gates_at_T_1(engine):
+    r = await read_rows(engine, request(option_orders=TOP_P))  # UNCALIBRATED: every question is under tau at T = 1
+    assert all(len(reads) == 2 for reads in r.reads.values())
+    sharp = Calibration({"choice": 0.2, "score": 0.2, "noul": 0.2})  # no identity file: the text fit's T gates
+    e = dataclasses.replace(engine, readout=SureOf(), calibration=engine.calibration | {"decider_chat": sharp})
+    await decide(e, request(option_orders=TOP_P))
+    assert len(e.readout.calls) == 1
+
+
+async def test_image_request_uses_image_orders_and_their_calibration(seeing):
+    ident = Calibration({"choice": 2.0, "score": 2.0, "noul": 2.0}, orders="identity")
+    text = Calibration({"choice": 3.0, "score": 3.0, "noul": 3.0}, orders=TOP_P)
+    e = dataclasses.replace(
+        gated(seeing, option_orders_images="identity"),
+        calibration=seeing.calibration | {"decider_chat": text},
+        other_calibrations={"identity": {"decider_chat": ident}},
+    )
+    req = request(images=[png_b64()])
+    r = await read_rows(e, req)
+    assert r.orders == "identity" and len(seeing.readout.image_calls) == 1
+    assert all(len(reads) == 1 for reads in r.reads.values())
+    assert (await decide(e, req))["answers"] == answers_for(r.questions, r.reads, ident)
+
+
+async def test_gated_image_rows_take_the_same_two_passes(seeing):
+    await read_rows(gated(seeing), request(images=[png_b64()]))
+    first, second = seeing.readout.image_calls
+    assert first[3] > 0 and second[3] == 0  # shared_tokens: the second pass does not warm the prefix again
+    assert len(second[0]) == len(first[0]) == 3
+
+
+async def test_orders_fn_from_collect_disables_the_gate(engine):
+    e = gated(engine)
+    r = await read_rows(e, request(), orders=lambda n: option_orders(n, "identity+reversed"), pad_rows=3)
+    assert len(e.readout.calls) == 1
+    assert all(len(reads) == 2 for reads in r.reads.values())
+
+
+async def test_bad_gated_override_is_a_400(engine):
+    with pytest.raises(RequestError, match="bad option_orders"):
+        await decide(engine, request(option_orders="top_p:1.5+reversed"))
+    assert engine.readout.calls == []
+
+
+async def test_second_pass_skips_warm_up(engine):
+    e = gated(engine)
+    r = await read_rows(e, request())
+    (_, _, first), (_, _, second) = e.readout.calls
+    assert first == r.shared_len > 0 and second == 0
+
+
+async def test_second_pass_keeps_every_question_in_the_shared_prefix(engine):
+    req = request(layout="header")  # header lists every question in the shared prefix
+    _, _, first = await build_batch(engine, req)
+    perms = {"department": [], "frustration": [], "is_urgent": [[1, 0]]}
+    _, _, second = await build_batch(engine, req, pad_rows=3, perms=perms)
+    assert [(r.question_id, r.perm) for r in second.rows] == [("is_urgent", [1, 0])]
+    assert second.rows[0].ids[: first.shared_len] == first.rows[0].ids[: first.shared_len]
+
+
+async def test_identity_profile_answers_with_its_text_fit(engine):
+    fit = Calibration({"choice": 1.7, "score": 0.8, "noul": 1.3}, b=0.4, orders="identity")
+    e = dataclasses.replace(engine, calibration=engine.calibration | {"decider_chat": fit})
+    r = await read_rows(e, request())
+    assert (await decide(e, request()))["answers"] == answers_for(r.questions, r.reads, fit)

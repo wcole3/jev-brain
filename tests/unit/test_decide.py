@@ -9,7 +9,7 @@ import pytest
 
 import gateway.decide
 from gateway.calibration import Calibration, softmax
-from gateway.decide import answers_for, blend, build_batch, decide, probabilities, read_rows
+from gateway.decide import answers_for, blend, build_batch, combine, decide, probabilities, read_rows
 from gateway.images import decode_image
 from gateway.orders import option_orders
 from gateway.padding import Padding, newline_token
@@ -47,9 +47,8 @@ async def test_quickstart_answers_have_jev_shapes(engine):
 
 async def test_reversed_orders_average_back(engine):
     out = await decide(engine, request(option_orders="identity+reversed"))
-    p3 = softmax([0.0, -1.0, -2.0], 1.0)
     probs = list(out["answers"]["department"]["probabilities"].values())
-    assert probs == pytest.approx([(p3[0] + p3[2]) / 2, p3[1], (p3[0] + p3[2]) / 2], abs=1e-4)
+    assert probs == pytest.approx([1 / 3, 1 / 3, 1 / 3], abs=1e-4)  # mean logprobs are [-1, -1, -1]
     assert len(engine.readout.calls[0][0]) == 6  # 3 questions x 2 orders
 
 
@@ -198,3 +197,20 @@ async def test_images_after_the_question_are_not_prefix_parts(seeing):
     _, _, shared_len, shared_tokens, parts, prefix_parts = seeing.readout.image_calls[0]
     assert len(parts) == 1 and prefix_parts == []
     assert shared_tokens == shared_len
+
+
+def test_combine_equals_blend_with_one_order():
+    reads = [([-0.2, -1.9, -3.0], [0, 1, 2])]
+    assert combine(reads, 1.7) == pytest.approx(blend(reads, 1.7))
+    noul = [([-0.4, -1.2], [0, 1])]
+    assert combine(noul, 0.9, 0.3) == pytest.approx(blend(noul, 0.9, 0.3))
+
+
+def test_combine_averages_logprobs_then_softmaxes():
+    reads = [([0.0, -2.0], [0, 1]), ([-1.0, 0.0], [1, 0])]  # caller logprobs: [0, -2] and [0, -1]
+    assert combine(reads, 1.0) == pytest.approx(softmax([0.0, -1.5], 1.0))
+
+
+def test_combine_puts_the_yes_offset_on_caller_yes_in_a_reversed_noul():
+    reads = [([-0.5, -1.0], [0, 1]), ([-1.0, -0.5], [1, 0])]
+    assert combine(reads, 2.0, 0.25) == pytest.approx(softmax([-0.5, -1.0 + 0.5], 2.0))

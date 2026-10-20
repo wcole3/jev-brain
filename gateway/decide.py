@@ -135,8 +135,17 @@ def blend(reads: list[tuple[list[float], list[int]]], temperature: float, yes_of
     return average_back(probs, [perm for _, perm in reads])
 
 
+def combine(reads: list[tuple[list[float], list[int]]], temperature: float, yes_offset: float = 0.0) -> list[float]:
+    """Mean-logprob: average raw logprobs in caller order, shift caller "yes" by yes_offset, one softmax at T."""
+    perms = [perm for _, perm in reads]
+    lp = average_back([lp for lp, _ in reads], perms)
+    if yes_offset:
+        lp[1] += yes_offset * temperature
+    return softmax(lp, temperature)
+
+
 def probabilities(reads: list[tuple[list[float], list[int]]], q_type: str, cal: Calibration) -> list[float]:
-    return blend(reads, cal.T[q_type], cal.b if q_type == "noul" else 0.0)
+    return combine(reads, cal.T[q_type], cal.b if q_type == "noul" else 0.0)
 
 
 def answers_for(questions: dict[str, Rendered], reads: dict, cal: Calibration) -> dict:

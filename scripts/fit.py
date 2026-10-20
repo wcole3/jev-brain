@@ -3,7 +3,7 @@
 import math
 import random
 
-from gateway.decide import blend
+from gateway.decide import combine
 
 Question = tuple[list[tuple[list[float], list[int]]], int]
 LOG_T = (math.log(0.05), math.log(20.0))
@@ -29,7 +29,7 @@ def golden_min(f, lo: float, hi: float, tol: float = 1e-4) -> float:
 
 def nll(questions: list[Question], T: float, b: float = 0.0, noul: bool = False) -> float:
     offset = b if noul else 0.0
-    return sum(-math.log(max(blend(reads, T, offset)[gold], 1e-12)) for reads, gold in questions) / len(questions)
+    return sum(-math.log(max(combine(reads, T, offset)[gold], 1e-12)) for reads, gold in questions) / len(questions)
 
 
 def fit_temperature(questions: list[Question]) -> float:

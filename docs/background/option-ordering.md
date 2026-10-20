@@ -35,6 +35,9 @@ How the gateway shows a question's options in more than one order and averages t
   Δ accuracy by −0.21 to +0.16 points (§10).
 - **PriDe never helped.** It is a per-letter prior subtracted before the softmax. Its accuracy change was 0 or
   negative on text and −0.26 index on images, and the gateway cannot serve it (§3).
+- **Cutdown failed on gemma (negative, 2026-10-20).** Re-asking an uncertain choice question with its weakest options
+  removed never beat the first read: −5.7 to +0.7 accuracy points on the re-asked questions, and worse ECE for the
+  half and halving cuts. With gold still kept, the re-read picks worse than the first read (§11).
 
 ## 1. How the gateway shows and averages orders
 
@@ -717,6 +720,34 @@ Image runs (orders.md has cost and fit per arm):
   (gemma), 0.030–0.046 (qwen3.8).
 - **Keyed options.** Reversed and half image reads carry the key/label clash (Caveats).
 
+## 11. Cutdown spike: removing the weakest options (gemma, negative)
+
+A quick spike after round 4 (2026-10-20, owner-approved, gemma-4-31b text only): when the first read is uncertain,
+re-ask the question with only its strongest options. Unlike every rule above, this changes the option set, not the
+order. Method and full tables: [results](../results/archive/2026-10-20T034116Z-cutdown-spike-gemma-4-31b/summary.md).
+
+- **Rule.** Choice questions with ≥ 3 options whose identity top probability (shipped `header` T) is below τ, at §7's
+  gate thresholds τ ∈ {0.5, …, 0.9}. The re-read keeps the first read's top 2, top 3 or top ⌈n/2⌉ options, or
+  halves repeatedly while still below τ (`halving`). Kept options keep their order and are relabelled A, B, …; the
+  prompt prefix is unchanged, so a re-read costs one question suffix, like a gated order read.
+- **Result.** Δ accuracy on the re-asked index-dev-2k questions, 95% paired bootstrap:
+
+| τ | Re-asked | top 2 | top 3 | top half | halving |
+|---|---|---|---|---|---|
+| 0.5 | 151 | −3.3 [−9.3, +3.3] | +0.7 [−6.6, +7.9] | −5.3 [−12.6, +2.0] | −4.6 [−11.9, +2.6] |
+| 0.7 | 285–291 | −4.8 [−9.3, −0.3] | −2.1 [−7.0, +2.5] | −4.5 [−8.9, +0.0] | −5.2 [−10.3, +0.0] |
+| 0.9 | 656–693 | −2.5 [−4.8, −0.3] | −1.8 [−4.0, +0.5] | −2.7 [−4.9, −0.6] | −4.2 [−6.8, −1.6] |
+
+- **Calibration.** Top half and halving raise ECE on the re-asked questions by +0.05 to +0.14 and NLL by up to +0.26.
+  Top 3 at τ 0.9 is the one ECE gain (−0.040 [−0.065, −0.019]), at −1.8 accuracy.
+- **Why.** Dropping gold is only part of it: at τ 0.9 top half keeps gold for 79.5% of re-asked questions, yet the
+  re-read is right on 45.0% against the first read's 47.8%. With fewer options gemma moves off a correct first
+  choice more often than onto one. Each halving round compounds this (0.47 extra reads per question, averaged over all questions, at τ 0.9).
+- **Not tried.** Images (relabelled letters would clash with the options' own keys, Caveats) and qwen3.8.
+- **Caveats.** calib-600 looks unlike index-dev-2k here (gold dropped for 0–9% of its gated questions against
+  21–54%), so T_cut rests on about 133 calib questions. Some options print their original index (`option_7: …`), so
+  a cut list reads non-contiguous; production would send the same.
+
 ## Caveats
 
 - **Many comparisons.**
@@ -759,7 +790,7 @@ Image runs (orders.md has cost and fit per arm):
 - Our results: [m3-recommendations.md](../results/archive/m3-recommendations.md), M3 `header` order runs
   ([gemma](../results/archive/gemma-4-31b/2026-10-03T033153Z-m3-orders-header/summary.md),
   [qwen3.8](../results/archive/qwen3.8-27b/2026-10-03T031727Z-m3-orders-header/summary.md)), the round 1–4 runs
-  linked above.
+  and the cutdown spike linked above.
 - Our research: [ordering-and-layout.md](../appendix/ordering-and-layout.md),
   [vision-research.md](../appendix/vision-research.md).
 - Zheng et al., Large Language Models Are Not Robust Multiple Choice Selectors (PriDe): https://arxiv.org/abs/2309.03882

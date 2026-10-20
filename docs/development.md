@@ -115,6 +115,10 @@ uv run python scripts/latency.py --profile qwen3.6-27b                    # late
 uv run python scripts/evaluate.py lengths --profile qwen3.6-27b --baseline RUN_DIR  # rows the decision cap refuses
 uv run python scripts/collect.py --profile gemma-4-31b --split calib-600 --layout-file prompts/experiments/labels-lower.toml --label lower  # experiment layout -> calib-600-lower.jsonl.gz
 uv run python scripts/label_screen.py screen --profile gemma-4-31b --set lower  # a label set vs letters, text + image (CPU); `check` first
+uv run python scripts/layout_screen.py --profile gemma-4-31b --arm blurb-header --control letters  # two collected prompt arms, paired, text + image (CPU)
+uv run python scripts/r3_orders.py --profile qwen3.8-27b --layout-file prompts/experiments/blurb-header.toml \
+  --calib .cache/collect/qwen3.8-27b/calib-600-blurb-header-all.jsonl.gz \
+  --dev .cache/collect/qwen3.8-27b/index-dev-2k-blurb-header-all.jsonl.gz  # order grid on collect files (CPU); --layout NAME alone: a served layout's full collects
 ```
 
 - **Data:**

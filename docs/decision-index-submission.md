@@ -1,7 +1,9 @@
 # Submitting to the Decision Index
 
-Status **2026-10-14**: PR review refreshed (see [What the PRs show](#what-the-prs-show-2026-10-14)),
-nothing submitted. Preparation is tracked in DS-030 (after DS-005 Stage 2 and DS-028). Raw scrapes
+Status **2026-10-20**: gemma-4-31b was submitted (PR #193, public 0.3 index 61.69) and is on the 0.4
+board. The board's note says our results file had extra lines and duplicate questions; the next
+submission ships a clean file (see [Results file](#results-file-one-line-per-suite-row)). The rest of
+this page is the 2026-10-14 preparation, tracked in DS-030 (after DS-005 Stage 2 and DS-028). Raw scrapes
 are in `.firecrawl/decision-index-submit/` (0.2.1), `.firecrawl/jdi/` (0.3) and
 `.firecrawl/jdi-pr-recon/` (all PRs, board JSON, 2026-10-14), all git-ignored.
 
@@ -58,6 +60,26 @@ Index is the 0.3 public index (0.2.1: 55.92 / 56.01 / 60.61).
 - `results.jsonl.gz`
 - `scores.json`, `index.json`, `benchmark-summary.json`
 - each runner's `environment.json` and `status.json` (we ran 4 shards)
+
+### Results file: one line per suite row
+
+Rule since 2026-10-20: `results.jsonl.gz` holds exactly one line per 0.3 suite row, 140,178 lines,
+each the last attempt for its `run_id`. No retries, no rows outside the suite.
+
+- **Why.** PR #193's file was the 0.2.1 run with later reruns appended: 152,966 lines, 12,777 of
+  them retired rows (10,139 ForecastBench, 2,638 old GSM8K) and 11 `run_id`s twice (BRIGHT and
+  ToolRet, `unsupported` at the 32k cap, then `ok` at 65k). The scorer keeps the last line per
+  `run_id` and skips non-suite rows, so the score was right (rescore 61.69 = claim). But the board
+  entry says "extra lines and duplicate questions with differing answers".
+- **How.** Start from `merged/results.jsonl` (`evaluate.py index` writes it as a last-attempt merge
+  of the shards, one line per `run_id`). Keep only `run_id`s in the suite export
+  (`.cache/decision-index/rows-0.3.jsonl.gz`, field `_evaluation.run_id`), then gzip.
+- **Check before upload.**
+  - Lines = unique `run_id`s = 140,178.
+  - Every `run_id` is in the suite export.
+  - The pinned harness rescores the gz to the same `scores.json`.
+- **Run card.** Describe a resume or rerun in prose and keep each runner's `environment.json` and
+  `status.json`; the attempts themselves stay out of the results file.
 
 **Rules that apply to us:**
 - one fixed prompt rendering for every benchmark;
@@ -144,7 +166,7 @@ domains (simple-jev: 56.05 public, 51.79 Full). This bears on owner decision 1.
 | Requirement | Status | Where / what to do |
 |---|---|---|
 | Complete, untouched run | have | `.cache/index-runs/<p>/<run>/merged/`. `runner_sha256` matches stock. Rows are a last-attempt merge of 4 shards by `run_id` (precedent #7; say so in the PR). |
-| `results.jsonl.gz` | gzip only | `merged/results.jsonl` is compact (185 MB). |
+| `results.jsonl.gz` | filter + gzip | `merged/results.jsonl` is compact (185 MB). Keep suite rows only, then gzip ([Results file](#results-file-one-line-per-suite-row)). |
 | `scores.json`, `index.json`, `benchmark-summary.json` | have | `merged/` |
 | `environment.json`, `status.json` | partial | Per shard only, in `shard-*/`. Upload all four. |
 | HF dataset with a pinned link | missing | Token is in `secrets/.hf-token`. No dataset yet. |
@@ -208,10 +230,10 @@ Background: [M3 recommendations and Index confirmation](results/archive/m3-recom
 ## To-do for one profile (qwen3.6), smallest first
 
 1. The owner decides the items above.
-2. Gzip `merged/results.jsonl`.
-3. Re-score the gz with the pinned harness (`score --edition 0.3`) and confirm `scores.json` is
-   identical. CPU only. The merged file still holds the retired ForecastBench and old GSM8K rows;
-   the 0.3 scorer skips them.
+2. Filter `merged/results.jsonl` to the suite rows and gzip it
+   ([Results file](#results-file-one-line-per-suite-row)).
+3. Run the checks there: 140,178 lines, all in the suite, and the pinned harness
+   (`score --edition 0.3`) rescores the gz to an identical `scores.json`. CPU only.
 4. Assemble `runs/<name>/`:
    - the result files;
    - the 4 shards' `environment.json` and `status.json`;

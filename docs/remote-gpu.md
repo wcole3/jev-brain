@@ -227,8 +227,7 @@ the stages.
 `collect-calib` and `collect-eval`. The collects use `--layouts blurb_header --orders identity+reversed
 --label blurb`, so they write `calib-blurb.jsonl.gz` and `eval-blurb.jsonl.gz`.
 
-1. Push each box; add `--vision` for the 5 vision profiles (gemma-4-31b, gemma-4-31b-fp8,
-   qwen3.8-27b, qwen3.8-27b-fp8, qwen3.8-27b-nvfp4). qwen3.6 boxes push without it.
+1. Push each box without `--vision`: `live-images` uses synthetic PNGs. (`--vision` is for stage 2.)
 2. Pull in a loop until `QUEUE_DONE`: `pull.sh ssh://... PROFILE --loop 1800`.
 3. Calibrate locally per profile, always with `--layouts blurb_header --collect-label blurb`
    (`scripts/calibrate.py --profile P --orders SETTING ...`):
@@ -241,19 +240,21 @@ the stages.
 these lines to each job file (they are written after calibration, not now): `restack`,
 `latency-before` (`--layout header --option-orders identity`), `latency-after`, `vision-setup`,
 `vision-latency` (`--sample 300 --workers 1`), `index`, `vision-full`. Then re-push to the same
-box (`push.sh ... PROFILE [--vision]`). The queue skips done jobs and runs the new ones; running
+box (`push.sh ... PROFILE`), adding `--vision` for the 5 vision profiles (gemma-4-31b,
+gemma-4-31b-fp8, qwen3.8-27b, qwen3.8-27b-fp8, qwen3.8-27b-nvfp4) before `vision-setup`,
+`vision-latency` and `vision-full` run. qwen3.6 boxes push without it. The queue skips done jobs and runs the new ones; running
 jobs keep their old code (see Push).
 
 ## What runs
 
 `queue.sh` runs the job file's `name: command` lines in order from the repo root.
 
-| Profile | Jobs |
+| Profile | Stage 1 jobs |
 |---|---|
-| `qwen3.8-27b-fp8` | stack, collect-calib, collect-eval (DS-005 stage 2) |
-| `qwen3.6-27b-fp8`, `qwen3.8-27b-nvfp4`, `gemma-4-31b-fp8` | stack, latency, index (full 0.3 Index, 4 shards; DS-030) |
-| `qwen3.6-27b` | stack, collect-index-dev (the 0.3 index-dev, DS-031) |
-| `qwen3.8-27b`, `gemma-4-31b` | stack only; each campaign writes its own queue |
+| `gemma-4-31b`, `gemma-4-31b-fp8`, `qwen3.8-27b`, `qwen3.8-27b-fp8`, `qwen3.8-27b-nvfp4` | stack, live-images, collect-calib, collect-eval |
+| `qwen3.6-27b`, `qwen3.6-27b-fp8` | stack, collect-calib, collect-eval |
+
+Stage 2 lines are appended after calibration (see the two-stage section above).
 
 Earlier queues (host-compare, latency, Index runs, DS-024 phase B) are in git history.
 

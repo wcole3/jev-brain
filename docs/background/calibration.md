@@ -67,21 +67,26 @@ often beating methods with more parameters.
 In the gateway (full flow in [decision-readout.md](decision-readout.md)):
 
 ```
-vLLM letter logprobs  →  softmax(logprobs / T)  →  average over option orders  →  Jev answer
-  readout.py             calibration.py            orders.py                       answers.py
+vLLM letter logprobs  →  average over option orders  →  + b·T on "yes"  →  softmax at T  →  Jev answer
+  readout.py             orders.py                    decide.py            calibration.py    answers.py
 ```
 
 - [`calibration.py`](../../gateway/calibration.py): `load_calibration` reads
   `data/<profile>/<layout>/calibration.json` (format 2; `calibration-<prefix_block>.json`
-  wins when present): T for `choice`, `score` and `noul`, and the noul offset `b`, added
-  per option order before averaging. A missing file means T = 1, b = 0 plus a startup
+  wins when present): T for `choice`, `score` and `noul`, and the noul offset `b`, added to
+  "yes" (as b·T) after the orders' raw logprobs are averaged back to caller order, then one
+  softmax at T. A missing file means T = 1, b = 0 plus a startup
   warning ([test](../../tests/unit/test_calibration.py)).
+- **Files per setting.** `calibration.json` is the fit for `OPTION_ORDERS`;
+  `calibration-<setting>.json` (`:` and `+` become `-`) holds another setting in use (gemma:
+  `calibration-identity.json` for its gate and images). Startup refuses a served-layout file
+  whose `fit.orders` differs from its setting.
 - **Files are stamped.** Each records the tokenizer hash, layout hash, model revision and
   prefix padding it was fitted under. Startup refuses a stale, v1, unstamped or malformed
   file and names the field, as it does for `labels.json`. To refit, move the stale file
   aside, recollect calib and eval (`collect.py` ignores calibration files), then rerun
   `calibrate.py`.
-- **A fit holds for one option-order setting** (`fit.orders`, `identity` today); see
+- **A fit holds for one option-order setting** (`fit.orders`); see
   [option-ordering.md §1](option-ordering.md#1-how-the-gateway-shows-and-averages-orders).
 - vLLM returns logprobs over the whole vocabulary: `logprob = logit − log Z`. The
   `log Z / T` term is the same for every letter and cancels, so scaling logprobs equals

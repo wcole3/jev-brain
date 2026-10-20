@@ -11,7 +11,7 @@ How the gateway shows a question's options in more than one order and averages t
 - **Profiles read their own orders (owner, 2026-10-20).** gemma reads `top_p:0.9+reversed` on text and `identity`
   on images. qwen3.8 reads `min_n:4+reversed` on text and images. qwen3.6 reads `identity`. Every setting combines
   with `mean-logprob`. Before, every profile read `identity`, kept after M3 (2026-10-03) and round 1 on images.
-- **A second order is one more row per question.** `average_back` maps each order's probabilities back to the
+- **A second order is one more row per question.** `average_back` maps each order's logprobs back to the
   caller's positions and takes the mean. On a 16-question request a token replay computed 1.88–1.90× the tokens (§1).
 - **Text, round 3:** a second order on every question adds 0.4–0.7 accuracy points on index-dev on both models.
   On eval, always reversed adds 1.5 points on gemma and 0.2 on qwen3.8, whose CI includes 0. Gating the second read
@@ -62,7 +62,7 @@ orders spreads that lean across options.
   order and take the mean, shifts "yes" by b·T for noul, then takes one softmax at T (mean-logprob). For two orders
   of `[.7,.2,.1]` and `[.5,.3,.2]` that is a geometric, not arithmetic, blend.
 - **Overrides.** A request may set `option_orders` (and `layout`); both are experiment hooks, not Jev API.
-- **Calibration.** A fit holds for one option-order setting (`fit.orders`); the gateway refuses another setting's file. gemma
+- **Calibration.** A fit holds for one option-order setting (`fit.orders`); the gateway refuses another setting's file for the served layout. gemma
   keeps `calibration-identity.json` beside `calibration.json` for its image requests ([calibration.md](calibration.md)).
 
 **Temperature and averaging.** The gateway averages raw logprobs first and takes one softmax at T. Dividing by T

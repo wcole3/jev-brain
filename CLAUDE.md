@@ -39,8 +39,8 @@ in `README.md` and `docs/development.md`.
   2. `orders.option_orders`
   3. `prompts.build_rows` (token ids built piecewise, like decider)
   4. `readout.Readout` (vLLM `/v1/completions`, `max_tokens=1`, `logprob_token_ids`)
-  5. `decide.probabilities` (per-type T, noul offset b, from the layout's calibration file)
-  6. `orders.average_back`
+  5. `orders.average_back` (raw logprobs, caller order)
+  6. `decide.probabilities` (combine: one softmax at per-type T, noul offset b, from the calibration file)
   7. `answers.answer`
 - **Prompt wording** lives only in `prompts/<layout>.toml`. Editing it means rebuilding
   label tables and rerunning `scripts/calibrate.py` (the gateway refuses stale hashes and
@@ -57,9 +57,9 @@ in `README.md` and `docs/development.md`.
 - **Calibration** (`data/<profile>/<layout>/calibration.json`, or
   `calibration-<prefix_block>.json` when present) is valid for one model + precision +
   layout + option-order setting.
-  - With one option order T keeps the top answer, but it moves `score` values (expected
-    level). Averaged orders can flip a close top answer.
-  - T can't fix a yes/no bias; the noul offset b can.
+  - T never changes the top answer (logprobs are averaged first), but it moves `score` values
+    (expected level).
+  - T can't fix a yes/no bias; the noul offset b can, and can flip a close noul answer.
   - Fits use the calib split; eval picks what ships, so eval is not untouched.
   - A stale stamp stops the gateway, not collect: move the file aside, recollect, recalibrate.
 - **Label letters** must be single tokens *in context*. `scripts/build_labels.py` checks

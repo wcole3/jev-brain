@@ -118,7 +118,7 @@ The trade-offs behind the last column are in [Quantization trade-offs](#quantiza
 ## Recipes
 
 Each recipe is one command; the profile file carries the flags. Calibration files are in
-`data/<profile>/header/`.
+`data/<profile>/blurb_header/`.
 
 ### qwen3.6-27b
 
@@ -128,7 +128,7 @@ Each recipe is one command; the profile file carries the flags. Calibration file
   mounts over the stock vLLM v0.30.0 image (DS-004).
 - Prefix blocks are padded to 800 tokens; chat prefill is capped at 800 a step with
   `--max-num-batched-tokens 2400` and chat goes first (priority scheduling).
-- Calibration: `data/qwen3.6-27b/header/calibration.json` (`calibration-784.json` is for MTP off).
+- Calibration: `data/qwen3.6-27b/blurb_header/calibration.json` (`calibration-784.json` is for MTP off).
 
 ### qwen3.8-27b
 
@@ -136,7 +136,7 @@ Each recipe is one command; the profile file carries the flags. Calibration file
 
 - Same setup as qwen3.6-27b: MTP with the patched sampler (DS-004), 800-token prefix blocks,
   `--max-num-batched-tokens 2400`, chat priority.
-- Calibration: `data/qwen3.8-27b/header/calibration.json` (`calibration-784.json` is for MTP off).
+- Calibration: `data/qwen3.8-27b/blurb_header/calibration.json` (`calibration-784.json` is for MTP off).
 
 ### gemma-4-31b
 
@@ -146,7 +146,7 @@ Each recipe is one command; the profile file carries the flags. Calibration file
 - Sliding-window layers hash blocks densely only with `--prefix-cache-retention-interval 32`;
   the shared prefix goes alone first when it is ≥ 4,096 tokens (`WARM_UP=prefix`), since chunked
   prefill otherwise makes each row recompute it (2026-10-15). No MTP.
-- Calibration: `data/gemma-4-31b/header/calibration.json`.
+- Calibration: `data/gemma-4-31b/blurb_header/calibration.json`.
 
 ### qwen3.6-27b-fp8
 
@@ -155,7 +155,7 @@ Each recipe is one command; the profile file carries the flags. Calibration file
 - Base profile: `qwen3.6-27b`. Same MTP, 800-token blocks and `--max-num-batched-tokens 2400`.
 - DeepGEMM is off (`VLLM_USE_DEEP_GEMM=0`; it crashes on sm_120).
 - The KV cache is forced to bfloat16: fp8 KV with MTP corrupts output on sm_120 (vLLM #49010).
-- Calibration: `data/qwen3.6-27b-fp8/header/calibration.json`.
+- Calibration: `data/qwen3.6-27b-fp8/blurb_header/calibration.json`.
 
 ### qwen3.8-27b-fp8
 
@@ -163,7 +163,7 @@ Each recipe is one command; the profile file carries the flags. Calibration file
 
 - Base profile: `qwen3.8-27b`. Same MTP, 800-token blocks and `--max-num-batched-tokens 2400`.
 - DeepGEMM off on sm_120; KV forced to bfloat16 (fp8 KV + MTP corrupts output, vLLM #49010).
-- Calibration: `data/qwen3.8-27b-fp8/header/calibration.json`.
+- Calibration: `data/qwen3.8-27b-fp8/blurb_header/calibration.json`.
 
 ### qwen3.8-27b-nvfp4
 
@@ -173,7 +173,7 @@ Each recipe is one command; the profile file carries the flags. Calibration file
   and `--max-num-batched-tokens 2400` as for the other Qwen profiles.
 - DeepGEMM off on sm_120. KV forced to bfloat16: the checkpoint declares an fp8
   `kv_cache_scheme` that would otherwise pick fp8, and fp8 KV + MTP corrupts output (vLLM #49010).
-- Calibration: `data/qwen3.8-27b-nvfp4/header/calibration.json`.
+- Calibration: `data/qwen3.8-27b-nvfp4/blurb_header/calibration.json`.
 
 ### gemma-4-31b-fp8
 
@@ -182,7 +182,7 @@ Each recipe is one command; the profile file carries the flags. Calibration file
 - Base profile: `gemma-4-31b`. Vision kept, video off, prefix-cache retention interval 32, no MTP.
 - FP8 block weights plus `--kv-cache-dtype fp8_per_token_head` (1.55x KV tokens, no query cast;
   DS-005). DeepGEMM off on sm_120.
-- Calibration: `data/gemma-4-31b-fp8/header/calibration.json`.
+- Calibration: `data/gemma-4-31b-fp8/blurb_header/calibration.json`.
 
 ## Results (last updated 10-09-26)
 

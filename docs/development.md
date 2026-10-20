@@ -114,7 +114,7 @@ uv run python scripts/calibrate.py --profile qwen3.6-27b --orders identity+rever
 uv run python scripts/evaluate.py offline --profile qwen3.6-27b --split eval --orders identity+reversed
 uv run python scripts/evaluate.py index --profile qwen3.6-27b             # full Index via the upstream harness, 8 shards
 uv run python scripts/evaluate.py replace --profile qwen3.6-27b --base RUN_DIR --override RUN_DIR  # swap re-run rows into an Index run
-uv run python scripts/latency.py --profile qwen3.6-27b                    # latency-v1 design, one sequential client
+uv run python scripts/latency.py --profile qwen3.6-27b                    # latency-v1 design, one sequential client; reports median, mean, p80, p95 and flags any admission metric over 1000 ms
 uv run python scripts/evaluate.py lengths --profile qwen3.6-27b --baseline RUN_DIR  # rows the decision cap refuses
 uv run python scripts/collect.py --profile gemma-4-31b --split calib-600 --layout-file prompts/experiments/labels-lower.toml --label lower  # experiment layout -> calib-600-lower.jsonl.gz
 uv run python scripts/label_screen.py screen --profile gemma-4-31b --set lower  # a label set vs letters, text + image (CPU); `check` first

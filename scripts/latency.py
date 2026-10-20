@@ -6,6 +6,7 @@ The board's own sample is private; ours follows its published design (data/split
 
 import argparse
 import json
+import statistics
 import time
 from collections import defaultdict
 
@@ -31,7 +32,7 @@ def time_rows(client: httpx.Client, rows: list[dict], extra: dict) -> list[dict]
 
 
 def summarize(records: list[dict]) -> dict:
-    """Median and p95 over rows that returned an answer; per-benchmark medians only with >= 5 rows (as the board)."""
+    """Median, mean, p80 and p95 over rows that returned an answer; per-benchmark medians only with >= 5 rows (as the board)."""
     ok = [r for r in records if r["status"] == 200]
     by: dict[int, list[float]] = defaultdict(list)
     for r in ok:
@@ -40,9 +41,17 @@ def summarize(records: list[dict]) -> dict:
         "n": len(records),
         "answered": len(ok),
         "median_ms": percentile([r["ms"] for r in ok], 0.5) if ok else None,
+        "mean_ms": statistics.fmean(r["ms"] for r in ok) if ok else None,
+        "p80_ms": percentile([r["ms"] for r in ok], 0.8) if ok else None,
         "p95_ms": percentile([r["ms"] for r in ok], 0.95) if ok else None,
         "by_catalog": {c: percentile(ms, 0.5) for c, ms in sorted(by.items()) if len(ms) >= 5},
     }
+
+
+def over_limit(s: dict) -> str | None:
+    """One line naming the board-admission metrics (median, mean, p80) above 1000 ms."""
+    bad = [f"{k} {s[k + '_ms']:.1f}" for k in ("median", "mean", "p80") if s[k + "_ms"] > 1000]
+    return "Over 1000 ms: " + ", ".join(bad) if bad else None
 
 
 def main(args) -> None:
@@ -63,7 +72,7 @@ def main(args) -> None:
     out = results_dir(args.profile, f"{stamp}-latency{'-' + '-'.join(extra.values()) if extra else ''}", archive=True)
     (out / "raw.jsonl").write_text("".join(json.dumps(r) + "\n" for r in records))
     board = [
-        f"| {BOARD[k]['name']} (board, its own sample) | {BOARD[k]['median_ms']:.1f} | n/a |"
+        f"| {BOARD[k]['name']} (board, its own sample) | {BOARD[k]['median_ms']:.1f} | n/a | n/a | n/a |"
         for k in [*MATCHES.get(args.profile, []), "jev"]
     ]
     meta = {"timestamp": stamp, "repo commit": git_revision(),
@@ -72,13 +81,15 @@ def main(args) -> None:
             "other_calibrations", "vllm_version")
     meta |= {k: health.get(k) for k in keys}
     table = [
-        "| entry | median ms | p95 ms |",
-        "|---|---|---|",
-        f"| **ours** | {s['median_ms']:.1f} | {s['p95_ms']:.1f} |",
+        "| entry | median ms | mean ms | p80 ms | p95 ms |",
+        "|---|---|---|---|---|",
+        f"| **ours** | {s['median_ms']:.1f} | {s['mean_ms']:.1f} | {s['p80_ms']:.1f} | {s['p95_ms']:.1f} |",
         *board,
     ]
     per = ["| catalog | median ms |", "|---|---|", *(f"| {c} | {m:.1f} |" for c, m in s["by_catalog"].items())]
-    body = "\n".join([*table, "", f"Answered {s['answered']} of {s['n']} timed rows.", "", *per])
+    flag = over_limit(s)
+    answered = f"Answered {s['answered']} of {s['n']} timed rows."
+    body = "\n".join([*table, "", answered, *([flag] if flag else []), "", *per])
     (out / "summary.md").write_text(f"# {args.profile} latency (latency-v1 design)\n\n{provenance(meta)}\n{body}\n")
     print(out / "summary.md")
 

@@ -1,6 +1,6 @@
 import httpx
 
-from scripts.latency import summarize, time_rows
+from scripts.latency import over_limit, summarize, time_rows
 
 
 def test_time_rows_posts_one_request_at_a_time():
@@ -22,3 +22,15 @@ def test_summary_uses_answered_rows_and_per_catalog_medians():
     recs += [{"id": "x", "catalog_id": 2, "status": 422, "ms": 1.0}]
     s = summarize(recs)
     assert s["n"] == 11 and s["answered"] == 10 and s["median_ms"] == 5.0 and s["by_catalog"] == {1: 5.0}
+
+
+def test_summary_reports_mean_and_p80():
+    s = summarize([{"id": f"r{i}", "catalog_id": 1, "status": 200, "ms": float(i)} for i in range(10)])
+    assert s["mean_ms"] == 4.5 and s["p80_ms"] == 8.0 and s["p95_ms"] == 9.0
+
+
+def test_over_limit_flags_any_admission_metric_above_1000_ms():
+    ok = {"median_ms": 900.0, "mean_ms": 1000.0, "p80_ms": 1000.0}
+    assert over_limit(ok) is None
+    assert over_limit({**ok, "mean_ms": 1000.1}) == "Over 1000 ms: mean 1000.1"
+    assert over_limit({"median_ms": 1200.0, "mean_ms": 1100.0, "p80_ms": 900.0}) == "Over 1000 ms: median 1200.0, mean 1100.0"

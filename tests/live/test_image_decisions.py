@@ -171,7 +171,7 @@ SIZES = {
 @pytest.mark.parametrize("sizes", SIZES.values(), ids=SIZES.keys())
 def test_expanded_lengths_match_vllm(gateway_url, vllm_url, served_model, settings, vision, engine, sizes):
     body = {"images": [unique_png(w, h) for w, h in sizes], "state": "Pictures.", "questions": {"q": noul("Bright")}}
-    if sizes == SIZES["thin"] and settings.hf_model.startswith("Qwen/"):
+    if sizes == SIZES["thin"] and "qwen" in settings.hf_model.lower():
         r = post(gateway_url, body)
         assert r.status_code == 400 and "200:1" in r.text, r.text
         return

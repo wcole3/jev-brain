@@ -171,3 +171,10 @@ def test_holdout_labels_survive_pipes_and_hand_edits(tmp_path, capsys, monkeypat
     assert "warning" not in capsys.readouterr().err.lower()
     vs.log_holdout_use("t", "d", log)
     assert "3 labels" in capsys.readouterr().err
+
+
+def test_unflagged_holdout_refused_without_a_suite(tmp_path, monkeypatch):
+    monkeypatch.setattr(vs, "SUITE", tmp_path / "missing.jsonl")
+    with pytest.raises(SystemExit, match="holdout=True"):
+        vs.load_split("vision-holdout", log_path=tmp_path / "log.md")
+    assert not (tmp_path / "log.md").exists()

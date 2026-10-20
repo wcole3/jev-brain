@@ -153,11 +153,11 @@ def load_split(
     name: str, *, holdout: bool = False, tool: str = "", label: str = "", log_path: Path | None = None
 ) -> list[dict]:
     """Suite rows for a manifest, in manifest order. Refuses a stale suite and unflagged holdout reads."""
-    manifest = read_manifest(name)
     if name == "vision-holdout":
         if not holdout:
             raise SystemExit("vision-holdout is the untouched test set: pass holdout=True (--holdout) to read it")
         log_holdout_use(tool, label, log_path or HOLDOUT_LOG)
+    manifest = read_manifest(name)
     by_id = {r["id"]: r for r in read_suite()}
     return [by_id[i] for i in manifest["ids"]]
 

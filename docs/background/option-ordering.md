@@ -58,12 +58,12 @@ orders spreads that lean across options.
   `cyclic:2` on 3 options shifts by 2, and `cyclic:4` on 5 options shifts by 1, 2 and 4.
 - **Rows.** Each order is its own row, so 2 orders means twice the rows.
   [decision-readout.md](decision-readout.md)'s example was built with `identity+reversed`: 3 questions gave 6 rows.
-- **Averaging.** [`blend`](../../gateway/decide.py) applies a softmax to each order at T (the noul offset b is added
-  per order), then `average_back` takes the mean per caller position. For `[.7,.2,.1]` in identity and `[.5,.3,.2]`
-  in reversed order the result is `[.45, .25, .30]`.
+- **Averaging.** [`combine`](../../gateway/decide.py) has `average_back` map each order's raw logprobs to caller
+  order and take the mean, shifts "yes" by b·T for noul, then takes one softmax at T (mean-logprob). For two orders
+  of `[.7,.2,.1]` and `[.5,.3,.2]` that is a geometric, not arithmetic, blend.
 - **Overrides.** A request may set `option_orders` (and `layout`); both are experiment hooks, not Jev API.
-- **Calibration.** A fit holds for one option-order setting (`fit.orders`, `identity` today). Startup and
-  `evaluate.py offline` warn when another setting uses it ([calibration.md](calibration.md)).
+- **Calibration.** A fit holds for one option-order setting (`fit.orders`); the gateway refuses another setting's file. gemma
+  keeps `calibration-identity.json` beside `calibration.json` for its image requests ([calibration.md](calibration.md)).
 
 **Temperature and averaging.** Averaging happens *after* the softmax. For noul the "T never changes the winner" rule
 still holds: two orders average above 0.5 exactly when their two Δs sum above 0, whatever T is. With 3+ options it

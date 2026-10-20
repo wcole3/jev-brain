@@ -8,9 +8,9 @@ the same method as [prompt-sharing.md](prompt-sharing.md) §4: it rebuilds the r
 
 ## Short answer
 
-- **A layout is the order of the pieces in the prompt.** We ship three: `decider_chat`
-  (state, then question), `header` (question list, state, question; the default) and
-  `question_first` (question, then state).
+- **A layout is the order of the pieces in the prompt.** We ship four: `decider_chat`
+  (state, then question), `header` (question list, state, question), `blurb_header` (`header` with an
+  intro blurb; the default) and `question_first` (question, then state).
 - **The order decides how much prefix sharing survives.** `decider_chat` and `header` keep each
   row's question outside the shared prefix; `question_first` shares nothing. With today's padding
   and warm-up, `header` computes 1.02–1.09× the minimum on Qwen (1.34 for a tiny 256-token × 4 request: the pad) and ~1.0× on gemma for multi-question
@@ -35,7 +35,8 @@ common before their first question-specific part
 | Layout | `order` | Shared prefix across a request's questions |
 |---|---|---|
 | [`decider_chat`](../../prompts/decider_chat.toml) | context, question, options | chat header + state |
-| [`header`](../../prompts/header.toml) (default) | questions, context, question, options | chat header + list of all questions + state |
+| [`header`](../../prompts/header.toml) | questions, context, question, options | chat header + list of all questions + state |
+| [`blurb_header`](../../prompts/blurb_header.toml) (default) | questions, context, question, options | as `header`, behind a 2-sentence blurb |
 | [`question_first`](../../prompts/question_first.toml) | question, options, context | chat header only (3 tokens) |
 
 A tiny request rendered with each layout (state "Order 17: 3 widgets shipped on Monday.", first

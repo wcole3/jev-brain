@@ -2,7 +2,8 @@ import shlex
 
 import pytest
 
-from scripts.profile_env import exports
+from gateway.config import Settings, read_env_file
+from scripts.profile_env import PROFILES, exports
 
 
 def test_exports_quote_values_and_apply_overrides(tmp_path, monkeypatch):
@@ -22,3 +23,28 @@ def test_override_without_equals_exits(tmp_path, monkeypatch):
     monkeypatch.setattr("scripts.profile_env.PROFILES", tmp_path)
     with pytest.raises(SystemExit, match="K=V"):
         exports("p", ["oops"])
+
+
+DEFAULTS = [
+    ("gemma-4-31b", "top_p:0.9+reversed", "identity"),
+    ("gemma-4-31b-fp8", "top_p:0.9+reversed", "identity"),
+    ("qwen3.8-27b", "min_n:4+reversed", ""),
+    ("qwen3.8-27b-fp8", "min_n:4+reversed", ""),
+    ("qwen3.8-27b-nvfp4", "min_n:4+reversed", ""),
+    ("qwen3.6-27b", "identity", ""),
+    ("qwen3.6-27b-fp8", "identity", ""),
+]
+
+
+@pytest.mark.parametrize(("profile", "orders", "orders_images"), DEFAULTS)
+def test_profiles_serve_the_round_4_defaults(profile, orders, orders_images):
+    s = Settings.from_profile(profile)
+    assert (s.prompt_layout, s.option_orders, s.option_orders_images) == ("blurb_header", orders, orders_images)
+
+
+@pytest.mark.parametrize("profile", sorted(p.stem for p in PROFILES.glob("*.env")))
+def test_vision_profiles_raise_max_logprobs(profile):
+    env = read_env_file(PROFILES / f"{profile}.env")
+    if env.get("SYSTEMONE_IMAGES") == "1":
+        assert "--max-logprobs 128" in env["EXTRA_ARGS"]
+        assert '"image":4' in env["EXTRA_ARGS"]

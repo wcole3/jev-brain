@@ -77,14 +77,14 @@ def test_orders_data_reports_read_costs_and_order_diagnostics(orders):
 def test_pride_divides_out_a_prior_from_calib(orders):
     assert orders["pride_prior_options"] == [2]  # 40 calib questions of two options
     identity, pride = orders["arms"]["identity"]["overall"]["all"], orders["arms"]["pride"]["overall"]["all"]
-    assert (identity["accuracy"], pride["accuracy"]) == pytest.approx((0.55, 0.525))  # one answer flips
+    assert (identity["accuracy"], pride["accuracy"]) == pytest.approx((0.525, 0.525))  # fixture leans moved with the layout index
     assert pride["ece"] == pytest.approx(0.012751, abs=1e-6) and pride["nll"] < identity["nll"]
 
 
 def test_layouts_study_compares_each_layout_on_shared_questions(layouts):
     data = layouts["splits"]["index-dev"]
-    assert set(data["layouts"]) == {*LAYOUTS, SHIPPED} and set(data["vs_default"]) == {"header", "question_first", SHIPPED}
-    assert data["answered"] == {"any": 40, "all": 40, "decider_chat": 40, "header": 40, "question_first": 40}
+    assert set(data["layouts"]) == {*LAYOUTS, SHIPPED} and set(data["vs_default"]) == {"blurb_header", "header", "question_first", SHIPPED}
+    assert data["answered"] == {"any": 40, "all": 40, **dict.fromkeys(LAYOUTS, 40)}
     header = data["vs_default"]["header"]
     assert header["slice"]["long"]["n"] == 10 and set(header["length"]) == {"<512", "512-2k", "2k-8k", ">8k"}
     assert header["overall"]["all"]["n"] == 40
@@ -199,7 +199,7 @@ def test_layouts_report_runs_on_the_profile_defaults(monkeypatch, data):
     monkeypatch.setattr(m3.Settings, "from_profile", lambda name: settings)
     got = m3.layouts_report("p")
     assert got["meta"]["orders"] == "identity" and got["splits"]["eval"]["default"] == "header"
-    assert set(got["splits"]["eval"]["vs_default"]) == {"decider_chat", "question_first", SHIPPED}
+    assert set(got["splits"]["eval"]["vs_default"]) == {"blurb_header", "decider_chat", "question_first", SHIPPED}
     assert got["meta"][SHIPPED] == "p/decider_chat/calibration.json: T choice 2.000, score 1.000, noul 1.000, b 0.300"
     assert "# p M3 layouts" in layouts_markdown(got)
 

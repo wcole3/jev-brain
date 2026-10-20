@@ -2,7 +2,7 @@ from dataclasses import asdict
 
 import pytest
 
-from gateway.layouts import PROMPTS_DIR, load_layout
+from gateway.layouts import PROMPTS_DIR, load_layout, load_layouts
 from gateway.padding import Padding, newline_token
 from gateway.prompts import image_context
 from tests.helpers import LAYOUTS, STATE, batch_for, img, vision_for
@@ -55,3 +55,10 @@ def test_blurb_decider_image_context(gemma_tok):
     layout = blurb_layout("blurb-decider")
     ctx = image_context(gemma_tok, layout, [img(), STATE], vision_for(gemma_tok))
     assert gemma_tok.decode(ctx.ids).startswith(BLURB.strip() + "\n\nContext:")
+
+
+def test_blurb_header_is_the_experiment_layout_token_for_token():
+    served, experiment = asdict(load_layouts()["blurb_header"]), asdict(blurb_layout("blurb-header"))
+    for d in (served, experiment):
+        del d["name"], d["sha256"]
+    assert served == experiment

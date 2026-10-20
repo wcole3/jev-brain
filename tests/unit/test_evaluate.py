@@ -139,3 +139,24 @@ def test_offline_temperature_overrides_every_type_without_an_offset():
     assert evaluate.arm_suffix(offline_args("--uncalibrated")) == "-uncalibrated"
     with pytest.raises(SystemExit):
         offline_args("--temperature", "2", "--uncalibrated")
+
+
+def test_offline_reads_the_collect_label_file():
+    plain = evaluate.collect_path(offline_args())
+    labelled = evaluate.collect_path(offline_args("--collect-label", "blurb"))
+    assert plain.name == "eval.jsonl.gz" and labelled.name == "eval-blurb.jsonl.gz"
+    assert plain.parent == labelled.parent
+
+
+def test_offline_calibration_reads_the_orders_file(monkeypatch):
+    seen = []
+
+    class Fake:
+        def calibration_path(self, layout, orders=None):
+            seen.append((layout, orders))
+            return "path"
+
+    monkeypatch.setattr(evaluate, "load_calibration", lambda path, expect: path)
+    args = offline_args("--layout", "blurb_header", "--orders", "top_p:0.9+reversed")
+    assert evaluate.offline_calibration(args, Fake(), None) == "path"
+    assert seen == [("blurb_header", "top_p:0.9+reversed")]

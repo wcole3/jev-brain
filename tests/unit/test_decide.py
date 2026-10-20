@@ -294,7 +294,7 @@ async def test_orders_fn_from_collect_disables_the_gate(engine):
     assert all(len(reads) == 2 for reads in r.reads.values())
 
 
-async def test_bad_gated_override_is_a_400(engine):
+async def test_bad_gated_override_is_a_request_error(engine):
     with pytest.raises(RequestError, match="bad option_orders"):
         await decide(engine, request(option_orders="top_p:1.5+reversed"))
     assert engine.readout.calls == []

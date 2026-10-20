@@ -110,6 +110,15 @@ def test_health(client):
     assert body["systemone_max_len"] == s.systemone_max_len
     assert (body["governor_duty"], body["governor_wave"], body["chats_decoding"]) == (s.governor_duty, s.governor_wave, 0)
     assert body["calibration"] == {k: c.as_dict() for k, c in client.app.state.engine.calibration.items()}
+    assert body["other_calibrations"] == {}
+    assert body["option_orders_images"] == s.option_orders_images
+
+
+def test_health_reports_other_calibrations(client):
+    engine = client.app.state.engine
+    engine.other_calibrations["identity"] = {"header": UNCALIBRATED}
+    body = client.get("/health").json()
+    assert body["other_calibrations"] == {"identity": {"header": UNCALIBRATED.as_dict()}}
 
 
 def test_health_reports_images(client):

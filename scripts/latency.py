@@ -68,7 +68,8 @@ def main(args) -> None:
     ]
     meta = {"timestamp": stamp, "repo commit": git_revision(),
             "host": host_info.summary(), "design": split["meta"]["design"], **extra}
-    keys = ("profile", "hf_revision", "prompt_layout", "option_orders", "calibration", "vllm_version")
+    keys = ("profile", "hf_revision", "prompt_layout", "option_orders", "option_orders_images", "calibration",
+            "other_calibrations", "vllm_version")
     meta |= {k: health.get(k) for k in keys}
     table = [
         "| entry | median ms | p95 ms |",

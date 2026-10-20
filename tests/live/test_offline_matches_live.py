@@ -9,7 +9,8 @@ import pytest
 from gateway.answers import answer
 from gateway.app import load_engine, vllm_client
 from gateway.config import Settings
-from gateway.decide import probabilities
+from gateway.decide import calibration_for, probabilities
+from gateway.orders import gate
 from gateway.questions import render_question
 from gateway.schema import Question
 from scripts.collect import collect_one
@@ -46,7 +47,9 @@ def spread(rows: list[dict], n: int) -> list[dict]:
 def drift(engine, health: dict) -> list[str]:
     """Settings where the test's engine differs from the running gateway's."""
     calibration = {k: c.as_dict() for k, c in engine.calibration.items()}
+    others = {o: {k: c.as_dict() for k, c in by.items()} for o, by in engine.other_calibrations.items()}
     ours = {k: getattr(engine.settings, k) for k in SETTINGS} | {"calibration": calibration}
+    ours |= {"other_calibrations": others}
     return [f"{k}: test {v!r}, gateway {health.get(k)!r}" for k, v in ours.items() if v != health.get(k)]
 
 
@@ -55,7 +58,9 @@ def offline_answers(engine, row: dict, rec: dict, layout: str, orders: str) -> d
     out = {}
     for qid, reads in rec["questions"].items():
         q = render_question(Question(**row["questions"][qid]), engine.layouts[layout])
-        out[qid] = answer(q, probabilities(chosen_reads(q, reads, orders), q.type, engine.calibration[layout]))
+        gate_T = calibration_for(engine, layout, "identity").T[q.type] if gate(orders) is not None else None
+        chosen = chosen_reads(q, reads, orders, gate_T)
+        out[qid] = answer(q, probabilities(chosen, q.type, calibration_for(engine, layout, orders)))
     return out
 
 

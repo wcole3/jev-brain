@@ -204,6 +204,7 @@ def create_app(settings: Settings | None = None, transport: httpx.AsyncBaseTrans
             "governor_wave": s.governor_wave,
             "chats_decoding": engine.governor.decoding,
             "calibration": {name: cal.as_dict() for name, cal in engine.calibration.items()},
+            "other_calibrations": {o: {n: c.as_dict() for n, c in by.items()} for o, by in engine.other_calibrations.items()},
             "vllm_version": await vllm_version(request.app.state.client) if ok else None,
             "layouts": sorted(engine.layouts),
         }

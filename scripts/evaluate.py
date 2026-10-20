@@ -2,7 +2,7 @@
 
 usage:
   uv run python scripts/evaluate.py offline --profile P --split S [--layout L] [--orders O]
-      [--uncalibrated | --temperature T] [--allow-partial]
+      [--uncalibrated | --temperature T] [--collect-label L] [--allow-partial]
   uv run python scripts/evaluate.py index --profile P [--gateway URL] [--shards 8] [--ids FILE] [--chat-probe]
       [--run-dir DIR] [--strict]
   uv run python scripts/evaluate.py lengths --profile P [--near 0.5] [--baseline RUN_DIR]
@@ -73,17 +73,23 @@ def offline_calibration(args, s: Settings, expect: dict | None) -> Calibration:
         return UNCALIBRATED
     if args.temperature is not None:
         return Calibration(dict.fromkeys(TYPES, args.temperature), source=f"override T={args.temperature}")
-    return load_calibration(s.calibration_path(args.layout), expect)
+    return load_calibration(s.calibration_path(args.layout, args.orders), expect)
 
 
 def arm_suffix(args) -> str:
     return "-uncalibrated" if args.uncalibrated else f"-T{args.temperature}" if args.temperature is not None else ""
 
 
+def collect_path(args) -> Path:
+    """<split>.jsonl.gz, or <split>-<label>.jsonl.gz with --collect-label (as calibrate.py)."""
+    suffix = f"-{args.collect_label}" if args.collect_label else ""
+    return COLLECT / args.profile / f"{args.split}{suffix}.jsonl.gz"
+
+
 def cmd_offline(args) -> None:
     s = Settings.from_profile(args.profile)
     rows = {r["id"]: r for r in rows_for(args.split)}
-    collected = COLLECT / args.profile / f"{args.split}.jsonl.gz"
+    collected = collect_path(args)
     recs = list(records(collected))
     cal = offline_calibration(args, s, collect_stamp(recs, args.layout))
     if warning := orders_warning(cal, args.orders):
@@ -235,8 +241,8 @@ async def cmd_index(args) -> None:
     outcome = await run_index(args, run, health)
     index_run.merge(sorted(p for p in run.glob("shard-*") if p.is_dir()), run / "merged")
     scores = score(run / "merged")
-    keys = ("profile", "hf_model", "hf_revision", "prompt_layout", "option_orders", "systemone_max_len", "calibration",
-            "vllm_version")
+    keys = ("profile", "hf_model", "hf_revision", "prompt_layout", "option_orders", "option_orders_images",
+            "systemone_max_len", "calibration", "other_calibrations", "vllm_version")
     meta = {"timestamp": now(), "repo commit": git_revision(),
             "host": host_info.summary(), "harness": HARNESS_SHA, "edition": EDITION,
             "run dir": str(run.relative_to(ROOT)), "shards": len(outcome["codes"]), "ids": args.ids or "full suite"}
@@ -316,6 +322,7 @@ def parse_args(argv=None) -> argparse.Namespace:
     cal = o.add_mutually_exclusive_group()
     cal.add_argument("--uncalibrated", action="store_true", help="T = 1 for every type instead of the layout's calibration file")
     cal.add_argument("--temperature", type=float, help="this T for every type (b = 0) instead of the layout's calibration file")
+    o.add_argument("--collect-label", help="read <split>-<label>.jsonl.gz instead of <split>.jsonl.gz")
     o.add_argument("--allow-partial", action="store_true", help="score even when some rows were not collected")
     i = sub.add_parser("index")
     i.add_argument("--profile", required=True)

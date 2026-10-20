@@ -106,6 +106,10 @@ tokens per row. There is no pure/all split and no fallback share: every arm uses
 `screen --arm LABEL --control LABEL`, with today's `--set S` kept as shorthand for `--arm S --control letters`.
 `header` arms read `letters` reads for H, and both arms of a pair must share profile, split rows and env.
 
+As built ([plan](../plans/2026-10-19-layouts-and-blurb.md), "Ruling against the spec"): pairs live in
+`scripts/layout_screen.py --arm A --control C`, and `label_screen.py screen` is unchanged, because round 3's
+screen reads its control from the old full collects while H is the fresh `letters` collects.
+
 ## Stage 3: order grid on survivors (GPU, about 80 min per arm per model)
 
 - **Survivor rule:** a blurb arm (HB or DB) runs the grid unless its screen shows it significantly worse than its
@@ -147,7 +151,8 @@ tokens per row. There is no pure/all split and no fallback share: every arm uses
 - `r3_orders.py --layout decider_chat` reads only `decider_chat` records; `--layout header` output is byte-identical
   to today's on a fixture.
 - `r3_orders.py --calib/--dev` mode: gates use the identity fit; a row-restricted control reads only the given rows.
-- `label_screen.py screen --arm/--control`: pairs on shared rows only; `--set S` matches today's screen output.
+- `layout_screen.py --arm/--control` (built in place of `label_screen.py screen --arm/--control`, see Mechanics):
+  pairs on shared rows only; `label_screen.py screen --set S` output is unchanged.
 
 ## Caveats carried from round 3
 

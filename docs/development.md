@@ -119,6 +119,8 @@ uv run python scripts/layout_screen.py --profile gemma-4-31b --arm blurb-header 
 uv run python scripts/r3_orders.py --profile qwen3.8-27b --layout-file prompts/experiments/blurb-header.toml \
   --calib .cache/collect/qwen3.8-27b/calib-600-blurb-header-all.jsonl.gz \
   --dev .cache/collect/qwen3.8-27b/index-dev-2k-blurb-header-all.jsonl.gz  # order grid on collect files (CPU); --layout NAME alone: a served layout's full collects
+uv run python scripts/r3_orders.py --profile qwen3.8-27b --layout header --calib .cache/collect/qwen3.8-27b/calib.jsonl.gz \
+  --dev .cache/collect/qwen3.8-27b/index-dev.jsonl.gz  # served-layout control: full collects, restricted to the calib-600 / index-dev-2k rows
 ```
 
 - **Data:**

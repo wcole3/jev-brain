@@ -223,9 +223,8 @@ blank line before the first part: before `Questions that will be asked about the
 You will be asked questions about the following context. Answer each with the letter of the best option.
 ```
 
-- **Prefix cost.** The blurb sits in the shared prefix, so a request pays it once, not per question. It adds 21
-  input tokens per image row on both models: image dev's mean goes 719 → 740 on gemma and 1,117 → 1,138 on qwen3.8.
-  Text records hold no token counts.
+- **Prefix cost.** The blurb sits in the shared prefix, so a request pays it once, not per question. It adds
+  exactly 21 input tokens per row on both models, text and image (tables below).
 - **Arms.**
 
   | Arm | Layout | Blurb | Collect label |
@@ -258,6 +257,20 @@ accuracy (%). Flip rate: share of questions whose top answer changes between the
 | DB vs D | blurb on `decider_chat` | qwen3.8-27b | 76.7 | +0.2 [-0.3, +0.8] | -0.0014 [-0.0128, +0.0089] | -0.0270 [-0.0338, -0.0205] | 0.105 → 0.107 |
 | D vs H | layout, no blurb | qwen3.8-27b | 78.2 | -1.5 [-2.2, -0.8] | +0.0014 [-0.0098, +0.0120] | +0.0360 [+0.0266, +0.0447] | 0.098 → 0.105 |
 | DB vs HB | layout, with blurb | qwen3.8-27b | 78.6 | -1.7 [-2.4, -0.9] | -0.0128 [-0.0207, +0.0011] | +0.0287 [+0.0182, +0.0388] | 0.094 → 0.107 |
+
+Mean input tokens per text row, from the collect records' `input_tokens` (shared prefix counted once, padding left
+out, identity and reversed rows both counted), over the rows both arms answered:
+
+| Profile | Split (rows) | H | HB | D | DB |
+|---|---|---|---|---|---|
+| gemma-4-31b | calib-600 (600) | 3,029.5 | 3,050.5 | 3,006.0 | 3,027.0 |
+| gemma-4-31b | index-dev-2k (1,994) | 1,519.1 | 1,540.1 | 1,365.9 | 1,386.9 |
+| qwen3.8-27b | calib-600 (590) | 1,721.4 | 1,742.4 | 1,698.1 | 1,719.1 |
+| qwen3.8-27b | index-dev-2k (1,994) | 1,489.4 | 1,510.4 | 1,337.6 | 1,358.6 |
+
+- The blurb adds exactly 21 tokens to every row (HB − H and DB − D: min = max = 21).
+- `decider_chat` drops the question list: −23 tokens per row on calib-600, −152 to −153 on index-dev-2k. The
+  index-dev-2k mean is pulled by 38 rows with long question lists (down to −19,813); the median is −41 on both models.
 
 Image dev, Δ index with `vision_compare`'s CI. Agreement is the share of rows with the same top answer.
 

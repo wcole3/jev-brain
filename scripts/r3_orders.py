@@ -177,7 +177,7 @@ def run(profile: str, layout: str = LAYOUT, pmap=map) -> dict:
 
 
 def run_files(profile: str, layout: Layout, calib: Path, dev: Path, pmap=map) -> dict:
-    """Stage 2: the layout's records of two collect files on the calib-600 and index-dev-2k rows, own identity gate."""
+    """Stage 3: the layout's records of two collect files on the calib-600 and index-dev-2k rows, own identity gate."""
     start, paths = time.monotonic(), dict(zip(FILE_SPLITS, (calib, dev), strict=True))
     recs = {split: [r for r in records(path) if r["layout"] == layout.name] for split, path in paths.items()}
     if empty := [str(paths[split]) for split, rs in recs.items() if not rs]:

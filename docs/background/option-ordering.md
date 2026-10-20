@@ -559,11 +559,15 @@ The owner ran the grid on HB (`header` + blurb) only, on both models (2026-10-19
 - **Like-for-like controls.** `header` and `decider_chat` rerun in the same mode on the old full collects, restricted
   to the same rows. The blurb's effect on the grid is HB against the `header` control, not against §8 or the
   full-split `decider_chat` tables above.
+  - Caveat: the controls come from the M3-era full collects (older session; gemma with `warm_up` off), while HB ran
+    later (gemma with `warm_up` prefix; qwen3.8 `row` in both). Neither `warm_up` nor max len is in the calibration
+    stamp, so nothing refuses the mix. HB minus control spreads only ±0.2 points over all arms.
 - **Max len.** gemma's three grids ran at systemone_max_len 32,768, as all earlier gemma text grids did (M3, round
   3, the full-split `decider_chat` grid); gemma's profile and the round 4 screens use 65,536.
   - The first HB collect at 65,536 timed out (`httpx.ReadTimeout`): long entity-alignment rows read under every
     order exceed gemma's KV at concurrency 8.
-  - Measured effect of the cap: index-dev-2k rows are identical under both; the calib-600 fit drops 10 of 600 rows.
+  - Measured effect of the cap: every index-dev-2k row (1,994 of 1,994) is read under both caps, so the scored rows
+    are the same; the calib-600 fit drops 10 of 600 rows.
   - qwen3.8 uses 32,768 everywhere.
 - **Fits.** gemma's score T fits to 19.999, at [`fit.py`](../../scripts/fit.py)'s upper bound of 20, in the
   `header` and HB runs (each summary's Fits table), as in round 3 (§8). index-dev-2k has no score questions, so no
@@ -625,7 +629,9 @@ qwen3.8
 | min_n 8 reversed | 1.18 | +0.5 [+0.1, +0.8] | +0.4 [+0.1, +0.8] | +0.5 [+0.2, +0.8] | +0.007 [-0.004, +0.013] | +0.003 [-0.003, +0.009] | +0.003 [-0.007, +0.010] |
 | aleria half | 2.12 / 2.12 / 2.14 | +0.2 [-0.3, +0.7] | +0.2 [-0.4, +0.8] | -0.4 [-1.0, +0.2] | +0.012 [-0.000, +0.020] | -0.001 [-0.007, +0.009] | +0.004 [-0.006, +0.017] |
 
-- **Identity.** gemma 80.2 (`header`), 80.5 (HB), 76.6 (`decider_chat`); qwen3.8 78.2, 78.5, 76.7.
+- **Identity.** gemma 80.2 (`header`), 80.5 (HB), 76.6 (`decider_chat`); qwen3.8 78.2, 78.5, 76.7. HB's 80.5 / 78.5
+  differ from the screen's 80.6 / 78.6 because they are separate collects: bf16 batching noise (net 5 and 4 of
+  3,728 questions).
 - **The blurb barely moves the grid.** Over all 45 arms, HB's Δ accuracy minus the `header` control's runs from −0.21
   to +0.11 points on gemma and −0.16 to +0.16 on qwen3.8. Arms with a CI above 0: gemma 15 (`header`), 11 (HB) and
   6 (`decider_chat`) of 45; qwen3.8 18, 13 and 8.

@@ -1,2 +1,6 @@
-# qwen3.8-27b box queue: `name: command` lines run in order by queue.sh; queues are written per campaign.
+# qwen3.8-27b box queue: blurb_header default + round 4 orders, stage 1 collect, 2026-10-20.
+# Stage 2 (restack, latency, index) is appended after calibration.
 stack: bash scripts/remote/stack.sh up qwen3.8-27b
+live-images: bash scripts/remote/stack.sh up qwen3.8-27b && uv run pytest -m live tests/live/test_image_decisions.py -v
+collect-calib: bash scripts/remote/stack.sh up qwen3.8-27b && uv run python scripts/collect.py --profile qwen3.8-27b --split calib --layouts blurb_header --orders identity+reversed --label blurb
+collect-eval: bash scripts/remote/stack.sh up qwen3.8-27b && uv run python scripts/collect.py --profile qwen3.8-27b --split eval --layouts blurb_header --orders identity+reversed --label blurb

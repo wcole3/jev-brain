@@ -7,6 +7,8 @@ from pathlib import Path
 
 import pytest
 
+from gateway.config import read_env_file
+
 REMOTE = Path(__file__).parents[2] / "scripts" / "remote"
 JOB_FILES = sorted((REMOTE / "jobs").glob("*.txt"))
 
@@ -23,13 +25,11 @@ def test_scripts_parse(script):
     subprocess.run(["bash", "-n", str(script)], check=True)
 
 
-# Box queues: qwen3.6-27b index-dev (DS-031); qwen3.8-27b-fp8 calib + eval (DS-005); quantized latency + full Index
-# (DS-030); gemma-4-31b and qwen3.8-27b only bring the stack up until a campaign writes their queue.
+# Box queues: stage 1 of the blurb_header default + round 4 orders campaign (2026-10-20); stage 2 is appended later.
 JOBS = {
-    "qwen3.8-27b-fp8": ("collect-calib", "collect-eval"),
-    "qwen3.6-27b": ("collect-index-dev",),
-    **dict.fromkeys(["gemma-4-31b", "qwen3.8-27b"], ()),
-    **dict.fromkeys(["gemma-4-31b-fp8", "qwen3.6-27b-fp8", "qwen3.8-27b-nvfp4"], ("latency", "index")),
+    profile: ("collect-calib", "collect-eval")
+    for profile in ["gemma-4-31b", "gemma-4-31b-fp8", "qwen3.8-27b", "qwen3.8-27b-fp8", "qwen3.8-27b-nvfp4",
+                    "qwen3.6-27b", "qwen3.6-27b-fp8"]
 }
 
 
@@ -43,7 +43,8 @@ def test_every_profile_has_a_job_file():
 
 @pytest.mark.parametrize("path", JOB_FILES, ids=lambda p: p.name)
 def test_job_files_parse_with_unique_names_starting_at_stack(path):
-    assert job_names(path) == ["stack", *JOBS[path.stem]]
+    images = ["live-images"] if "live-images" in job_names(path) else []
+    assert job_names(path) == ["stack", *images, *JOBS[path.stem]]
     assert jobs_of(path)["stack"] == f"bash scripts/remote/stack.sh up {path.stem}"
 
 
@@ -52,7 +53,19 @@ def test_collect_jobs_run_their_split_for_their_profile(path):
     for name, command in jobs_of(path).items():
         if name.startswith("collect-"):
             split = name.removeprefix("collect-")
-            assert command.endswith(f"scripts/collect.py --profile {path.stem} --split {split}")
+            tail = f"scripts/collect.py --profile {path.stem} --split {split} --layouts blurb_header"
+            assert command.endswith(f"{tail} --orders identity+reversed --label blurb")
+
+
+@pytest.mark.parametrize("path", JOB_FILES, ids=lambda p: p.name)
+def test_vision_profiles_check_images_before_collecting(path):
+    names = job_names(path)
+    vision = read_env_file(REMOTE.parents[1] / "profiles" / f"{path.stem}.env").get("SYSTEMONE_IMAGES") == "1"
+    assert ("live-images" in names) == vision
+    if vision:
+        assert names.index("live-images") < names.index("collect-calib")
+        stack = f"bash scripts/remote/stack.sh up {path.stem}"
+        assert jobs_of(path)["live-images"] == f"{stack} && uv run pytest -m live tests/live/test_image_decisions.py -v"
 
 
 @pytest.mark.parametrize("path", JOB_FILES, ids=lambda p: p.name)
@@ -64,7 +77,7 @@ def test_index_jobs_resume_the_box_run_tag_and_fail_on_holes(path):
             tag = "" if name == "index" else name.removeprefix("index-") + "-"
             assert command.endswith(f"--run-dir .cache/index-runs/{path.stem}/{tag}$(cat .cache/remote/run_tag) --strict")
         if name.split("-")[0] == "latency":
-            assert command.endswith(f"scripts/latency.py --profile {path.stem}")
+            assert f"scripts/latency.py --profile {path.stem}" in command
 
 
 def test_job_commands_name_only_their_own_profile():

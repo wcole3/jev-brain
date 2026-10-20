@@ -217,6 +217,33 @@ Scripts never destroy. After the final pull and the commit, the owner runs:
 vastai destroy instance ID
 ```
 
+## Two-stage campaign: collect, calibrate, latency + Index
+
+Used for the blurb_header default + round 4 orders campaign (2026-10-20). All 7 boxes run in
+parallel; renting and destroying need the owner's ok. Calibration runs here, on CPU, between
+the stages.
+
+**Stage 1: collect.** Each job file holds `stack`, `live-images` (the 5 vision profiles only),
+`collect-calib` and `collect-eval`. The collects use `--layouts blurb_header --orders identity+reversed
+--label blurb`, so they write `calib-blurb.jsonl.gz` and `eval-blurb.jsonl.gz`.
+
+1. Push each box; add `--vision` for the 5 vision profiles (gemma-4-31b, gemma-4-31b-fp8,
+   qwen3.8-27b, qwen3.8-27b-fp8, qwen3.8-27b-nvfp4). qwen3.6 boxes push without it.
+2. Pull in a loop until `QUEUE_DONE`: `pull.sh ssh://... PROFILE --loop 1800`.
+3. Calibrate locally per profile, always with `--layouts blurb_header --collect-label blurb`
+   (`scripts/calibrate.py --profile P --orders SETTING ...`):
+   - gemma: `identity`, then `top_p:0.9+reversed`;
+   - qwen3.8: `min_n:4+reversed`;
+   - qwen3.6: `identity` (one order, answers stay bit-identical).
+4. The owner commits the calibration files and results by explicit path.
+
+**Stage 2: appended after calibration.** The calibrated files must be on the box first. Append
+these lines to each job file (they are written after calibration, not now): `restack`,
+`latency-before` (`--layout header --option-orders identity`), `latency-after`, `vision-setup`,
+`vision-latency` (`--sample 300 --workers 1`), `index`, `vision-full`. Then re-push to the same
+box (`push.sh ... PROFILE [--vision]`). The queue skips done jobs and runs the new ones; running
+jobs keep their old code (see Push).
+
 ## What runs
 
 `queue.sh` runs the job file's `name: command` lines in order from the repo root.

@@ -1,5 +1,6 @@
-# gemma-4-31b-fp8 box queue: one `name: command` per line, run in order from the repo root by queue.sh.
-# Latency on an idle stack, then the full Decision Index 0.3 with the stage 2 calibration (DS-030).
+# gemma-4-31b-fp8 box queue: blurb_header default + round 4 orders, stage 1 collect, 2026-10-20.
+# Stage 2 (restack, latency, index) is appended after calibration.
 stack: bash scripts/remote/stack.sh up gemma-4-31b-fp8
-latency: bash scripts/remote/stack.sh up gemma-4-31b-fp8 && uv run python scripts/latency.py --profile gemma-4-31b-fp8
-index: bash scripts/remote/stack.sh up gemma-4-31b-fp8 && uv run python scripts/evaluate.py index --profile gemma-4-31b-fp8 --shards 4 --run-dir .cache/index-runs/gemma-4-31b-fp8/$(cat .cache/remote/run_tag) --strict
+live-images: bash scripts/remote/stack.sh up gemma-4-31b-fp8 && uv run pytest -m live tests/live/test_image_decisions.py -v
+collect-calib: bash scripts/remote/stack.sh up gemma-4-31b-fp8 && uv run python scripts/collect.py --profile gemma-4-31b-fp8 --split calib --layouts blurb_header --orders identity+reversed --label blurb
+collect-eval: bash scripts/remote/stack.sh up gemma-4-31b-fp8 && uv run python scripts/collect.py --profile gemma-4-31b-fp8 --split eval --layouts blurb_header --orders identity+reversed --label blurb

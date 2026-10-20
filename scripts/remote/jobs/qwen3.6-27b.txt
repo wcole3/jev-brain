@@ -1,4 +1,5 @@
-# qwen3.6-27b box queue: one `name: command` per line, run in order from the repo root by queue.sh.
-# DS-031 recut index-dev on 0.3; recollected with DS-005 stage 2.
+# qwen3.6-27b box queue: blurb_header default + round 4 orders, stage 1 collect, 2026-10-20.
+# Stage 2 (restack, latency, index) is appended after calibration.
 stack: bash scripts/remote/stack.sh up qwen3.6-27b
-collect-index-dev: bash scripts/remote/stack.sh up qwen3.6-27b && uv run python scripts/collect.py --profile qwen3.6-27b --split index-dev
+collect-calib: bash scripts/remote/stack.sh up qwen3.6-27b && uv run python scripts/collect.py --profile qwen3.6-27b --split calib --layouts blurb_header --orders identity+reversed --label blurb
+collect-eval: bash scripts/remote/stack.sh up qwen3.6-27b && uv run python scripts/collect.py --profile qwen3.6-27b --split eval --layouts blurb_header --orders identity+reversed --label blurb

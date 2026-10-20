@@ -1,0 +1,74 @@
+{
+  "status": "ok",
+  "profile": "qwen3.8-27b-nvfp4",
+  "served_model": "qwen3.8-27b-nvfp4",
+  "hf_model": "RadixArk/Qwen3.8-27B-NVFP4",
+  "hf_revision": "319f741cce68d7914884900c138a1fbb70a42f30",
+  "prompt_layout": "blurb_header",
+  "option_orders": "min_n:4+reversed",
+  "option_orders_images": "",
+  "prefix_pad": "front",
+  "prefix_block": 800,
+  "prefix_pad_always": false,
+  "systemone_max_len": 32768,
+  "systemone_priority": 1,
+  "systemone_images": true,
+  "mm_processor_kwargs": {
+    "max_pixels": 1638400
+  },
+  "warm_min_prefix_tokens": 800,
+  "warm_up": "row",
+  "governor_duty": 0.6,
+  "governor_wave": 8,
+  "chats_decoding": 0,
+  "calibration": {
+    "blurb_header": {
+      "T": {
+        "choice": 1.6807640584736696,
+        "score": 1.9672694770276271,
+        "noul": 1.1388145341309106
+      },
+      "b": 0.0,
+      "source": "qwen3.8-27b-nvfp4/blurb_header/calibration.json",
+      "orders": "min_n:4+reversed"
+    },
+    "decider_chat": {
+      "T": {
+        "choice": 1.534912409014274,
+        "score": 1.6956928316925777,
+        "noul": 0.9175902098440983
+      },
+      "b": 0.0,
+      "source": "qwen3.8-27b-nvfp4/decider_chat/calibration.json",
+      "orders": "identity"
+    },
+    "header": {
+      "T": {
+        "choice": 1.5971415409111187,
+        "score": 1.829572794304793,
+        "noul": 0.9633966437867898
+      },
+      "b": 0.0,
+      "source": "qwen3.8-27b-nvfp4/header/calibration.json",
+      "orders": "identity"
+    },
+    "question_first": {
+      "T": {
+        "choice": 1.3876276536831984,
+        "score": 1.7744416557968425,
+        "noul": 0.9417765210190306
+      },
+      "b": 0.0,
+      "source": "qwen3.8-27b-nvfp4/question_first/calibration.json",
+      "orders": "identity"
+    }
+  },
+  "other_calibrations": {},
+  "vllm_version": "0.30.0",
+  "layouts": [
+    "blurb_header",
+    "decider_chat",
+    "header",
+    "question_first"
+  ]
+}

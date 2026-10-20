@@ -85,14 +85,19 @@ profiles answer exactly as before. `blend` (`mean-prob`) stays for `scripts/orde
   `OPTION_ORDERS_IMAGES` is `identity` and `OPTION_ORDERS` is not. gemma needs it for both reasons.
 - For any other setting, the file name is the setting, with each `:` and `+` replaced by `-`. No profile needs one
   yet.
-- Startup refuses a file whose `fit.orders` differs from the setting it serves. Today a mismatch only warns. A
-  request's `option_orders` override still only warns.
+- Startup refuses the served layout's (`PROMPT_LAYOUT`) file when its `fit.orders` differs from the setting it
+  serves. Other layouts, and a request's `option_orders` override, still only warn.
+- A setting with no `calibration-<setting>.json` falls back to `calibration.json`, so `header`'s identity fit still
+  serves the latency A/B's `--layout header --option-orders identity`.
 - Images use the text fit for their setting, as every round has done.
 
 `scripts/calibrate.py`:
 
 - `--orders X` fits under `mean-logprob` and writes the file for X. A gated X reads its gate T from the identity
   file, which must already exist.
+- `collect.py` refuses non-identity profiles today (its pad mirrors one identity row per question). It now pads as
+  the profile's live text setting would: one row per order `option_orders` returns (identity only for `top_p`,
+  whose second pass reuses the first pass's pad decision).
 - New `--collect-label L` reads `<split>-L.jsonl.gz`, so the reduced-orders collect below can be used.
 - `scripts/offline.py` `chosen_reads` learns both gates, so `evaluate.py offline` scores the shipped settings.
 
@@ -116,7 +121,7 @@ Fits per profile:
 
 ## 6. Runs
 
-One vast box per profile, 7 in all. The owner decides how many to rent at once.
+One vast box per profile, all 7 rented and run in parallel (owner, 2026-10-20).
 
 **Stage 1, collect** (`scripts/remote/jobs/<profile>.txt`):
 
@@ -126,8 +131,14 @@ One vast box per profile, 7 in all. The owner decides how many to rent at once.
    blurb`. Those two orders cover every setting in section 2.
 3. Pull. Locally: `calibrate.py` per section 4. The owner reviews and commits the calibration files.
 
-**Stage 2, Index.** Push the committed tree to the same box; the queue runs:
+**Stage 2, latency and Index.** Push the committed tree to the same box; the queue restarts the stack (new
+calibrations), then runs:
 
+- latency A/B on the same box, idle stack, before the Index: `latency.py --profile P --layout header
+  --option-orders identity` (old defaults; the quant profiles keep vision on) and `latency.py --profile P` (new
+  defaults), all 7;
+- image latency: `vision_run.py --sample 300 --workers 1` (new defaults only; the kit sends its own requests, so no
+  override). Compared against the 2026-10-16 bf16 runs; the quants have no earlier image baseline;
 - text: `evaluate.py index --profile P --shards 4 --strict` (all 7);
 - image: `vision-setup`, then `vision_run.py --profile P` on the full suite (the 5 gemma and qwen3.8 profiles).
 
@@ -150,6 +161,7 @@ before the push. `docs/remote-gpu.md` gets the two-stage flow.
 
 ## Out of scope
 
-- Latency, JevBench and holdout runs for the new settings.
+- JevBench and holdout runs for the new settings.
+- A latency threshold: the owner judges the A/B numbers.
 - Any orders for qwen3.6 other than `identity`.
 - Refits at `prefix_block` 784.

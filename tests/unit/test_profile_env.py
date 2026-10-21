@@ -28,8 +28,8 @@ def test_override_without_equals_exits(tmp_path, monkeypatch):
 DEFAULTS = [
     ("gemma-4-31b", "top_p:0.9+reversed", "identity"),
     ("gemma-4-31b-fp8", "top_p:0.9+reversed", "identity"),
-    ("gemma-4-12b", "top_p:0.9+reversed", "identity"),
-    ("gemma-4-12b-qat", "top_p:0.9+reversed", "identity"),
+    ("gemma-4-12b", "identity", ""),
+    ("gemma-4-12b-qat", "identity", ""),
     ("qwen3.8-27b", "min_n:4+reversed", ""),
     ("qwen3.8-27b-fp8", "min_n:4+reversed", ""),
     ("qwen3.8-27b-nvfp4", "min_n:4+reversed", ""),

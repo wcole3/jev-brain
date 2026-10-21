@@ -20,7 +20,7 @@ Decision Index scores of the model behind each profile, as served by this repo.
 | Profile | Text Index (0.3 public) | Vision Index (public) | Latency ms (median / mean / p80) | Board |
 |---|---|---|---|---|
 | `gemma-4-31b` | 61.69 | 73.70 | 92.7 / 280.4 / 299.8 | [Full 65.2 (0.4)](https://multimodalart-jev-decision-index.static.hf.space/index.html?model=jev-brain-gemma-4-31b) |
-| `gemma-4-31b-fp8` | 62.82 | — | 100.9 / 274.1 / 359.5 | — |
+| `gemma-4-31b-fp8` | 62.82 | 73.96 | 100.9 / 274.1 / 359.5 | — |
 | `qwen3.6-27b` | 56.51 | — (text only) | 111.5 / 328.8 / 444.6 | — |
 | `qwen3.6-27b-fp8` | 56.78 | — (text only) | 67.8 / 176.2 / 234.9 | — |
 | `qwen3.8-27b` | 56.60 | 70.55 | 82.6 / 240.2 / 348.3 | — |

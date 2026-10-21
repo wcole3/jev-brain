@@ -1,4 +1,5 @@
 """Decision Index 0.3 board entries we compare against (snapshot 2026-10-09, the Space's data/index.json).
+The three Gemma 4 12B entries come from the 2026-10-20 snapshot.
 index is the 0.3 public index; full adds the maintainers' private parts, so only board entries have it."""
 
 BOARD = {
@@ -14,15 +15,21 @@ BOARD = {
                       "median_ms": 108.3},
     "jevfire-uncapped": {"name": "Jevfire Qwen3.8-27B", "index": 49.8, "full": 45.55, "ece": 0.0521,
                          "median_ms": 89.6},
+    "ajev-lora7": {"name": "AJev lora7 (Gemma 4 12B)", "index": 55.17, "full": 49.11, "ece": 0.0823,
+                   "median_ms": 69.1},
+    "decisio-0.4.0-gemma-4-12b": {"name": "decisio 0.4.0 (Gemma 4 12B)", "index": 49.72, "full": 47.93, "ece": 0.1031,
+                                  "median_ms": 37.8},
+    "winnow-12b-q8": {"name": "Winnow-12B", "index": 50.66, "full": 47.07, "ece": 0.1679, "median_ms": 72.5},
 }
 BF16_MATCHES = {
     "qwen3.6-27b": ["decider-chat-qwen3.6-27b"],
     "gemma-4-31b": ["decider-chat-gemma4-31b"],
     "qwen3.8-27b": ["simple-jev-qwen3.8-27b", "reflex-27b-v2", "jevfire-uncapped"],
+    "gemma-4-12b": ["ajev-lora7", "decisio-0.4.0-gemma-4-12b", "winnow-12b-q8"],
 }
 # Quantized profiles (DS-005) compare against the same board entries as their bf16 base.
 QUANTIZED = {"qwen3.6-27b-fp8": "qwen3.6-27b", "qwen3.8-27b-fp8": "qwen3.8-27b", "qwen3.8-27b-nvfp4": "qwen3.8-27b",
-             "gemma-4-31b-fp8": "gemma-4-31b"}
+             "gemma-4-31b-fp8": "gemma-4-31b", "gemma-4-12b-qat": "gemma-4-12b"}
 MATCHES = BF16_MATCHES | {name: BF16_MATCHES[base] for name, base in QUANTIZED.items()}
 PARITY = {"qwen3.6-27b": ("decider-chat-qwen3.6-27b", 1.5)}  # same prompt token for token as decider
 

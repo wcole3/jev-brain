@@ -3,7 +3,7 @@ from scripts import board
 
 def test_every_profile_has_a_matching_entry_and_qwen36_has_the_parity_gate():
     assert set(board.MATCHES) == {"qwen3.6-27b", "qwen3.8-27b", "gemma-4-31b", "qwen3.6-27b-fp8", "qwen3.8-27b-fp8",
-                                  "qwen3.8-27b-nvfp4", "gemma-4-31b-fp8"}
+                                  "qwen3.8-27b-nvfp4", "gemma-4-31b-fp8", "gemma-4-12b", "gemma-4-12b-qat"}
     assert all(e in board.BOARD for entries in board.MATCHES.values() for e in entries)
     assert board.PARITY["qwen3.6-27b"] == ("decider-chat-qwen3.6-27b", 1.5)
 
@@ -44,7 +44,7 @@ def test_quantized_profiles_compare_against_their_bf16_matches():
 
 
 def test_a_profile_without_a_board_twin_compares_against_jev_only():
-    lines = board.comparison("gemma-4-12b-qat", {"index": 50.0, "ece": 0.05, "median_ms": 90.0, "coverage": 1.0})
+    lines = board.comparison("unlisted-profile", {"index": 50.0, "ece": 0.05, "median_ms": 90.0, "coverage": 1.0})
     rows = [line for line in lines if line.startswith("| ") and "entry" not in line]
-    assert rows[0].startswith("| **ours: gemma-4-12b-qat** | 50.00")
+    assert rows[0].startswith("| **ours: unlisted-profile** | 50.00")
     assert len(rows) == 2 and board.BOARD["jev"]["name"] in rows[1]

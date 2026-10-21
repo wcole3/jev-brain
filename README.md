@@ -9,8 +9,8 @@ One GPU serves OpenAI-style chat (`POST /v1/chat/completions`) and Jev-compatibl
 (`POST /v1/systemone`) at the same time, from one loaded model. A small gateway sits in front
 of a single vLLM process.
 
-There are seven ready profiles across Gemma 4 31B, Qwen3.6 27B and Qwen3.8 27B, in bf16, FP8
-and NVFP4. One profile runs at a time; switch with `make up PROFILE=...`. The gemma and
+There are nine ready profiles across Gemma 4 31B and 12B, Qwen3.6 27B and Qwen3.8 27B, in
+bf16, FP8, NVFP4 and int4 (QAT). One profile runs at a time; switch with `make up PROFILE=...`. The gemma and
 qwen3.8 profiles take text and image decisions.
 
 ## Scores
@@ -21,6 +21,8 @@ Decision Index scores of the model behind each profile, as served by this repo.
 |---|---|---|---|---|
 | `gemma-4-31b` | 62.98 | 74.18 | 124.8 / 361.1 / 504.9 | [Full 65.2 (0.4), earlier run](https://multimodalart-jev-decision-index.static.hf.space/index.html?model=jev-brain-gemma-4-31b) |
 | `gemma-4-31b-fp8` | 62.82 | 73.96 | 100.9 / 274.1 / 359.5 | — |
+| `gemma-4-12b` | 53.58 | 67.56 | 83.1 / 182.4 / 220.6 | — |
+| `gemma-4-12b-qat` | 51.26 | 66.54 | 82.2 / 181.1 / 221.0 | — |
 | `qwen3.6-27b` | 56.82 | — (text only) | 131.5 / 339.6 / 446.7 | — |
 | `qwen3.6-27b-fp8` | 56.78 | — (text only) | 67.8 / 176.2 / 234.9 | — |
 | `qwen3.8-27b` | 57.64 | 71.13 | 155.8 / 328.6 / 410.9 | — |
@@ -29,8 +31,9 @@ Decision Index scores of the model behind each profile, as served by this repo.
 
 - All rows are our full runs of 2026-10-20/21 with the current defaults (`blurb_header`, round 4
   option orders). The board entry (Full 65.2, public 61.69) is an earlier gemma-4-31b run (PR #193).
-- Latency is the board's design (latency-v1, one client, text decisions) on one rented RTX PRO
-  6000 per profile, 2026-10-20, under the same layout and orders as the row's Index run.
+- Latency is the board's design (latency-v1, one client, text decisions). The 12B rows are local
+  runs on our WSL workstation (2026-10-21); the other rows ran on one rented RTX PRO 6000 per
+  profile, 2026-10-20, under the same layout and orders as the row's Index run.
   Every profile passes the board's gate (median, mean and p80 each ≤ 1,000 ms). See
   [Results](#results).
 
@@ -86,9 +89,9 @@ docker compose --env-file profiles/gemma-4-31b.env up -d --build --wait   # swit
 
 ## Pick a model
 
-Seven profiles, none of them a default: pick one with `PROFILE=`. Quantized profiles carry
+Nine profiles, none of them a default: pick one with `PROFILE=`. Quantized profiles carry
 their own calibration (DS-005 Stage 2). Decisions are capped at 32,768 tokens (`SYSTEMONE_MAX_LEN`),
-except `gemma-4-31b` at 65,536 so every Decision Index request fits; the chat context differs.
+except the Gemma profiles (31B and 12B) at 65,536 so every Decision Index request fits; the chat context differs.
 
 | Profile | Weights (HF repo @ revision) | Precision (weights / KV cache) | Weights on disk | Chat context | Best for |
 |---|---|---|---|---|---|
@@ -99,6 +102,8 @@ except `gemma-4-31b` at 65,536 so every Decision Index request fits; the chat co
 | `qwen3.8-27b-fp8` | `Qwen/Qwen3.8-27B-FP8` @ 017b9c7a | FP8 / bf16 | 29 GB | 262,144 | Decision throughput (~1.4x), least drift |
 | `qwen3.8-27b-nvfp4` | `RadixArk/Qwen3.8-27B-NVFP4` @ 319f741c | NVFP4 MLPs + FP8 attention / bf16 | 21 GB | 262,144 | Chat speed (~2.1x); most drift |
 | `gemma-4-31b-fp8` | `RedHatAI/gemma-4-31B-it-FP8-block` @ d7242548 | FP8 / fp8 (`fp8_per_token_head`) | 32 GB | 65,536 | KV headroom: 3.3x bf16's KV tokens |
+| `gemma-4-12b` | `google/gemma-4-12B-it` @ 707f0a3b | bf16 / bf16 | 23.9 GB | 65,536 | Lower tier: about half the 31B's mean latency |
+| `gemma-4-12b-qat` | `google/gemma-4-12B-it-qat-w4a16-ct` @ 1d2c2d7f | int4 W4A16 QAT / bf16 | 10.3 GB | 65,536 | Fastest chat (~4× the 31B), int4 QAT; −2.3 text points vs bf16 |
 
 The trade-offs behind the last column are in [Quantization trade-offs](#quantization-trade-offs).
 
@@ -129,6 +134,10 @@ flags. Calibration files are in `data/<profile>/blurb_header/`.
 - **gemma-4-31b-fp8:** base `gemma-4-31b`; vision on, video off, retention interval 32, no
   MTP. FP8 block weights plus `--kv-cache-dtype fp8_per_token_head` (1.55x KV tokens, no query
   cast; DS-005). DeepGEMM off.
+- **gemma-4-12b:** vision on (encoder-free, `gemma4_unified`), `--prefix-cache-retention-interval 64`
+  (its scheduler block is 64), bf16 KV, no MTP. Chat is ~49 tok/s single-stream (31B bf16 ~24).
+- **gemma-4-12b-qat:** base `gemma-4-12b`; int4 W4A16 QAT weights (compressed-tensors, run by
+  the Marlin kernel). Chat is ~103 tok/s single-stream.
 
 </details>
 
@@ -170,8 +179,8 @@ The Decision Index kit's `http` engine takes `base_url=http://127.0.0.1:9000` an
 
 ### Images
 
-Profiles with `SYSTEMONE_IMAGES=1` (gemma-4-31b, gemma-4-31b-fp8, qwen3.8-27b,
-qwen3.8-27b-fp8 and qwen3.8-27b-nvfp4) answer questions about images. Both formats give the
+Profiles with `SYSTEMONE_IMAGES=1` (gemma-4-31b, gemma-4-31b-fp8, gemma-4-12b,
+gemma-4-12b-qat, qwen3.8-27b, qwen3.8-27b-fp8 and qwen3.8-27b-nvfp4) answer questions about images. Both formats give the
 same prompt, with the images inside `Context:`:
 
 - top-level `"images": ["data:image/png;base64,..."]`, shown before the `state`;
@@ -218,6 +227,10 @@ ECE and latency are measured differently from the board's; see the run summaries
 | simple-jev · Qwen3.8-27B | 56.05 | 51.79 | 0.113 | board | 373.0 | n/a | | | | |
 | reflex Qwen3.8-27B-FP8 (wide choice) | 52.27 | 51.40 | 0.024 | board | 108.3 | n/a | | | | |
 | Jevfire Qwen3.8-27B | 49.80 | 45.55 | 0.052 | board | 89.6 | n/a | | | | |
+| **gemma-4-12b** | 53.58 | — | 0.060 | 1.000 | 83.1 | 465.6 | blurb_header / identity | T=4.035 | blurb_header / identity / v2 | 2026-10-21T115907Z-latency ‡ |
+| AJev lora7 (Gemma 4 12B) | 55.17 | 49.11 | 0.082 | board | 69.1 | n/a | | | | |
+| decisio 0.4.0 (Gemma 4 12B) | 49.72 | 47.93 | 0.103 | board | 37.8 | n/a | | | | |
+| Winnow-12B | 50.66 | 47.07 | 0.168 | board | 72.5 | n/a | | | | |
 | **qwen3.6-27b-fp8** | 56.78 | — | 0.049 | 1.000 | 67.8 | 485.6 | blurb_header / identity | T=1.61/2.04/1.26 | blurb_header / identity / v1 | 2026-10-20T200156Z-latency |
 | Decider chat · Qwen3.6-27B | 51.57 | 51.25 | 0.021 | board | 83.6 | n/a | | | | |
 | **qwen3.8-27b-fp8** | 57.58 | — | 0.024 | 1.000 | 114.5 | 601.3 | blurb_header / min_n:4+reversed | T=1.59/1/1.11, b=0.14 | blurb_header / min_n:4+reversed / v1 | 2026-10-20T165750Z-latency |
@@ -230,8 +243,13 @@ ECE and latency are measured differently from the board's; see the run summaries
 | Jevfire Qwen3.8-27B | 49.80 | 45.55 | 0.052 | board | 89.6 | n/a | | | | |
 | **gemma-4-31b-fp8** | 62.82 | — | 0.116 | 1.000 | 100.9 | 696.4 | blurb_header / top_p:0.9+reversed | T=4.06/5.31/6.66 | blurb_header / top_p:0.9+reversed / v1 | 2026-10-20T165623Z-latency |
 | Decider chat · Gemma-4-31B | 57.79 | 57.62 | 0.047 | board | 108.5 | n/a | | | | |
+| **gemma-4-12b-qat** | 51.26 | — | 0.047 | 1.000 | 82.2 | 450.3 | blurb_header / identity | T=3.01/12.9/2.24 | blurb_header / identity / v2 | 2026-10-21T115055Z-latency ‡ |
+| AJev lora7 (Gemma 4 12B) | 55.17 | 49.11 | 0.082 | board | 69.1 | n/a | | | | |
+| decisio 0.4.0 (Gemma 4 12B) | 49.72 | 47.93 | 0.103 | board | 37.8 | n/a | | | | |
+| Winnow-12B | 50.66 | 47.07 | 0.168 | board | 72.5 | n/a | | | | |
 
 - Calibration T is listed as choice/score/noul; b is the noul yes-offset.
+- ‡ the latency run's layout, orders or calibration differ from the Index run's.
 <!-- /phase2-table -->
 
 <details>
@@ -240,7 +258,7 @@ ECE and latency are measured differently from the board's; see the run summaries
 - **Latency** is the latency-v1 design with one sequential client, run on 2026-10-20 on the same
   rented RTX PRO 6000 as each profile's Index run (one box per profile, 600 W except
   qwen3.8-27b-nvfp4 at 500 W). The board's gate is median, mean and p80 each ≤ 1,000 ms; every
-  profile passes. Each box also measured the old defaults (`header`, `identity`) for an A/B; both
+  profile passes. The 12B runs (2026-10-21) are local on the WSL workstation at 600 W. Each box also measured the old defaults (`header`, `identity`) for an A/B; both
   runs are in `docs/results/archive/<profile>/`.
 - **Qwen is slower on our WSL workstation** than on rented boxes with the same profiles (2026-10-10:
   qwen3.6-27b-fp8 median 55 ms there, 187 ms here). Its engine step is CPU-bound and the cause is

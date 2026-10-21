@@ -23,14 +23,14 @@ Decision Index scores of the model behind each profile, as served by this repo.
 | `gemma-4-31b-fp8` | 62.82 | 73.96 | 100.9 / 274.1 / 359.5 | — |
 | `qwen3.6-27b` | 56.51 | — (text only) | 111.5 / 328.8 / 444.6 | — |
 | `qwen3.6-27b-fp8` | 56.78 | — (text only) | 67.8 / 176.2 / 234.9 | — |
-| `qwen3.8-27b` | 56.60 | 70.55 | 82.6 / 240.2 / 348.3 | — |
+| `qwen3.8-27b` | 57.64 | 71.13 | 155.8 / 328.6 / 410.9 | — |
 | `qwen3.8-27b-fp8` | 57.58 | 70.67 | 114.5 / 249.5 / 297.0 | — |
 | `qwen3.8-27b-nvfp4` | 56.63 | 71.00 | 88.3 / 180.2 / 226.4 | — |
 
 - These are our own full runs. The gemma-4-31b text run is the one the board adopted (PR #193).
 - Reruns of 2026-10-20 with the current defaults (`blurb_header`, round 4 option orders) are
-  in progress; `gemma-4-31b-fp8`, `qwen3.6-27b-fp8`, `qwen3.8-27b-fp8` and `qwen3.8-27b-nvfp4`
-  already show theirs.
+  in progress; every profile except `gemma-4-31b` and `qwen3.6-27b` already shows its
+  rerun.
   This table and the badges will be refreshed when the rest land (DS-044).
 - Latency is the board's design (latency-v1, one client, text decisions) on one rented RTX PRO
   6000 per profile, 2026-10-20, under the same layout and orders as the row's Index run.

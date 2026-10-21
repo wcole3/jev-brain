@@ -17,22 +17,24 @@ qwen3.8 profiles take text and image decisions.
 
 Decision Index scores of the model behind each profile, as served by this repo.
 
-| Profile | Text Index (0.3 public) | Vision Index (public) | Board |
-|---|---|---|---|
-| `gemma-4-31b` | 61.69 | 73.70 | [Full 65.2 (0.4)](https://multimodalart-jev-decision-index.static.hf.space/index.html?model=jev-brain-gemma-4-31b) |
-| `gemma-4-31b-fp8` | 61.56 | — | — |
-| `qwen3.6-27b` | 56.51 | — (text only) | — |
-| `qwen3.6-27b-fp8` | 56.41 | — (text only) | — |
-| `qwen3.8-27b` | 56.60 | 70.55 | — |
-| `qwen3.8-27b-fp8` | 56.33 | — | — |
-| `qwen3.8-27b-nvfp4` | 56.63 | 71.00 | — |
+| Profile | Text Index (0.3 public) | Vision Index (public) | Latency ms (median / mean / p80) | Board |
+|---|---|---|---|---|
+| `gemma-4-31b` | 61.69 | 73.70 | 92.7 / 280.4 / 299.8 | [Full 65.2 (0.4)](https://multimodalart-jev-decision-index.static.hf.space/index.html?model=jev-brain-gemma-4-31b) |
+| `gemma-4-31b-fp8` | 61.56 | — | 69.9 / 219.2 / 215.9 | — |
+| `qwen3.6-27b` | 56.51 | — (text only) | 111.5 / 328.8 / 444.6 | — |
+| `qwen3.6-27b-fp8` | 56.78 | — (text only) | 67.8 / 176.2 / 234.9 | — |
+| `qwen3.8-27b` | 56.60 | 70.55 | 82.6 / 240.2 / 348.3 | — |
+| `qwen3.8-27b-fp8` | 57.58 | — | 114.5 / 249.5 / 297.0 | — |
+| `qwen3.8-27b-nvfp4` | 56.63 | 71.00 | 88.3 / 180.2 / 226.4 | — |
 
 - These are our own full runs. The gemma-4-31b text run is the one the board adopted (PR #193).
 - Reruns of 2026-10-20 with the current defaults (`blurb_header`, round 4 option orders) are
-  in progress; `qwen3.8-27b-nvfp4` already shows its rerun. This table and the badges will be
-  refreshed when the rest land (DS-044).
-- Single-client latency on one RTX PRO 6000 passes the board's gate (median, mean and p80 each
-  ≤ 1,000 ms) on every profile. See [Results](#results).
+  in progress; `qwen3.6-27b-fp8`, `qwen3.8-27b-fp8` and `qwen3.8-27b-nvfp4` already show theirs.
+  This table and the badges will be refreshed when the rest land (DS-044).
+- Latency is the board's design (latency-v1, one client, text decisions) on one rented RTX PRO
+  6000 per profile, 2026-10-20, under the same layout and orders as the row's Index run.
+  Every profile passes the board's gate (median, mean and p80 each ≤ 1,000 ms). See
+  [Results](#results).
 
 ## Quick start
 

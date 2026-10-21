@@ -1,5 +1,10 @@
 # jev-brain
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Decision Index](https://img.shields.io/badge/Decision_Index_Full_(0.4)-65.2-2ea44f)](https://multimodalart-jev-decision-index.static.hf.space/index.html?model=jev-brain-gemma-4-31b)
+[![Decision Index Text](https://img.shields.io/badge/Decision_Index_Text_(public)-61.69-2ea44f)](https://huggingface.co/spaces/multimodalart/jev-decision-index)
+[![Vision](https://img.shields.io/badge/Decision_Index_Vision_(public,_own_run)-73.70-2ea44f)](docs/results/gemma-4-31b/2026-10-16T023752Z-vision/summary.md)
+
 A setup specifically for users with a single gpu that want to run both chat and
  decision APIs at the same time.
 

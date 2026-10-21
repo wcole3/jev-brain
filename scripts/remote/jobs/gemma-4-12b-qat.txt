@@ -1,0 +1,2 @@
+# gemma-4-12b-qat box queue: stack only, 2026-10-20.
+stack: bash scripts/remote/stack.sh up gemma-4-12b-qat

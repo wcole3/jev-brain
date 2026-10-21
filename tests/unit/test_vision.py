@@ -56,3 +56,21 @@ def test_unknown_model_types_refuse_images(monkeypatch):
     monkeypatch.setattr("gateway.vision.AutoConfig.from_pretrained", lambda *a, **k: SimpleNamespace(model_type="llama"))
     with pytest.raises(ValueError, match="llama"):
         load_vision(replace(Settings.from_profile("gemma-4-31b"), systemone_images=True))
+
+
+UNIFIED = SimpleNamespace(model_type="gemma4_unified", image_token_id=258880,
+                          vision_config=SimpleNamespace(patch_size=16, pooling_kernel_size=3, num_soft_tokens=280))
+
+
+@pytest.mark.parametrize("w, h, n", [(640, 480, 542), (800, 600, 542), (100, 100, 531), (4000, 3000, 542),
+                                     (3, 900, 411), (1920, 1080, 529), (300, 2000, 551)])
+def test_gemma_unified_matches_vllm_expansion(monkeypatch, w, h, n):
+    monkeypatch.setattr("gateway.vision.AutoConfig.from_pretrained", lambda *a, **k: UNIFIED)
+    s = replace(Settings.from_profile("gemma-4-12b"), systemone_images=True, mm_processor_kwargs={"max_soft_tokens": 560})
+    assert load_vision(s).expanded(image(w, h)) == n
+
+
+def test_gemma_unified_defaults_to_num_soft_tokens(monkeypatch):
+    monkeypatch.setattr("gateway.vision.AutoConfig.from_pretrained", lambda *a, **k: UNIFIED)
+    s = replace(Settings.from_profile("gemma-4-12b"), systemone_images=True, mm_processor_kwargs={})
+    assert load_vision(s).expanded(image(4000, 3000)) == gemma_soft_tokens(4000, 3000, 16, 3, 280) + 2

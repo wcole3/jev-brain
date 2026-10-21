@@ -58,7 +58,8 @@ def qwen_soft_tokens(width: int, height: int, patch: int, merge: int, min_pixels
 
 def gemma_vision(config, s: Settings) -> Vision:
     v = config.vision_config
-    max_soft = s.mm_processor_kwargs.get("max_soft_tokens", v.default_output_length)
+    default = getattr(v, "default_output_length", None) or v.num_soft_tokens  # gemma4_unified has only the latter
+    max_soft = s.mm_processor_kwargs.get("max_soft_tokens", default)
     return Vision((config.image_token_id,), partial(gemma_soft_tokens, patch=v.patch_size, pool=v.pooling_kernel_size, max_soft=max_soft))
 
 
@@ -72,7 +73,7 @@ def qwen_vision(config, s: Settings) -> Vision:
     return Vision((config.vision_start_token_id, config.image_token_id, config.vision_end_token_id), count)
 
 
-FAMILIES = {"gemma4": gemma_vision, "qwen3_5": qwen_vision}
+FAMILIES = {"gemma4": gemma_vision, "gemma4_unified": gemma_vision, "qwen3_5": qwen_vision}
 
 
 def load_vision(s: Settings) -> Vision | None:

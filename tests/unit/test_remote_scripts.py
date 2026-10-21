@@ -32,6 +32,9 @@ JOBS = {
     for profile in ["gemma-4-31b", "gemma-4-31b-fp8", "qwen3.8-27b", "qwen3.8-27b-fp8", "qwen3.8-27b-nvfp4",
                     "qwen3.6-27b", "qwen3.6-27b-fp8"]
 }
+STACK_ONLY = ["gemma-4-12b", "gemma-4-12b-qat"]  # lower-tier profiles: a stack job, no campaign yet
+JOBS |= {profile: () for profile in STACK_ONLY}
+JOB_FILES = [p for p in JOB_FILES if p.stem not in STACK_ONLY]
 
 
 def jobs_of(path: Path) -> dict[str, str]:
@@ -39,7 +42,7 @@ def jobs_of(path: Path) -> dict[str, str]:
 
 
 def test_every_profile_has_a_job_file():
-    assert sorted(p.stem for p in JOB_FILES) == sorted(JOBS)
+    assert sorted(p.stem for p in (REMOTE / "jobs").glob("*.txt")) == sorted(JOBS)
 
 
 @pytest.mark.parametrize("path", JOB_FILES, ids=lambda p: p.name)

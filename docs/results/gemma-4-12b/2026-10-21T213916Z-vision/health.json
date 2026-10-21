@@ -1,0 +1,74 @@
+{
+  "status": "ok",
+  "profile": "gemma-4-12b",
+  "served_model": "gemma-4-12b",
+  "hf_model": "google/gemma-4-12B-it",
+  "hf_revision": "707f0a3b8a3c7ad586ed01e27eafbad8a27dd0f7",
+  "prompt_layout": "blurb_header",
+  "option_orders": "identity",
+  "option_orders_images": "",
+  "prefix_pad": "off",
+  "prefix_block": 0,
+  "prefix_pad_always": false,
+  "systemone_max_len": 65536,
+  "systemone_priority": 0,
+  "systemone_images": true,
+  "mm_processor_kwargs": {
+    "max_soft_tokens": 560
+  },
+  "warm_min_prefix_tokens": 4096,
+  "warm_up": "prefix",
+  "governor_duty": 0.5,
+  "governor_wave": 8,
+  "chats_decoding": 0,
+  "calibration": {
+    "blurb_header": {
+      "T": {
+        "choice": 4.035253781242961,
+        "score": 4.035253781242961,
+        "noul": 4.035253781242961
+      },
+      "b": 0.0,
+      "source": "gemma-4-12b/blurb_header/calibration.json",
+      "orders": "identity"
+    },
+    "decider_chat": {
+      "T": {
+        "choice": 1.0,
+        "score": 1.0,
+        "noul": 1.0
+      },
+      "b": 0.0,
+      "source": "uncalibrated",
+      "orders": null
+    },
+    "header": {
+      "T": {
+        "choice": 1.0,
+        "score": 1.0,
+        "noul": 1.0
+      },
+      "b": 0.0,
+      "source": "uncalibrated",
+      "orders": null
+    },
+    "question_first": {
+      "T": {
+        "choice": 1.0,
+        "score": 1.0,
+        "noul": 1.0
+      },
+      "b": 0.0,
+      "source": "uncalibrated",
+      "orders": null
+    }
+  },
+  "other_calibrations": {},
+  "vllm_version": "0.30.0",
+  "layouts": [
+    "blurb_header",
+    "decider_chat",
+    "header",
+    "question_first"
+  ]
+}

@@ -41,3 +41,10 @@ def test_quantized_profiles_compare_against_their_bf16_matches():
     names = [line.split(" | ")[0] for line in board.comparison("qwen3.8-27b-nvfp4", ours)[3:]]
     assert names == ["| simple-jev · Qwen3.8-27B", "| reflex Qwen3.8-27B-FP8 (wide choice)", "| Jevfire Qwen3.8-27B",
                      "| Jev (hosted API, latency over HTTPS)"]
+
+
+def test_a_profile_without_a_board_twin_compares_against_jev_only():
+    lines = board.comparison("gemma-4-12b-qat", {"index": 50.0, "ece": 0.05, "median_ms": 90.0, "coverage": 1.0})
+    rows = [line for line in lines if line.startswith("| ") and "entry" not in line]
+    assert rows[0].startswith("| **ours: gemma-4-12b-qat** | 50.00")
+    assert len(rows) == 2 and board.BOARD["jev"]["name"] in rows[1]

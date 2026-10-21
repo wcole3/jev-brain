@@ -37,7 +37,7 @@ def comparison(profile: str, ours: dict, unjudged: str | None = None) -> list[st
     lines = ["| entry | Index | Full | ECE | median ms | coverage |", "|---|---|---|---|---|---|"]
     lines.append(f"| **ours: {profile}** | {fmt(ours['index'], 2)} | — | {fmt(ours['ece'], 3)} "
                  f"| {fmt(ours['median_ms'], 1)} | {fmt(ours['coverage'], 3)} |")
-    for key in [*MATCHES[profile], "jev"]:
+    for key in [*MATCHES.get(profile, []), "jev"]:  # a profile with no board twin still gets Jev
         e = BOARD[key]
         lines.append(f"| {e['name']} | {e['index']:.2f} | {e['full']:.2f} | {e['ece']:.3f} | {e['median_ms']:.1f} | board |")
     if profile in PARITY:

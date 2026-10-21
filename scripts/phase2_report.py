@@ -147,7 +147,7 @@ def markdown(rows: list[dict]) -> str:
         lines.append(f"| **{r['profile']}**{' †' if r['stale'] else ''} | {fmt(r['index'], 2)} | — | {fmt(r['ece'], 3)} "
                      f"| {fmt(r['coverage'], 3)} | {fmt(r['median_ms'], 1)} | {fmt(r['p95_ms'], 1)} "
                      f"| {run_cells(r)} | {shipped} | {latency} |")
-        for key in MATCHES[r["profile"]]:
+        for key in MATCHES.get(r["profile"], []):
             e = BOARD[key]
             lines.append(f"| {e['name']} | {e['index']:.2f} | {e['full']:.2f} | {e['ece']:.3f} | board | {e['median_ms']:.1f} | n/a | | | | |")
     used = ["T"] + [m for m, flag in (("†", "stale"), ("‡", "latency_differs")) if any(r[flag] for r in rows)]

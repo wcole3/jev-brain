@@ -29,7 +29,8 @@ Decision Index scores of the model behind each profile, as served by this repo.
 
 - These are our own full runs. The gemma-4-31b text run is the one the board adopted (PR #193).
 - Reruns of 2026-10-20 with the current defaults (`blurb_header`, round 4 option orders) are
-  in progress. This table and the badges will be refreshed (DS-044).
+  in progress; `qwen3.8-27b-nvfp4` already shows its rerun. This table and the badges will be
+  refreshed when the rest land (DS-044).
 - Single-client latency on one RTX PRO 6000 passes the board's gate (median, mean and p80 each
   ≤ 1,000 ms) on every profile. See [Results](#results).
 

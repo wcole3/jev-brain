@@ -3,7 +3,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Decision Index](https://img.shields.io/badge/Decision_Index_Full_(0.4)-65.2-2ea44f)](https://multimodalart-jev-decision-index.static.hf.space/index.html?model=jev-brain-gemma-4-31b)
 [![Decision Index Text](https://img.shields.io/badge/Decision_Index_Text_(public)-61.69-2ea44f)](https://huggingface.co/spaces/multimodalart/jev-decision-index)
-[![Vision](https://img.shields.io/badge/Decision_Index_Vision_(public,_own_run)-73.70-2ea44f)](docs/results/gemma-4-31b/2026-10-16T023752Z-vision/summary.md)
+[![Vision](https://img.shields.io/badge/Decision_Index_Vision_(public,_own_run)-74.18-2ea44f)](docs/results/gemma-4-31b/2026-10-21T080720Z-vision/summary.md)
 
 One GPU serves OpenAI-style chat (`POST /v1/chat/completions`) and Jev-compatible decisions
 (`POST /v1/systemone`) at the same time, from one loaded model. A small gateway sits in front
@@ -19,7 +19,7 @@ Decision Index scores of the model behind each profile, as served by this repo.
 
 | Profile | Text Index (0.3 public) | Vision Index (public) | Latency ms (median / mean / p80) | Board |
 |---|---|---|---|---|
-| `gemma-4-31b` | 61.69 | 73.70 | 92.7 / 280.4 / 299.8 | [Full 65.2 (0.4)](https://multimodalart-jev-decision-index.static.hf.space/index.html?model=jev-brain-gemma-4-31b) |
+| `gemma-4-31b` | 62.98 | 74.18 | 124.8 / 361.1 / 504.9 | [Full 65.2 (0.4), earlier run](https://multimodalart-jev-decision-index.static.hf.space/index.html?model=jev-brain-gemma-4-31b) |
 | `gemma-4-31b-fp8` | 62.82 | 73.96 | 100.9 / 274.1 / 359.5 | — |
 | `qwen3.6-27b` | 56.82 | — (text only) | 131.5 / 339.6 / 446.7 | — |
 | `qwen3.6-27b-fp8` | 56.78 | — (text only) | 67.8 / 176.2 / 234.9 | — |
@@ -27,10 +27,8 @@ Decision Index scores of the model behind each profile, as served by this repo.
 | `qwen3.8-27b-fp8` | 57.58 | 70.67 | 114.5 / 249.5 / 297.0 | — |
 | `qwen3.8-27b-nvfp4` | 56.63 | 71.00 | 88.3 / 180.2 / 226.4 | — |
 
-- These are our own full runs. The gemma-4-31b text run is the one the board adopted (PR #193).
-- Reruns of 2026-10-20 with the current defaults (`blurb_header`, round 4 option orders) are
-  in progress; every profile except `gemma-4-31b` already shows its rerun.
-  This table and the badges will be refreshed when the rest land (DS-044).
+- All rows are our full runs of 2026-10-20/21 with the current defaults (`blurb_header`, round 4
+  option orders). The board entry (Full 65.2, public 61.69) is an earlier gemma-4-31b run (PR #193).
 - Latency is the board's design (latency-v1, one client, text decisions) on one rented RTX PRO
   6000 per profile, 2026-10-20, under the same layout and orders as the row's Index run.
   Every profile passes the board's gate (median, mean and p80 each ≤ 1,000 ms). See
@@ -212,41 +210,41 @@ ECE and latency are measured differently from the board's; see the run summaries
 <!-- phase2-table -->
 | entry | Index | Full | ECE | coverage | median ms | p95 ms | run layout / orders | run calibration | shipped now | latency run |
 |---|---|---|---|---|---|---|---|---|---|---|
-| **qwen3.6-27b** † | 56.51 | — | 0.047 | 1.000 | 176.0 | 995.1 | header / identity | T=1.63/1.96/1.28 | header / identity / v8 | 2026-10-10T152806Z-latency ‡ |
+| **qwen3.6-27b** | 56.82 | — | 0.048 | 1.000 | 131.5 | 976.8 | blurb_header / identity | T=1.63/2.06/1.26 | blurb_header / identity / v1 | 2026-10-20T201005Z-latency |
 | Decider chat · Qwen3.6-27B | 51.57 | 51.25 | 0.021 | board | 83.6 | n/a | | | | |
-| **gemma-4-31b** | 61.60 | — | 0.119 | 1.000 | 112.7 | 875.3 | header / identity | T=4.26/5.6/7.61 | header / identity / v3 | 2026-10-10T155454Z-latency |
+| **gemma-4-31b** | 62.98 | — | 0.119 | 1.000 | 124.8 | 954.5 | blurb_header / top_p:0.9+reversed | T=3.98/5.21/6.74 | blurb_header / top_p:0.9+reversed / v1 | 2026-10-20T174655Z-latency |
 | Decider chat · Gemma-4-31B | 57.79 | 57.62 | 0.047 | board | 108.5 | n/a | | | | |
-| **qwen3.8-27b** † | 56.60 | — | 0.024 | 1.000 | 128.9 | 763.9 | header / identity | T=1.54/1.78/0.963 | header / identity / v5 | 2026-10-10T154255Z-latency ‡ |
+| **qwen3.8-27b** | 57.64 | — | 0.024 | 1.000 | 155.8 | 814.9 | blurb_header / min_n:4+reversed | T=1.64/1/1.21 | blurb_header / min_n:4+reversed / v1 | 2026-10-20T165511Z-latency |
 | simple-jev · Qwen3.8-27B | 56.05 | 51.79 | 0.113 | board | 373.0 | n/a | | | | |
 | reflex Qwen3.8-27B-FP8 (wide choice) | 52.27 | 51.40 | 0.024 | board | 108.3 | n/a | | | | |
 | Jevfire Qwen3.8-27B | 49.80 | 45.55 | 0.052 | board | 89.6 | n/a | | | | |
-| **qwen3.6-27b-fp8** | 56.41 | — | 0.047 | 1.000 | 187.6 | 994.5 | header / identity | T=1.63/1.97/1.29 | header / identity / v1 | 2026-10-10T161053Z-latency |
+| **qwen3.6-27b-fp8** | 56.78 | — | 0.049 | 1.000 | 67.8 | 485.6 | blurb_header / identity | T=1.61/2.04/1.26 | blurb_header / identity / v1 | 2026-10-20T200156Z-latency |
 | Decider chat · Qwen3.6-27B | 51.57 | 51.25 | 0.021 | board | 83.6 | n/a | | | | |
-| **qwen3.8-27b-fp8** | 56.33 | — | 0.022 | 1.000 | 133.7 | 811.7 | header / identity | T=1.52/1/0.959 | header / identity / v1 | 2026-10-10T165407Z-latency |
+| **qwen3.8-27b-fp8** | 57.58 | — | 0.024 | 1.000 | 114.5 | 601.3 | blurb_header / min_n:4+reversed | T=1.59/1/1.11, b=0.14 | blurb_header / min_n:4+reversed / v1 | 2026-10-20T165750Z-latency |
 | simple-jev · Qwen3.8-27B | 56.05 | 51.79 | 0.113 | board | 373.0 | n/a | | | | |
 | reflex Qwen3.8-27B-FP8 (wide choice) | 52.27 | 51.40 | 0.024 | board | 108.3 | n/a | | | | |
 | Jevfire Qwen3.8-27B | 49.80 | 45.55 | 0.052 | board | 89.6 | n/a | | | | |
-| **qwen3.8-27b-nvfp4** | 55.54 | — | 0.021 | 1.000 | 161.6 | 1833.1 | header / identity | T=1.6/1.83/0.963 | header / identity / v1 | 2026-10-10T163037Z-latency |
+| **qwen3.8-27b-nvfp4** | 56.63 | — | 0.025 | 1.000 | 88.3 | 450.9 | blurb_header / min_n:4+reversed | T=1.68/1.97/1.14 | blurb_header / min_n:4+reversed / v1 | 2026-10-20T165445Z-latency |
 | simple-jev · Qwen3.8-27B | 56.05 | 51.79 | 0.113 | board | 373.0 | n/a | | | | |
 | reflex Qwen3.8-27B-FP8 (wide choice) | 52.27 | 51.40 | 0.024 | board | 108.3 | n/a | | | | |
 | Jevfire Qwen3.8-27B | 49.80 | 45.55 | 0.052 | board | 89.6 | n/a | | | | |
-| **gemma-4-31b-fp8** | 61.56 | — | 0.118 | 1.000 | 72.2 | 623.0 | header / identity | T=4.27/5.57/7.57 | header / identity / v1 | 2026-10-10T164045Z-latency |
+| **gemma-4-31b-fp8** | 62.82 | — | 0.116 | 1.000 | 100.9 | 696.4 | blurb_header / top_p:0.9+reversed | T=4.06/5.31/6.66 | blurb_header / top_p:0.9+reversed / v1 | 2026-10-20T165623Z-latency |
 | Decider chat · Gemma-4-31B | 57.79 | 57.62 | 0.047 | board | 108.5 | n/a | | | | |
 
 - Calibration T is listed as choice/score/noul; b is the noul yes-offset.
-- † the run's layout, orders or calibration differ from what ships now (or the calibration file is newer).
-- ‡ the latency run's layout, orders or calibration differ from the Index run's.
 <!-- /phase2-table -->
 
 <details>
 <summary>Latency notes</summary>
 
-- **Latency** is the latency-v1 design with one sequential client, all seven runs on one box on
-  2026-10-10: our WSL workstation (Ryzen 7 3800X, RTX PRO 6000 at 600 W), commit `9409223`.
-  The board's gate is median, mean and p80 each ≤ 1,000 ms; every profile passes here.
-- **Qwen is slower on this box** than on the rented vast.ai boxes with the same profiles
-  (qwen3.6-27b-fp8 median 55 ms there, 187 ms here; qwen3.8-27b-nvfp4 64 vs 161 ms). Its engine
-  step is CPU-bound and the cause is still open (DS-032). Gemma matches (gemma-4-31b-fp8 68 vs 72 ms).
+- **Latency** is the latency-v1 design with one sequential client, run on 2026-10-20 on the same
+  rented RTX PRO 6000 as each profile's Index run (one box per profile, 600 W except
+  qwen3.8-27b-nvfp4 at 500 W). The board's gate is median, mean and p80 each ≤ 1,000 ms; every
+  profile passes. Each box also measured the old defaults (`header`, `identity`) for an A/B; both
+  runs are in `docs/results/archive/<profile>/`.
+- **Qwen is slower on our WSL workstation** than on rented boxes with the same profiles (2026-10-10:
+  qwen3.6-27b-fp8 median 55 ms there, 187 ms here). Its engine step is CPU-bound and the cause is
+  still open (DS-032). Gemma matches.
 
 </details>
 

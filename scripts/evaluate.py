@@ -316,7 +316,7 @@ def parse_args(argv=None) -> argparse.Namespace:
     sub = p.add_subparsers(dest="command", required=True)
     o = sub.add_parser("offline")
     o.add_argument("--profile", required=True)
-    o.add_argument("--split", required=True, choices=("calib", "eval", "index-dev", "latency-v1"))
+    o.add_argument("--split", required=True, choices=("calib", "eval", "index-dev", "latency-v1", "hle-focus"))
     o.add_argument("--layout", default="decider_chat")
     o.add_argument("--orders", default="identity")
     cal = o.add_mutually_exclusive_group()

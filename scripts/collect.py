@@ -33,7 +33,7 @@ from scripts.splits import rows_for
 
 COLLECT = ROOT / ".cache" / "collect"
 ARMS = ("identity", "identity+reversed", "cyclic:2", "cyclic:3", "cyclic:4")
-SPLITS = ("calib", "eval", "index-dev", "latency-v1", "index-dev-2k", "calib-600")
+SPLITS = ("calib", "eval", "index-dev", "latency-v1", "index-dev-2k", "calib-600", "hle-focus")
 ATTEMPTS = 3
 BACKOFF = 2.0  # seconds before the first retry, doubling after
 

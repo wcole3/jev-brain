@@ -105,6 +105,7 @@ uv run python scripts/index_suite.py setup     # pinned harness clone + venv in 
 uv run python scripts/index_suite.py rebuild   # ~7 GB download, 17 GB scratch; HF token in secrets/.hf-token (HLE is gated)
 uv run python scripts/index_suite.py export    # scoreable 0.3 rows -> .cache/decision-index/rows-0.3.jsonl.gz
 uv run python scripts/splits.py                # data/splits/*.json (committed)
+uv run python scripts/hle_focus.py             # data/splits/hle-focus.json: all HLE + whole groups of the other Index benchmarks, HLE >= 70%
 
 uv run python scripts/collect.py --profile qwen3.6-27b --split eval       # raw letter logprobs, stack up
 uv run python scripts/calibrate.py --profile qwen3.6-27b                  # fit T (+ noul offset) on calib, judge on eval; CPU only
@@ -192,7 +193,7 @@ A-B-A latency runs, and `--latency NAME=DIR` attaches a run's `summary.json` to 
 | `profiles/` | One env file per model |
 | `data/` | Label tables and calibration per profile/layout; benchmark corpus |
 | `scripts/` | `fetch_model.py`, `build_labels.py`, `bench.py` (+ `bench_data.py`, `bench_report.py`), `decider_fixtures.py`; phase 2: `index_suite.py`, `splits.py`, `collect.py`, `calibrate.py` (+ `fit.py`, `calibrate_report.py`), `evaluate.py`, `latency.py` (+ helpers) |
-| `data/splits/` | Committed calibration, evaluation, index-dev and latency-v1 row ids |
+| `data/splits/` | Committed calibration, evaluation, index-dev, latency-v1 and hle-focus (all HLE + a sample of the other Index benchmarks) row ids |
 | `tests/` | `unit/`, `parity/`, `live/` |
 | `Makefile` | Entry point: `make help` lists fetch, up, down, try, test, bench, index and report targets |
 | `docker/`, `compose.yaml` | vLLM entrypoint, gateway image, stack definition |

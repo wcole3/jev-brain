@@ -171,7 +171,9 @@ async def test_resume_refuses_other_layout_file(cli):
 async def test_default_collect_unchanged(cli):
     await run_cli()
     recs = list(collect.records(cli / PROFILE / "calib.jsonl.gz"))
-    assert sorted({r["layout"] for r in recs}) == ["blurb_header", "decider_chat", "header", "question_first"] and len(recs) == 8
+    assert sorted({r["layout"] for r in recs}) == [
+        "blurb_header", "blurb_header_reread", "decider_chat", "header", "question_first"
+    ] and len(recs) == 10
     for r in recs:
         assert set(r) == {"id", "layout", "stamp", "status", "input_tokens", "questions"}
         assert set(r["stamp"]) == STAMP_KEYS

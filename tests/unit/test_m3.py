@@ -24,7 +24,7 @@ def row(prefix: str, i: int) -> dict:
             "gold": {"c": "ab"[i % 2]}}
 
 
-LEANS = {"decider_chat": 0, "header": 1, "question_first": 2, "blurb_header": 3}  # by name, not by index
+LEANS = {"decider_chat": 0, "header": 1, "question_first": 2, "blurb_header": 3, "blurb_header_reread": 4}  # by name, not by index
 
 
 def record(row_id: str, i: int, layout: str) -> dict:
@@ -86,7 +86,7 @@ def test_pride_divides_out_a_prior_from_calib(orders):
 
 def test_layouts_study_compares_each_layout_on_shared_questions(layouts):
     data = layouts["splits"]["index-dev"]
-    assert set(data["layouts"]) == {*LAYOUTS, SHIPPED} and set(data["vs_default"]) == {"blurb_header", "header", "question_first", SHIPPED}
+    assert set(data["layouts"]) == {*LAYOUTS, SHIPPED} and set(data["vs_default"]) == {*LAYOUTS, SHIPPED} - {"decider_chat"}
     assert data["answered"] == {"any": 40, "all": 40, **dict.fromkeys(LAYOUTS, 40)}
     header = data["vs_default"]["header"]
     assert header["slice"]["long"]["n"] == 10 and set(header["length"]) == {"<512", "512-2k", "2k-8k", ">8k"}
@@ -202,7 +202,7 @@ def test_layouts_report_runs_on_the_profile_defaults(monkeypatch, data):
     monkeypatch.setattr(m3.Settings, "from_profile", lambda name: settings)
     got = m3.layouts_report("p")
     assert got["meta"]["orders"] == "identity" and got["splits"]["eval"]["default"] == "header"
-    assert set(got["splits"]["eval"]["vs_default"]) == {"blurb_header", "decider_chat", "question_first", SHIPPED}
+    assert set(got["splits"]["eval"]["vs_default"]) == {*LAYOUTS, SHIPPED} - {"header"}
     assert got["meta"][SHIPPED] == "p/decider_chat/calibration.json: T choice 2.000, score 1.000, noul 1.000, b 0.300"
     assert "# p M3 layouts" in layouts_markdown(got)
 

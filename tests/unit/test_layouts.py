@@ -7,7 +7,7 @@ from gateway.layouts import LABEL_SETS, PROMPTS_DIR, load_layout, load_layouts
 
 def test_shipped_layouts_load():
     layouts = load_layouts()
-    assert set(layouts) == {"blurb_header", "decider_chat", "header", "question_first"}
+    assert set(layouts) == {"blurb_header", "blurb_header_reread", "decider_chat", "header", "question_first"}
     assert layouts["decider_chat"].order == ("context", "question", "options")
     assert layouts["header"].order == ("questions", "context", "question", "options")
     assert layouts["question_first"].order == ("question", "options", "context")
@@ -57,7 +57,7 @@ def test_image_label_formats_with_n_only(tmp_path, label):
 
 
 def test_gateway_does_not_load_experiment_layouts():
-    assert sorted(load_layouts()) == ["blurb_header", "decider_chat", "header", "question_first"]
+    assert sorted(load_layouts()) == ["blurb_header", "blurb_header_reread", "decider_chat", "header", "question_first"]
 
 
 def test_experiment_layouts_load_and_share_the_header_prefix_rule():

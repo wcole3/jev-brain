@@ -34,7 +34,8 @@ def ids(batch):
 
 def test_served_layout_is_blurb_header_plus_the_new_keys():
     served, base = LAYOUTS[NAME], LAYOUTS["blurb_header"]
-    plain = replace(served, name=base.name, sha256=base.sha256, drop_letter_names=False, again="", read_twice="off")
+    plain = replace(served, name=base.name, sha256=base.sha256, drop_letter_names=False, again="", read_twice="off",
+                    same_name_once=False, drop_label_names=False, index_arrays=True)
     assert plain == base
     assert (served.drop_letter_names, served.read_twice) == (True, "one-question")
 

@@ -33,7 +33,7 @@ def experiments(monkeypatch):
 def test_experiments_differ_from_the_served_layout_only_by_their_keys():
     served = asdict(LAYOUTS["blurb_header_reread"])
     del served["name"], served["sha256"]
-    keys = {CLEAN: {"same_name_once": True, "drop_label_names": True}, NOINDEX: {"index_arrays": False}}
+    keys = {CLEAN: {"index_arrays": True}, NOINDEX: {"same_name_once": False, "drop_label_names": False}}
     for name, flags in keys.items():
         arm = asdict(LAYOUTS[name])
         del arm["name"], arm["sha256"]
@@ -41,10 +41,12 @@ def test_experiments_differ_from_the_served_layout_only_by_their_keys():
         assert arm == {k: v for k, v in served.items() if k not in flags}
 
 
-def test_served_layouts_keep_every_new_key_off():
-    for name in ("blurb_header", "blurb_header_reread", "decider_chat", "header", "question_first"):
+def test_only_the_default_layout_turns_the_new_keys_on():
+    for name in ("blurb_header", "decider_chat", "header", "question_first"):
         layout = LAYOUTS[name]
         assert (layout.same_name_once, layout.drop_label_names, layout.index_arrays) == (False, False, True)
+    reread = LAYOUTS["blurb_header_reread"]
+    assert (reread.same_name_once, reread.drop_label_names, reread.index_arrays) == (True, True, False)
 
 
 def test_a_name_repeating_its_description_shows_once():
@@ -54,7 +56,7 @@ def test_a_name_repeating_its_description_shows_once():
 
 
 def test_same_name_once_is_off_by_default():
-    assert options(SENTIMENT, "blurb_header_reread") == ["Negative: Negative", "Neutral: Neutral", "Positive: Positive"]
+    assert options(SENTIMENT, "blurb_header") == ["Negative: Negative", "Neutral: Neutral", "Positive: Positive"]
 
 
 def test_same_name_once_leaves_other_types_alone():
@@ -68,7 +70,7 @@ def test_same_name_once_leaves_other_types_alone():
 def test_bracketed_letter_names_drop_in_order():
     assert options(SHAPES) == ["circle", "heptagon", "kite"]
     assert options({"A": "x", "B": "y"}) == ["x", "y"]
-    assert options(SHAPES, "blurb_header_reread") == ["(A): circle", "(B): heptagon", "(C): kite"]
+    assert options(SHAPES, "blurb_header") == ["(A): circle", "(B): heptagon", "(C): kite"]
 
 
 @pytest.mark.parametrize("names", [["(B)", "(A)", "(C)"], ["(A)", "(C)"], ["(B)", "(C)"], ["(A)", "B", "(C)"]])
@@ -95,9 +97,12 @@ def test_colliding_options_show_in_full():
     assert options({"(A)": "same", "(B)": "same"}) == ["(A): same", "(B): same"]
 
 
-def test_the_served_letter_drop_has_no_guard():
+def test_the_letter_drop_alone_has_no_guard(monkeypatch):
+    letters_only = replace(LAYOUTS["blurb_header_reread"], same_name_once=False, drop_label_names=False)
+    monkeypatch.setitem(LAYOUTS, "letters-only", letters_only)
     criteria = {"A": "same", "B": "same", "C": "other"}
-    assert options(criteria, "blurb_header_reread") == ["same", "same", "other"]
+    assert options(criteria, "letters-only") == ["same", "same", "other"]
+    assert options(criteria, "blurb_header_reread") == ["A: same", "B: same", "other"]
 
 
 def test_index_arrays_off_drops_only_the_annotation():
@@ -119,8 +124,8 @@ def test_index_arrays_reach_the_prompt(gemma_tok):
         )
         return gemma_tok.decode(batch.rows[0].ids)
 
-    assert '{"_index": 3, "v": 3}' in shown("blurb_header_reread")
-    assert '{"v": 3}' in shown(NOINDEX) and "_index" not in shown(NOINDEX)
+    assert '{"_index": 3, "v": 3}' in shown("blurb_header") and '{"_index": 3, "v": 3}' in shown(CLEAN)
+    assert '{"v": 3}' in shown("blurb_header_reread") and "_index" not in shown("blurb_header_reread")
 
 
 @pytest.mark.parametrize("questions", [HLE, QUICKSTART])

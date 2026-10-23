@@ -39,9 +39,9 @@ DEFAULTS = [
 
 
 @pytest.mark.parametrize(("profile", "orders", "orders_images"), DEFAULTS)
-def test_profiles_serve_the_round_4_defaults(profile, orders, orders_images):
+def test_profiles_serve_the_ds045_defaults(profile, orders, orders_images):
     s = Settings.from_profile(profile)
-    assert (s.prompt_layout, s.option_orders, s.option_orders_images) == ("blurb_header", orders, orders_images)
+    assert (s.prompt_layout, s.option_orders, s.option_orders_images) == ("blurb_header_reread", orders, orders_images)
 
 
 @pytest.mark.parametrize("profile", sorted(p.stem for p in PROFILES.glob("*.env")))

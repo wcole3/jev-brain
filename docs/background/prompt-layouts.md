@@ -20,7 +20,7 @@ the same method as [prompt-sharing.md](prompt-sharing.md) §4: it rebuilds the r
   a full state prefill per question.
 - **Option order** (bias, averaging and its cost) has its own doc: [option-ordering.md](option-ordering.md).
 - **`decider_chat`, `header` and `question_first` have a calibration file per profile** (`data/<profile>/<layout>/calibration.json`, §4).
-  `blurb_header` is the default on all 7 profiles and stays uncalibrated (T = 1) until the stage 1 collects are fitted. Experiment layouts have none.
+  `blurb_header_reread` is the default on all 9 profiles (DS-045); quantized profiles borrow their bf16 base's fit. Experiment layouts have none.
 - **An intro blurb** (one sentence before the prompt, round 4) moves text accuracy by +0.2 to +1.0 points; only
   gemma's `decider_chat` gain has a CI above 0. No image CI excludes 0. `decider_chat` trails `header` on text by
   1.5–3.6 points on both models, with or without the blurb (§5).
@@ -36,7 +36,8 @@ common before their first question-specific part
 |---|---|---|
 | [`decider_chat`](../../prompts/decider_chat.toml) | context, question, options | chat header + state |
 | [`header`](../../prompts/header.toml) | questions, context, question, options | chat header + list of all questions + state |
-| [`blurb_header`](../../prompts/blurb_header.toml) (default) | questions, context, question, options | as `header`, behind a 2-sentence blurb |
+| [`blurb_header`](../../prompts/blurb_header.toml) | questions, context, question, options | as `header`, behind a 2-sentence blurb |
+| [`blurb_header_reread`](../../prompts/blurb_header_reread.toml) (default) | as `blurb_header`; one-question requests read questions + context twice | as `blurb_header`, twice behind a joiner when one question |
 | [`question_first`](../../prompts/question_first.toml) | question, options, context | chat header only (3 tokens) |
 
 A tiny request rendered with each layout (state "Order 17: 3 widgets shipped on Monday.", first

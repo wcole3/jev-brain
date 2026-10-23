@@ -29,8 +29,8 @@ Decision Index scores of the model behind each profile, as served by this repo.
 | `qwen3.8-27b-fp8` | 57.58 | 70.67 | 114.5 / 249.5 / 297.0 | — |
 | `qwen3.8-27b-nvfp4` | 56.63 | 71.00 | 88.3 / 180.2 / 226.4 | — |
 
-- All rows are our full runs of 2026-10-20/21 with the current defaults (`blurb_header`, round 4
-  option orders). The board entry (Full 65.2, public 61.69) is an earlier gemma-4-31b run (PR #193).
+- All rows are our full runs of 2026-10-20/21 with the defaults of that time (`blurb_header`, round 4
+  option orders); profiles now serve `blurb_header_reread` (DS-045), not yet rerun. The board entry (Full 65.2, public 61.69) is an earlier gemma-4-31b run (PR #193).
 - Latency is the board's design (latency-v1, one client, text decisions). The 12B rows are local
   runs on our WSL workstation (2026-10-21); the other rows ran on one rented RTX PRO 6000 per
   profile, 2026-10-20, under the same layout and orders as the row's Index run.
@@ -111,7 +111,8 @@ The trade-offs behind the last column are in [Quantization trade-offs](#quantiza
 <summary>Per-profile notes</summary>
 
 Each profile is one command (`make fetch up PROFILE=<name>`); the profile file carries the
-flags. Calibration files are in `data/<profile>/blurb_header/`.
+flags. Calibration files are in `data/<profile>/<layout>/`; quantized profiles borrow their bf16
+base's fit (`scripts/borrow_calibration.py`).
 
 - **qwen3.6-27b:** MTP speculative decoding with our patched rejection sampler, which
   `compose.yaml` mounts over the stock vLLM v0.30.0 image (DS-004). Prefix blocks padded to
@@ -301,9 +302,10 @@ per arm. ECE columns are Stage 2 on the eval split, before the fit (T = 1) → a
   still works. [Inference technique](docs/4-inference-technique.md),
   [decision readout](docs/background/decision-readout.md).
 - **Prompt format is data, not code.** Wording and part order live in `prompts/<layout>.toml`.
-  The default `blurb_header` layout is `header` with an intro blurb: question list, then the
+  The default `blurb_header_reread` layout is `header` with an intro blurb: question list, then the
   state, then one question per row, so every row of a request shares one long
-  prefix. Profiles set the orders: gemma `top_p:0.9+reversed` (images `identity`), qwen3.8 `min_n:4+reversed`, qwen3.6 `identity`.
+  prefix. A one-question request reads the list and state twice, and option names that
+  only repeat their letter (A, B, …) are dropped (DS-045). Profiles set the orders: gemma `top_p:0.9+reversed` (images `identity`), qwen3.8 `min_n:4+reversed`, qwen3.6 `identity`.
   [Prompt layouts](docs/background/prompt-layouts.md).
 - **Token-exact rows.** Rows are built piecewise from token ids, and each label letter must
   be one token in context (checked by `scripts/build_labels.py`). Identical prefixes hit the

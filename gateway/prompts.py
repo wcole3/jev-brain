@@ -1,6 +1,6 @@
 """Token ids for one question per row, built part by part like decider so shared prefixes match exactly."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from itertools import takewhile
 
 from gateway.images import Image
@@ -146,9 +146,34 @@ def options_and_reads(tok, layout: Layout, labels: Labels, texts: list[str]) -> 
     return [i for line in lines for i in line], reads, tag
 
 
+def opens_blank(layout: Layout, part: str) -> bool:
+    template = layout.option if part == "options" else getattr(layout, part)
+    return template.startswith("\n\n")
+
+
+def spelled_order(layout: Layout) -> list[str]:
+    """The order, with each again joiner before a part that opens on a blank line in its tight form."""
+    after = [*layout.order[1:], None]
+    return ["again-tight" if p == "again" and n and opens_blank(layout, n) else p for p, n in zip(layout.order, after)]
+
+
 def shared_parts(layout: Layout) -> list[str]:
     """The parts placed before the first per-question part: every row starts with the head and these."""
-    return list(takewhile(lambda part: part not in ("question", "options"), layout.order))
+    return list(takewhile(lambda part: part not in ("question", "options"), spelled_order(layout)))
+
+
+def reads_twice(layout: Layout, questions: int, images: bool) -> bool:
+    """The layout's read_twice gate for one request: always, or one-question with exactly one question."""
+    if images:  # images are shown once, so a request with images never reads its context twice
+        return False
+    return layout.read_twice == "always" or (layout.read_twice == "one-question" and questions == 1)
+
+
+def as_read(layout: Layout, questions: int, images: bool) -> Layout:
+    """The layout one request reads: with read-twice on, the shared parts, the again joiner, then them again."""
+    if not reads_twice(layout, questions, images):
+        return layout
+    return replace(layout, order=(*shared_parts(layout), "again", *layout.order))
 
 
 def joined(parts: dict[str, list[int]], names: list[str]) -> list[int]:
@@ -159,14 +184,15 @@ def pad_site(
     tok, frame: ChatFrame, layout: Layout, parts: dict[str, list[int]], state: str, mode: str
 ) -> tuple[list[int], list[int]] | None:
     """The shared prefix cut where the pad goes: after the chat head (front), after the last shared part (end)
-    or between the context label and the state (middle). None when the layout has no such place."""
+    or between the context label and the state (middle). None when the layout has no such place: middle has
+    none when the context is read twice."""
     # Spreading pads through the state was tried and dropped: 8.6% answer flips (docs/results/archive/experiments/ds-008).
     shared = shared_parts(layout)
     if mode == "front":
         return frame.head, joined(parts, shared)
     if mode == "end":
         return frame.head + joined(parts, shared), []
-    if mode == "middle" and "context" in shared:
+    if mode == "middle" and shared.count("context") == 1:
         # label and state are encoded apart around the pad, so tokens at their join may differ from one encode
         label, after = layout.context.format(state=SENTINEL).split(SENTINEL)
         at = shared.index("context")
@@ -220,8 +246,14 @@ def build_rows(
 ) -> Batch:
     """One row per (question, option order). Parts shared by all rows are encoded once.
     pad_rows, when given, is the row count the padding decision assumes instead of the real one."""
+    layout = as_read(layout, len(questions), images is not None)
+    if images is not None and layout.order.count("context") > 1:
+        raise ValueError(f"layout {layout.name}: images are shown once, and this layout repeats the context")
     context = images.ids if images is not None else encode(tok, layout.context.format(state=state))
     parts = {"context": context}
+    if "again" in layout.order:
+        parts["again"] = encode(tok, layout.again)
+        parts["again-tight"] = encode(tok, layout.again.removesuffix("\n\n"))  # the next part brings its own
     if "questions" in layout.order:
         listed = "\n".join(layout.question_item.format(question=q.text) for q in questions.values())
         parts["questions"] = encode(tok, layout.questions.format(questions=listed))
@@ -231,7 +263,7 @@ def build_rows(
         padding = OFF  # middle cuts the state text around the pad, and image rows have none
     added = images.added if images_shared else 0
     prefix, unpadded_len = shared_prefix(tok, frame, layout, parts, state, padding, n_rows, added)
-    rest = layout.order[len(shared_parts(layout)) :]  # the parts after the shared prefix
+    rest = spelled_order(layout)[len(shared_parts(layout)) :]  # the parts after the shared prefix
     answer = encode(tok, layout.answer)
     rows = []
     for qid, q in questions.items():

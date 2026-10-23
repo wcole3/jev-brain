@@ -1,6 +1,7 @@
 """Jev questions → option texts, mirroring decider's systemone.render_question and render_state."""
 
 import json
+import string
 from dataclasses import dataclass
 from typing import Any
 
@@ -46,6 +47,11 @@ def described(layout: Layout, name: Any, description: Any) -> str:
     )
 
 
+def drops_names(layout: Layout, names: list[str]) -> bool:
+    """Names A, B, C, ... in order repeat the shown label, and under a reordering contradict it."""
+    return layout.drop_letter_names and names == list(string.ascii_uppercase[: len(names)])
+
+
 def question_text(q: Question, layout: Layout) -> str:
     if q.type == "noul" and q.instructions in (None, ""):
         criteria = q.criteria if isinstance(q.criteria, dict) else {}
@@ -67,6 +73,9 @@ def render_choice(q: Question, text: str, layout: Layout) -> Rendered:
     if len(criteria) > MAX_OPTIONS:
         raise RequestError(f"at most {MAX_OPTIONS} options per choice (got {len(criteria)})")
     names = list(criteria)
+    if drops_names(layout, names):
+        options = [n if criteria[n] in (None, "") else as_text(criteria[n]) for n in names]
+        return Rendered("choice", text, options, names)
     return Rendered("choice", text, [described(layout, n, criteria[n]) for n in names], names)
 
 

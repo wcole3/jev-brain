@@ -1,0 +1,12 @@
+# Experiment (never loaded by the gateway): blurb_header, choices named A, B, C, ... show only their descriptions (DS-045).
+order = ["questions", "context", "question", "options"]
+questions = "You will be asked questions about the following context. Answer each with the letter of the best option.\n\nQuestions that will be asked about the context:\n{questions}\n\n"
+question_item = "- {question}"
+context = "Context:\n{state}"
+question = "\n\nQuestion: {question}\nOptions:"
+option = "\n({label}) {text}"
+answer = "Answer: ("
+described = "{name}: {description}"
+noul = ["no", "yes"]
+noul_question = "Which answer fits the context?"
+drop_letter_names = true

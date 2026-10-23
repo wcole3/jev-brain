@@ -8,7 +8,8 @@ from pathlib import Path
 from gateway.config import ROOT
 
 PROMPTS_DIR = ROOT / "prompts"
-PARTS = ("questions", "context", "question", "options")
+PARTS = ("questions", "context", "question", "options", "again")
+READ_TWICE = ("off", "one-question", "always")
 LABEL_SETS = ("letters", "lower", "spaced", "digits", "symbols", "unused", "content", "shuffled", "shuffled-q")
 REQUIRED = ("order", "context", "question", "option", "answer", "described", "noul", "noul_question")
 
@@ -30,6 +31,9 @@ class Layout:
     image_label: str = ""
     labels: str = "letters"
     answer_label: str = "{label}"
+    again: str = ""  # the joiner before a part is read again
+    drop_letter_names: bool = False  # choices named A, B, C, ... in order show only their descriptions
+    read_twice: str = "off"  # when the shared parts are read again after the again joiner (prompts.reads_twice)
 
     @property
     def option_open(self) -> str:
@@ -49,17 +53,23 @@ def _check_image_label(name: str, label: str) -> None:
         raise ValueError(f"{name}: image_label must format with {{n}} only ({e!r})") from None
 
 
+def _check_read_twice(name: str, data: dict) -> None:
+    mode, order = data.get("read_twice", "off"), data["order"]
+    if mode not in READ_TWICE:
+        raise ValueError(f"{name}: read_twice must be one of {READ_TWICE}")
+    if mode != "off" and (not data.get("again") or "again" in order or order[0] in ("question", "options")):
+        raise ValueError(f"{name}: read_twice needs the again text, no again part, and a shared part first")
+
+
 def _check(name: str, data: dict) -> None:
     missing = [k for k in REQUIRED if k not in data]
     if missing:
         raise ValueError(f"{name}: missing keys {missing}")
     order = data["order"]
-    if (
-        len(order) != len(set(order))
-        or not set(order) <= set(PARTS)
-        or not {"context", "question", "options"} <= set(order)
-    ):
-        raise ValueError(f"{name}: order must list context, question, options (and optionally questions) once each")
+    if not set(order) <= set(PARTS) or not {"context", "question", "options"} <= set(order):
+        raise ValueError(f"{name}: order must list context, question and options, from {PARTS}")
+    if len(order) != len(set(order)) and "again" not in order:
+        raise ValueError(f"{name}: parts repeat only in a layout with an again part")
     needs = [
         ("context", "{state}"),
         ("question", "{question}"),
@@ -72,6 +82,11 @@ def _check(name: str, data: dict) -> None:
     for key, placeholder in needs:
         if placeholder not in data.get(key, ""):
             raise ValueError(f"{name}: {key} needs {placeholder}")
+    if "again" in order and not data.get("again"):
+        raise ValueError(f"{name}: an again part needs the again text")
+    _check_read_twice(name, data)
+    if type(data.get("drop_letter_names", False)) is not bool:
+        raise ValueError(f"{name}: drop_letter_names must be true or false")
     if "{text}" not in data["option"].split("{label}")[-1]:
         raise ValueError(f"{name}: option needs {{text}} after {{label}}")
     if "image_label" in data:
@@ -104,6 +119,9 @@ def load_layout(path: Path) -> Layout:
         image_label=data.get("image_label", ""),
         labels=data.get("labels", "letters"),
         answer_label=data.get("answer_label", "{label}"),
+        again=data.get("again", ""),
+        drop_letter_names=data.get("drop_letter_names", False),
+        read_twice=data.get("read_twice", "off"),
     )
 
 

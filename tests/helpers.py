@@ -44,6 +44,26 @@ QUICKSTART = {
     },
     "is_urgent": {"type": "noul", "instructions": "The message conveys urgency or time-sensitivity"},
 }
+# A one-choice HLE question named A..E and a score question; ORDERS show its options three ways.
+HLE = {
+    "hle": {
+        "type": "choice",
+        "instructions": "Which of the following will help troubleshoot an enzyme kinetics assay?",
+        "criteria": {
+            "A": "Increase temperature",
+            "B": "Decrease temperature",
+            "C": "Increase Enzyme Concentration",
+            "D": "Decrease Enzyme Concentration",
+            "E": "None of the above",
+        },
+    },
+    "rank": {
+        "type": "score",
+        "instructions": "How sure is the assay",
+        "criteria": ["no", "a bit", "half", "most", "all"],
+    },
+}
+ORDERS = [[0, 1, 2, 3, 4], [4, 3, 2, 1, 0], [2, 0, 4, 1, 3]]
 STATE = "Hi, my Stripe integration keeps failing and I'm losing sales. Please help ASAP."
 LAYOUTS = load_layouts()
 

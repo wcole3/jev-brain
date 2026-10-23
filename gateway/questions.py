@@ -2,6 +2,7 @@
 
 import json
 import string
+from collections import Counter
 from dataclasses import dataclass
 from typing import Any
 
@@ -28,8 +29,10 @@ def annotate_indices(x: Any) -> Any:
     return x
 
 
-def render_state(state: Any) -> str:
-    return state if isinstance(state, str) else json.dumps(annotate_indices(state), ensure_ascii=False)
+def render_state(state: Any, index_arrays: bool = True) -> str:
+    if isinstance(state, str):
+        return state
+    return json.dumps(annotate_indices(state) if index_arrays else state, ensure_ascii=False)
 
 
 @dataclass(frozen=True)
@@ -49,7 +52,19 @@ def described(layout: Layout, name: Any, description: Any) -> str:
 
 def drops_names(layout: Layout, names: list[str]) -> bool:
     """Names A, B, C, ... in order repeat the shown label, and under a reordering contradict it."""
-    return layout.drop_letter_names and names == list(string.ascii_uppercase[: len(names)])
+    letters = list(string.ascii_uppercase[: len(names)])
+    if layout.drop_letter_names and names == letters:
+        return True
+    return layout.drop_label_names and names in (letters, [f"({c})" for c in letters])
+
+
+def short_option(layout: Layout, name: str, description: Any, drop: bool) -> str:
+    """The option without a name that repeats the label or its own description."""
+    if drop:
+        return str(name) if description in (None, "") else as_text(description)
+    if layout.same_name_once and description == name:
+        return str(name)
+    return described(layout, name, description)
 
 
 def question_text(q: Question, layout: Layout) -> str:
@@ -73,10 +88,12 @@ def render_choice(q: Question, text: str, layout: Layout) -> Rendered:
     if len(criteria) > MAX_OPTIONS:
         raise RequestError(f"at most {MAX_OPTIONS} options per choice (got {len(criteria)})")
     names = list(criteria)
-    if drops_names(layout, names):
-        options = [n if criteria[n] in (None, "") else as_text(criteria[n]) for n in names]
-        return Rendered("choice", text, options, names)
-    return Rendered("choice", text, [described(layout, n, criteria[n]) for n in names], names)
+    drop = drops_names(layout, names)
+    options = [short_option(layout, n, criteria[n], drop) for n in names]
+    if layout.same_name_once or layout.drop_label_names:  # options that came out alike show in full
+        same = Counter(options)
+        options = [o if same[o] == 1 else described(layout, n, criteria[n]) for o, n in zip(options, names, strict=True)]
+    return Rendered("choice", text, options, names)
 
 
 def render_score(q: Question, text: str, layout: Layout) -> Rendered:

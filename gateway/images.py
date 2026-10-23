@@ -147,24 +147,24 @@ def image_items(state: Any) -> list[Any]:
     return [i for i in state if is_image_item(i)] if isinstance(state, list) else []
 
 
-def state_items(state: Any) -> list[str | Opened]:
+def state_items(state: Any, index_arrays: bool = True) -> list[str | Opened]:
     if image_items(state):
         return [
-            open_image(item["image"], f"state[{i}].image") if is_image_item(item) else render_state(item)
+            open_image(item["image"], f"state[{i}].image") if is_image_item(item) else render_state(item, index_arrays)
             for i, item in enumerate(state)
         ]
-    return [] if state in EMPTY_STATES else [render_state(state)]
+    return [] if state in EMPTY_STATES else [render_state(state, index_arrays)]
 
 
-def context_items(state: Any, images: list[str] | None) -> list[str | Image]:
+def context_items(state: Any, images: list[str] | None, index_arrays: bool = True) -> list[str | Image]:
     """The context in order: top-level images, then the state, with state images inline.
     Every header is read and the request's total checked before any image is decoded."""
     images = images or []
     if not images and not image_items(state):
-        return [render_state(state)]
+        return [render_state(state, index_arrays)]
     if len(images) + len(image_items(state)) > MAX_IMAGES:
         raise ImageError(f"at most {MAX_IMAGES} images per request")
-    items = [open_image(src, f"images[{i}]") for i, src in enumerate(images)] + state_items(state)
+    items = [open_image(src, f"images[{i}]") for i, src in enumerate(images)] + state_items(state, index_arrays)
     if sum(item.pixels for item in items if isinstance(item, Opened)) > MAX_REQUEST_PIXELS:
         raise ImageError(f"images over {MAX_REQUEST_PIXELS // 1_000_000} MP in total")
     return [decode(item) if isinstance(item, Opened) else item for item in items]

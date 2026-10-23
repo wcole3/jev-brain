@@ -9,6 +9,7 @@ from gateway.config import ROOT
 
 PROMPTS_DIR = ROOT / "prompts"
 PARTS = ("questions", "context", "question", "options", "again")
+FLAGS = ("drop_letter_names", "same_name_once", "drop_label_names", "index_arrays")
 READ_TWICE = ("off", "one-question", "always")
 LABEL_SETS = ("letters", "lower", "spaced", "digits", "symbols", "unused", "content", "shuffled", "shuffled-q")
 REQUIRED = ("order", "context", "question", "option", "answer", "described", "noul", "noul_question")
@@ -33,6 +34,9 @@ class Layout:
     answer_label: str = "{label}"
     again: str = ""  # the joiner before a part is read again
     drop_letter_names: bool = False  # choices named A, B, C, ... in order show only their descriptions
+    same_name_once: bool = False  # a choice option whose description repeats its name shows it once
+    drop_label_names: bool = False  # like drop_letter_names, and "(A)", "(B)", ... count as letter names too
+    index_arrays: bool = True  # JSON states number arrays of 8 or more items with _index
     read_twice: str = "off"  # when the shared parts are read again after the again joiner (prompts.reads_twice)
 
     @property
@@ -85,8 +89,9 @@ def _check(name: str, data: dict) -> None:
     if "again" in order and not data.get("again"):
         raise ValueError(f"{name}: an again part needs the again text")
     _check_read_twice(name, data)
-    if type(data.get("drop_letter_names", False)) is not bool:
-        raise ValueError(f"{name}: drop_letter_names must be true or false")
+    for flag in FLAGS:
+        if type(data.get(flag, False)) is not bool:
+            raise ValueError(f"{name}: {flag} must be true or false")
     if "{text}" not in data["option"].split("{label}")[-1]:
         raise ValueError(f"{name}: option needs {{text}} after {{label}}")
     if "image_label" in data:
@@ -121,6 +126,9 @@ def load_layout(path: Path) -> Layout:
         answer_label=data.get("answer_label", "{label}"),
         again=data.get("again", ""),
         drop_letter_names=data.get("drop_letter_names", False),
+        same_name_once=data.get("same_name_once", False),
+        drop_label_names=data.get("drop_label_names", False),
+        index_arrays=data.get("index_arrays", True),
         read_twice=data.get("read_twice", "off"),
     )
 

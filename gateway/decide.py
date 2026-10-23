@@ -79,7 +79,7 @@ def decode_then_build(
     pad_rows: int | None,
 ) -> Batch:
     """Decode the images and build the rows: seconds of CPU for big images, so it runs off the event loop."""
-    items = context_items(request.state, request.images)
+    items = context_items(request.state, request.images, layout.index_arrays)
     return rows(padding, pad_rows, images=image_context(engine.tokenizer, layout, items, engine.vision))
 
 
@@ -109,7 +109,7 @@ async def build_batch(
     images = has_images(request)
     if images and engine.vision is None:
         raise ImageError("this profile serves text only")
-    state = "" if images else render_state(request.state)  # image rows take the state from their image context
+    state = "" if images else render_state(request.state, layout.index_arrays)  # image rows take the state from their image context
     rows = functools.partial(
         build_rows, engine.tokenizer, engine.frames[name], layout, engine.labels[name], state, questions, perms
     )

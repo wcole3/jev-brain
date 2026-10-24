@@ -100,7 +100,7 @@ def test_middle_padding_has_no_site_in_a_context_read_twice(qwen_tok, arms):
     [
         (('read_twice = "one-question"', 'read_twice = "twice"'), "one of"),
         ((f"again = {json.dumps(LAYOUTS[NAME].again)}", ""), "again text"),
-        (('"context", "question"', '"context", "again", "question"'), "no again part"),
+        (('"context", "question"', '"context", "again", "question"'), "no shared again part"),
         (('["questions", "context", "question", "options"]', '["question", "options", "context"]'), "shared part"),
     ],
 )

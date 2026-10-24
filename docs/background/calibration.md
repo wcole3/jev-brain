@@ -12,9 +12,10 @@ and the papers under Sources.
 - **The gateway calibrates with a temperature T per question type:**
   `p = softmax(logprobs / T)`, plus a yes-offset `b` for noul: `p(yes) = σ(Δ/T + b)`.
   All three profiles have our own fit for all three layouts (2026-10-02, §2).
-- **T never changes which answer wins,** so accuracy and the side of 0.5 a `noul` lands on
-  are unchanged. T only changes how sure the answers sound. `b` can flip a noul answer, so
-  it ships only when it helps on held-out rows.
+- **For a fixed set of reads, T never changes which answer wins,** so accuracy and the side of
+  0.5 a `noul` lands on are unchanged. Answers can change through `b` (it ships only when it
+  helps on held-out rows) or a `top_p:<τ>+reversed` gate, whose identity-fit T picks which
+  questions get the reversed read (§3).
 - **We measure calibration with ECE (15 bins) and the Brier score.** JevBench summaries
   report both, plus a noul yes/no bias table (runs from 2026-09-30 on).
 - **Jev's `confidence` is not a chance of being right.** It rescales the probabilities so
@@ -205,7 +206,7 @@ Worked example, three options with letter logprobs −0.1, −2.5, −5.0:
 
 Same winner and same order of options; only the certainty changes.
 
-## 3. Why temperature never changes the winner
+## 3. Why temperature never changes the winner (for fixed reads)
 
 Dividing every score by the same positive T keeps their order, and softmax preserves order.
 So the top option stays on top and **accuracy does not depend on T** (Guo et al. say the
@@ -229,6 +230,12 @@ of Δ: **p(yes) ≥ 0.5 at any T exactly when it is at T = 1.**
 | −0.4 | 0.401 | 0.449 | no at both |
 
 T pulls p(yes) towards or away from 0.5; it never moves it across.
+
+**Exception: a probability gate.** `top_p:<τ>+reversed` adds the reversed read when the identity
+read's top probability at the identity fit's T is below τ. A larger T sends more questions to a
+second read, which can change their answers. On gemma-4-31b eval, gating at T = 1 instead of the
+fit changed 34 choice answers (−0.74 points). Averaging softmaxes taken at several T keeps the
+winner; softmaxing each order before averaging does not (`.firecrawl/temperature-ensemble/`).
 
 **Option-order averaging** and T (when T can change an averaged winner): moved to
 [option-ordering.md §1](option-ordering.md#1-how-the-gateway-shows-and-averages-orders).

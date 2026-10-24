@@ -57,8 +57,9 @@ in `README.md` and `docs/development.md`.
 - **Calibration** (`data/<profile>/<layout>/calibration.json`, or
   `calibration-<prefix_block>.json` when present) is valid for one model + precision +
   layout + option-order setting.
-  - T never changes the top answer (logprobs are averaged first), but it moves `score` values
-    (expected level).
+  - With the reads fixed, T never changes the top answer (logprobs are averaged first), but it
+    moves `score` values (expected level). A `top_p` gate uses the identity fit's T to pick which
+    questions get a second read, so that T can change answers.
   - T can't fix a yes/no bias; the noul offset b can, and can flip a close noul answer.
   - Fits use the calib split; eval picks what ships, so eval is not untouched.
   - A stale stamp stops the gateway, not collect: move the file aside, recollect, recalibrate.

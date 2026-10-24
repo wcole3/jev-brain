@@ -66,9 +66,10 @@ orders spreads that lean across options.
   keeps `calibration-identity.json` beside `calibration.json` for its image requests ([calibration.md](calibration.md)).
 
 **Temperature and averaging.** The gateway averages raw logprobs first and takes one softmax at T. Dividing by T
-keeps the order of the averaged logprobs, so T alone never changes the winner, with any number of orders or options.
-The noul offset b is the exception: it is added after the division, so it can flip a close noul answer. Why T alone never moves an answer:
-[calibration.md §3](calibration.md#3-why-temperature-never-changes-the-winner).
+keeps the order of the averaged logprobs, so for a fixed set of reads T alone never changes the winner, with any number
+of orders or options. Two exceptions: the noul offset b is added after the division, so it can flip a close noul answer;
+and a `top_p` gate reads the identity fit's T to decide which questions get a second read. Why:
+[calibration.md §3](calibration.md#3-why-temperature-never-changes-the-winner-for-fixed-reads).
 
 ### What a second order costs in tokens
 

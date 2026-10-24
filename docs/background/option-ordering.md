@@ -766,8 +766,11 @@ order. Method and full tables: [results](../results/archive/2026-10-20T034116Z-c
   descriptions, which the `described` format puts in the option text: the identity read shows `(A) A: 1`. Every
   reversed, half or cyclic image read shows a label that disagrees with the key, e.g. `(A) D: 2`, so a second image
   order changes the key/label agreement as well as the position. On text a quarter of index-dev's gold-labelled
-  choice questions are keyed the same way (3,870 of 15,482; eval has none). A CPU-only split of the text results by
-  keyed vs unkeyed questions is possible from the existing collects; it has not been run. Round 4's image grids use
+  choice questions are keyed the same way (3,870 of 15,482; eval has none). DS-045 split the gemma-4-31b text
+  results by keyed vs unkeyed questions and tested dropping the keys: the reversed-read drop is position bias, not
+  the clash, and the fix changes nothing ([read-twice.md §5](read-twice.md#5-letter-names)). `blurb_header_reread`
+  drops the keys anyway, on text and image requests alike (only its read-twice rule skips images); the image effect
+  of dropping them has not been measured. Round 4's image grids use
   letters too, so their reversed, half and cyclic reads carry the same clash.
 - **qwen3.8 padding.** The profile pads its prefix; image reads were padded for one order, so two-order arms are not
   exactly what live would compute ([vision-experiments.md §3](vision-experiments.md#3-collect)).

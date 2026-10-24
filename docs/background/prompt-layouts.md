@@ -21,6 +21,8 @@ the same method as [prompt-sharing.md](prompt-sharing.md) §4: it rebuilds the r
 - **Option order** (bias, averaging and its cost) has its own doc: [option-ordering.md](option-ordering.md).
 - **`decider_chat`, `header` and `question_first` have a calibration file per profile** (`data/<profile>/<layout>/calibration.json`, §4).
   `blurb_header_reread` is the default on all 9 profiles (DS-045); quantized profiles borrow their bf16 base's fit. Experiment layouts have none.
+- **Read-twice** (DS-045): `blurb_header_reread` writes the blurb, question list and state twice when a request has
+  one question; +0.8 to +2.1 points on choice questions off-suite, +22% latency. See [read-twice.md](read-twice.md).
 - **An intro blurb** (one sentence before the prompt, round 4) moves text accuracy by +0.2 to +1.0 points; only
   gemma's `decider_chat` gain has a CI above 0. No image CI excludes 0. `decider_chat` trails `header` on text by
   1.5–3.6 points on both models, with or without the blurb (§5).
@@ -189,7 +191,9 @@ refused rows per profile ([m3-recommendations.md](../results/archive/m3-recommen
 
 ## 4. Calibration status per layout
 
-`blurb_header` has no calibration file yet; its profiles run at T = 1 until one is fitted.
+`blurb_header_reread` (the default) runs uncalibrated (T = 1): its 2026-10-23 fits went stale when the rendering
+cleanups shipped ([read-twice.md §8](read-twice.md#8-alerias-rendering-cleanups)) and are pending a refit; the
+quantized profiles will borrow their base's fit. The table below predates both read-twice layouts.
 
 Files in `data/<profile>/<layout>/` (date of the current fit):
 

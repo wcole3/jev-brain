@@ -100,7 +100,7 @@ def test_other_v1_paths_pass_through(client):
 def test_health(client):
     body = client.get("/health").json()
     assert body["status"] == "ok"
-    assert body["vllm_version"] == "0.30.0"
+    assert body["vllm_version"] == "0.32.0"
     assert body["hf_model"] and body["hf_revision"]
     assert body["prompt_layout"] and body["option_orders"]
     s = client.app.state.engine.settings

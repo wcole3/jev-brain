@@ -2,7 +2,7 @@
 name: jev-brain
 services:
   vllm:
-    image: vllm/vllm-openai:v0.30.0@sha256:8a69ffad015f138d7170c4ddc429e230a3bc1c1719f67e14324749df200a4b90
+    image: vllm/vllm-openai:v0.32.0@sha256:befccf0e7e4089aa23926bb6f887a85c0d46c2a99e6de5c5ffdf5cb7957c5b34
     entrypoint: ["/bin/bash", "/opt/jev/vllm-entrypoint.sh"]
     # Not unless-stopped: a clean reboot must not grab ~86 GB of VRAM (a crash still restarts it).
     restart: on-failure:3
@@ -32,8 +32,10 @@ services:
     volumes:
       - ${HOME}/.cache/huggingface:/root/.cache/huggingface:ro
       - ./docker/vllm-entrypoint.sh:/opt/jev/vllm-entrypoint.sh:ro
-      # v0.30.0 rejection sampler + fix: label-id reads survive MTP batches (DS-004). Pinned to the image digest.
+      # v0.32.0 rejection sampler + fix (open upstream PR #61219): label-id reads survive MTP batches (DS-004). Pinned to the image digest.
       - ./docker/vllm/rejection_sampler.py:/usr/local/lib/python3.12/dist-packages/vllm/v1/worker/gpu/spec_decode/rejection_sampler.py:ro
+      # v0.32.0 scheduler + fix: the long-prefill cap holds for a lone request too, as in v0.30 (#60476, DS-025).
+      - ./docker/vllm/scheduler.py:/usr/local/lib/python3.12/dist-packages/vllm/v1/core/sched/scheduler.py:ro
     ports: ["127.0.0.1:8000:8000"]
     healthcheck:
       test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]

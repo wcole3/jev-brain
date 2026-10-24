@@ -229,7 +229,8 @@ padding puts row 1's checkpoint exactly at the end of the shared part
 
 DS-004 could not see this: JevBench rows have one question, so every arm, MTP or not, shows
 0% cached tokens. A multi-question bench under MTP is the test. v0.30.0 also has an untested
-`--enable-mamba-fine-grained-prefix-cache`, which saves a checkpoint where an EAGLE/MTP sibling
+`--enable-mamba-fine-grained-prefix-cache` (renamed `--enable-mamba-shared-prefix-checkpoint`
+in v0.31, #57382), which saves a checkpoint where an EAGLE/MTP sibling
 resumed; it needs align mode and a `--prefix-match-unit` below the block size
 (`vllm/config/cache.py:187-192`).
 
@@ -249,13 +250,22 @@ resumed; it needs align mode and a `--prefix-match-unit` below the block size
    asked for top-k, that top-k instead of the labels. There is no per-request switch.
 
 This is why CLAUDE.md lists "no speculative decoding/MTP with label scoring (#42592)": #42592
-is the V1 runner's version; the V2 runner gap is still in v0.31.0.
+is the V1 runner's version; the V2 runner gap is still in v0.32.0. There, under MTP chat load,
+stock label-id reads fail differently per endpoint (measured 2026-10-24, qwen3.8-27b-fp8):
+`/v1/completions` returns HTTP 500 ("list index out of range"), and `/inference/v1/generate`
+returns 200 with the top-k tokens instead of the requested ids.
 
 **The patch** gives the rejection sampler the normal sampler's label-id path:
 `get_logprobs_dims` for sizing and `logprob_token_ids_state` plus the chunk's
 `expanded_idx_mapping` for `compute_topk_scores`. No new kernels. It was bind-mounted over the
 v0.30.0 image ([runbook](../results/ds-004/runbook.md)); an
-[upstream PR](../results/ds-004/upstream-pr.md) is drafted and not posted.
+[upstream PR](../results/ds-004/upstream-pr.md) was drafted and not posted.
+
+**v0.32.0:** upstream PR #61219 (open) makes the same change. `docker/vllm/rejection_sampler.diff`
+is now its rejection-sampler hunks, applied cleanly to v0.32.0; its `sampler.py` and
+`model_runner.py` hunks only matter for TP > 1 and are not mounted. Same load, patched: 0
+errors in 20 calls (50 rows), max |Δp| 0.032 against the idle read (idle vs idle 0.019), no
+flipped answer.
 
 **The fallback considered first:** reading top-K (`logprobs=K`) instead of label ids. A CPU
 simulation on 2,827 collected questions ([step 0](../results/ds-004/topk-sim.md)) found

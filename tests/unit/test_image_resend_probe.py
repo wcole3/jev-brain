@@ -15,8 +15,7 @@ def fake_batch():
 
 
 def answer(lp10: float, lp11: float) -> dict:
-    top = [{"token": "token_id:10", "logprob": lp10}, {"token": "token_id:11", "logprob": lp11},
-           {"token": "token_id:12", "logprob": -20.0}]
+    top = [{"token_id": 10, "logprob": lp10}, {"token_id": 11, "logprob": lp11}, {"token_id": 12, "logprob": -20.0}]
     return {"choices": [{"logprobs": {"content": [{"top_logprobs": top}]}}]}
 
 

@@ -94,7 +94,7 @@ class Readout:
         sampling = {"max_tokens": 1, "temperature": 0, "logprobs": len(ids), "logprob_token_ids": ids}
         payload = {"model": self.model, "token_ids": prompt, "content_parts": parts, "sampling_params": sampling}
         top = (await self._post(payload, GENERATE_PATH)).json()["choices"][0]["logprobs"]["content"][0]["top_logprobs"]
-        got = {int(e["token"].removeprefix("token_id:")): e["logprob"] for e in top}
+        got = {e["token_id"]: e["logprob"] for e in top}  # integer ids since vLLM 0.32 (#58181)
         for i in chunk:
             if i not in got:
                 raise RuntimeError(f"vLLM returned no logprob for label id {i}")

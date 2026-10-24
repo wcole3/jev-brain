@@ -77,6 +77,19 @@ Why they differ:
     8,192 on this GPU (startup log, DS-007 §0). The measurements below were taken there.
   - Since DS-025 the Qwen profiles set a budget of 2,352 and a per-request chunk cap of 784
     (`--long-prefill-token-threshold`); Gemma keeps 8,192 with a cap of 1,024.
+  - **vLLM ≥ 0.31 skips the cap for a lone request** (#57951). With async scheduling the next
+    chunk is already scheduled, so a decision arriving mid-prefill waits up to two uncapped
+    chunks (#60476). Measured 2026-10-24, one 1-question decision fired 1 s into a lone
+    24k-token chat prefill, median of 5 (alone: 58–100 ms):
+
+    | profile | v0.30.0 | v0.32.0 stock | v0.32.0 + `docker/vllm/scheduler.py` |
+    |---|---|---|---|
+    | gemma-4-31b (budget 8,192, cap 1,024) | 665 ms | 4,128 ms | 672 ms |
+    | qwen3.8-27b-fp8 (budget 2,400, cap 800, MTP) | 374 ms | 425 ms | 290 ms |
+
+    The stock exemption made the lone Qwen prefill faster (3.85 → 3.0 s; 3.7 s patched) but not
+    Gemma's (7.06 → 7.0 s). The patch restores the v0.30 rule for every profile; upstream fix
+    #60485 is open.
   - How chunks interact with KV blocks and hybrid Qwen's block-aligned state:
     [kv-cache.md §9](kv-cache.md).
 

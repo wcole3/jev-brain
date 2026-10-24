@@ -67,18 +67,24 @@ in `README.md` and `docs/development.md`.
   this; gateway startup only checks hashes.
 - **vLLM limits and bugs:**
   - `logprob_token_ids` takes ≤128 ids per request;
-  - MTP with label scoring needs our patched rejection sampler (`docker/vllm/`, DS-004);
-    stock vLLM returns HTTP 500 for label-id rows batched with drafts;
+  - MTP with label scoring needs our patched rejection sampler (`docker/vllm/`, DS-004;
+    upstream PR #61219 open): stock v0.32 returns HTTP 500 on `/v1/completions` and top-k
+    instead of the label ids on `/inference/v1/generate` for label-id rows batched with drafts;
   - co-batched top-k logprobs can be `-inf` (#51789);
   - LoRA can be a silent no-op on Qwen hybrids (#49354);
   - `--max-num-seqs 256` is required for hybrid Qwen (Mamba cache blocks);
-  - vLLM 0.30 streams thinking in the delta key `reasoning`.
+  - vLLM 0.32 streams thinking in the delta key `reasoning`;
+  - `/inference/v1/generate` logprobs carry integer `token_id`s since 0.32 (#58181).
+- **vLLM image:** v0.32.0 pinned by digest, with `docker/vllm/*.py` mounted over it. Each
+  `.diff` beside them is the change; an image bump means rebasing both files.
 - **SGLang:** don't use it for mixed chat + decision traffic (#34719).
 - **bf16 noise:** decision probabilities move ~0.03/T under load. The stability test warns
   above 0.05 and fails only if the top answer flips when the top-two gap > 0.10.
 - **Chat contention:** decision prefill starves chat decode (DS-007). A long chat prefill
   stalls decisions unless `--long-prefill-token-threshold` is set; on hybrid Qwen keep
-  budget − threshold > one block or a decision blocks the queue (DS-025).
+  budget − threshold > one block or a decision blocks the queue (DS-025). Since 0.31 stock
+  vLLM skips the cap for a lone request (#57951; gemma: a decision behind a lone 24k chat
+  prefill waits 4.1 s, not 0.67 s); `docker/vllm/scheduler.py` restores it (#60476).
 - **Prefix cache:** hybrid Qwen caches in 784-token blocks, 800 with MTP; the Qwen profiles
   pad to 800 and cap prefill at 800, or prompts ≥ 784 tokens take an extra step (DS-008, DS-004).
 - **Tokenizer calls:** encode many short texts in one call (`prompts.encode_each`); the
@@ -95,4 +101,6 @@ in `README.md` and `docs/development.md`.
 - Weights are fetched on the host (`scripts/fetch_model.py`). Containers mount the HF
   cache read-only and offline.
 - Ports bind to `127.0.0.1`. vLLM's `/health`, `/metrics`, `/version` and `/tokenize` stay
-  open even with `VLLM_API_KEY`, so port 8000 must never be published (DS-012 waiver).
+  open even with `VLLM_API_KEY`, so port 8000 must never be published (DS-012 waiver;
+  `scripts/check_bind.py` refuses it). vLLM 0.32 also serves its own uncalibrated
+  `/v1/systemone` on 8000, behind `VLLM_API_KEY`.

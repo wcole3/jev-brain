@@ -76,7 +76,7 @@ class FakeVllm:
             return httpx.Response(200, json={"prompt_token_ids": list(range(n))})
         ids = body["sampling_params"].get("logprob_token_ids", [])
         self.prompts.append(body["token_ids"])
-        top = [{"token": f"token_id:{t}", "logprob": -0.001 * t} for t in ids]
+        top = [{"token_id": t, "logprob": -0.001 * t} for t in ids]
         return httpx.Response(200, json={"choices": [{"logprobs": {"content": [{"top_logprobs": top}]}}]})
 
 

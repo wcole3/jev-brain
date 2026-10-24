@@ -1,6 +1,6 @@
 --- a/vllm/v1/worker/gpu/model_runner.py
 +++ b/vllm/v1/worker/gpu/model_runner.py
-@@ -1575,12 +1575,7 @@
+@@ -1664,12 +1664,7 @@
                  local_batch=input_batch,
                  gather_num_nans=self.sampler.compute_nans,
                  logprobs_dims=self.sampler.get_logprobs_dims(

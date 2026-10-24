@@ -179,7 +179,7 @@ async def chat_once(client, served: str, prompt: str) -> tuple[float, float]:
                 continue
             chunk = json.loads(line.removeprefix("data: "))
             delta = chunk["choices"][0]["delta"] if chunk.get("choices") else {}
-            # Thinking streams in "reasoning" (vLLM 0.30); either key means a token arrived.
+            # Thinking streams in "reasoning" (vLLM 0.30-0.32); either key means a token arrived.
             if first is None and (delta.get("content") or delta.get("reasoning")):
                 first = time.perf_counter()
             if chunk.get("usage"):

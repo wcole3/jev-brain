@@ -1,0 +1,22 @@
+--- a/vllm/v1/core/sched/scheduler.py
++++ b/vllm/v1/core/sched/scheduler.py
+@@ -638,15 +638,12 @@
+         ) and any(not r.is_prefill_chunk for r in self.running)
+ 
+         # `long_prefill_token_threshold` exists to stop a long prefill from
+-        # starving other requests of the token budget. When it is the only
+-        # request there is nobody to starve, so let it use the whole budget.
++        # starving other requests of the token budget. Cap a lone request too
++        # (as v0.30 did): with async scheduling, the next arrival would wait two
++        # uncapped chunks (#60476).
+         num_running, num_waiting = self.get_request_counts()
+         num_eligible_reqs = num_running + num_waiting
+-        long_prefill_token_threshold = (
+-            self.scheduler_config.long_prefill_token_threshold
+-            if num_eligible_reqs > 1
+-            else 0
+-        )
++        long_prefill_token_threshold = self.scheduler_config.long_prefill_token_threshold
+         if long_prefill_token_threshold > 0 and self.adaptive_long_prefill_threshold:
+             # Floor the cap at a fair share of the input budget so it never
+             # cuts a request below max_num_batched_tokens / num requests.

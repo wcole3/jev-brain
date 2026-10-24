@@ -38,7 +38,7 @@ def in_flight(vllm_url: str) -> float:
 
 
 def finished(vllm_url: str) -> float:
-    """Requests vLLM completed for any reason. vLLM 0.30 does not count client aborts here, even as "abort"."""
+    """Requests vLLM completed for any reason. vLLM 0.30-0.32 do not count client aborts here, even as "abort"."""
     return scrape(vllm_url)["vllm:request_success_total"]
 
 

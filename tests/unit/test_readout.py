@@ -210,7 +210,7 @@ def fake_generate(seen: list, drop: int | None = None):
         seen.append((request.url.path, body))
         ids = body["sampling_params"].get("logprob_token_ids", [])  # the warm-up call reads no labels
         assert len(ids) <= MAX_LABEL_IDS
-        top = [{"token": f"token_id:{t}", "logprob": -float(t)} for t in ids if t != drop]
+        top = [{"token_id": t, "logprob": -float(t)} for t in ids if t != drop]
         return httpx.Response(200, json={"choices": [{"logprobs": {"content": [{"top_logprobs": top}]}}]})
 
     return handler
@@ -275,8 +275,8 @@ async def test_more_than_127_labels_split_across_calls():
 async def test_a_later_chunks_spare_id_does_not_overwrite_an_earlier_label():
     def handler(request: httpx.Request) -> httpx.Response:
         ids = json.loads(request.content)["sampling_params"]["logprob_token_ids"]
-        top = [{"token": f"token_id:{t}", "logprob": -float(t)} for t in ids[:-1]]
-        top.append({"token": f"token_id:{ids[-1]}", "logprob": 999.0})  # the spare answers differently
+        top = [{"token_id": t, "logprob": -float(t)} for t in ids[:-1]]
+        top.append({"token_id": ids[-1], "logprob": 999.0})  # the spare answers differently
         return httpx.Response(200, json={"choices": [{"logprobs": {"content": [{"top_logprobs": top}]}}]})
 
     labels = list(range(201))  # chunk 2 holds 127..200 and its spare is 0, a label of chunk 1

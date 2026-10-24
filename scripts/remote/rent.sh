@@ -3,7 +3,7 @@
 # usage: rent.sh OFFER_ID PROFILE [--disk GB] [--dry-run]   (--dry-run prints the vastai command only)
 set -euo pipefail
 cd "$(dirname "$0")/../.."
-image=vllm/vllm-openai:v0.30.0@sha256:8a69ffad015f138d7170c4ddc429e230a3bc1c1719f67e14324749df200a4b90
+image=vllm/vllm-openai:v0.32.0@sha256:befccf0e7e4089aa23926bb6f887a85c0d46c2a99e6de5c5ffdf5cb7957c5b34
 usage() { echo "usage: rent.sh OFFER_ID PROFILE [--disk GB] [--dry-run]" >&2; exit 2; }
 
 [[ $# -ge 2 && $1 =~ ^[0-9]+$ ]] || usage

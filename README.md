@@ -115,7 +115,7 @@ flags. Calibration files are in `data/<profile>/<layout>/`; quantized profiles b
 base's fit (`scripts/borrow_calibration.py`).
 
 - **qwen3.6-27b:** MTP speculative decoding with our patched rejection sampler, which
-  `compose.yaml` mounts over the stock vLLM v0.30.0 image (DS-004). Prefix blocks padded to
+  `compose.yaml` mounts over the stock vLLM v0.32.0 image (DS-004; upstream PR #61219). Prefix blocks padded to
   800 tokens; chat prefill capped at 800 a step with `--max-num-batched-tokens 2400`, chat
   first (priority scheduling). Text only. `calibration-784.json` is for MTP off.
 - **qwen3.8-27b:** same setup as qwen3.6-27b (MTP with the patched sampler, 800-token blocks,

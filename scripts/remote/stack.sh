@@ -59,11 +59,13 @@ wait_for() {
 vllm_ok() { curl -sf -m 10 "$vllm/health" > /dev/null 2>&1; }
 gateway_ok() { [[ -n $(gateway_profile) ]]; }
 
-# Compose mounts our fixed rejection sampler over the image's (DS-004); boxes run the image's vLLM, so copy it in.
+# Compose mounts our fixed rejection sampler (DS-004) and scheduler (#60476) over the image's;
+# boxes run the image's vLLM, so copy them in.
 patch_vllm() {
   local dir
   dir=$(python3 -c 'import os, vllm; print(os.path.dirname(vllm.__file__))')
   cp docker/vllm/rejection_sampler.py "$dir/v1/worker/gpu/spec_decode/rejection_sampler.py"
+  cp docker/vllm/scheduler.py "$dir/v1/core/sched/scheduler.py"
 }
 
 up() {

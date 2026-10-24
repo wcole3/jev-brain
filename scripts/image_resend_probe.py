@@ -44,7 +44,7 @@ def payload(model: str, ids: list[int], parts: list[dict], labels: list[int] | N
 def label_logprobs(response: httpx.Response, labels: list[int]) -> list[float] | None:
     try:
         top = response.json()["choices"][0]["logprobs"]["content"][0]["top_logprobs"]
-        got = {int(e["token"].removeprefix("token_id:")): e["logprob"] for e in top}
+        got = {e["token_id"]: e["logprob"] for e in top}
         return [got[i] for i in labels]
     except (ValueError, KeyError, IndexError, TypeError):
         return None

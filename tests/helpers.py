@@ -156,5 +156,5 @@ def fake_vllm(request: httpx.Request) -> httpx.Response:
     if path == "/health":
         return httpx.Response(200)
     if path == "/version":
-        return httpx.Response(200, json={"version": "0.30.0"})
+        return httpx.Response(200, json={"version": "0.32.0"})
     return httpx.Response(404, json={"path": path})

@@ -28,7 +28,7 @@ image directly, and `scripts/remote/stack.sh` does what compose does (vLLM, then
 gateway).
 
 - Image (the compose digest, pinned in `rent.sh`):
-  `vllm/vllm-openai:v0.30.0@sha256:8a69ffad015f138d7170c4ddc429e230a3bc1c1719f67e14324749df200a4b90`
+  `vllm/vllm-openai:v0.32.0@sha256:befccf0e7e4089aa23926bb6f887a85c0d46c2a99e6de5c5ffdf5cb7957c5b34`
 - Ubuntu 24.04, python3.12, uv, curl, pip. No git, rsync, tmux or ssh client; `push.sh`
   and `bootstrap.sh` apt-install `rsync tmux git`. vast injects its own sshd (`--ssh`).
 - Sources: [vast FAQ](https://docs.vast.ai/guides/reference/faq/technical),
@@ -261,8 +261,9 @@ Stage 2 jobs follow `collect-eval` in each file (see the two-stage section above
 Earlier queues (host-compare, latency, Index runs, DS-024 phase B) are in git history.
 
 - Collect runs at its default `--concurrency 8`, like the local collects.
-- `stack.sh up` first copies `docker/vllm/rejection_sampler.py` over the image's file, as compose
-  mounts it (DS-004); `stack.sh patch-vllm` does only that.
+- `stack.sh up` first copies `docker/vllm/rejection_sampler.py` (DS-004) and
+  `docker/vllm/scheduler.py` (#60476) over the image's files, as compose mounts them;
+  `stack.sh patch-vllm` does only that.
 - Index runs use `--run-dir .cache/index-runs/PROFILE/$(cat .cache/remote/run_tag)`, so a
   restart resumes the same run.
 - Index runs use `--strict`: after writing the summary, the job fails if any row is an
@@ -339,7 +340,7 @@ cache, write `.cache/remote/profile`, and run `start.sh`. The snippet removes an
 `/tmp/jev-box` first (the chown at its end makes that possible):
 
 ```bash
-IMAGE=vllm/vllm-openai:v0.30.0@sha256:8a69ffad015f138d7170c4ddc429e230a3bc1c1719f67e14324749df200a4b90
+IMAGE=vllm/vllm-openai:v0.32.0@sha256:befccf0e7e4089aa23926bb6f887a85c0d46c2a99e6de5c5ffdf5cb7957c5b34
 rm -rf /tmp/jev-box                                                           # a fresh clone of this commit
 git clone -q . /tmp/jev-box && mkdir -p /tmp/jev-box/.cache/decision-index   # .git: results need the commit
 cp -r .cache/decision-index/{rows-0.3.jsonl.gz,suite-0.3} /tmp/jev-box/.cache/decision-index/

@@ -96,16 +96,18 @@ def test_job_commands_name_only_their_own_profile():
         assert named == {path.stem}, path
 
 
-def test_stack_patch_installs_the_rejection_sampler(tmp_path):
-    """Compose mounts docker/vllm/rejection_sampler.py over the image's file; boxes copy it the same way."""
-    target = tmp_path / "vllm" / "v1" / "worker" / "gpu" / "spec_decode"
-    target.mkdir(parents=True)
+def test_stack_patch_installs_the_patched_vllm_files(tmp_path):
+    """Compose mounts docker/vllm/*.py over the image's files; boxes copy them the same way."""
+    targets = {"rejection_sampler.py": "v1/worker/gpu/spec_decode", "scheduler.py": "v1/core/sched"}
+    for name, sub in targets.items():
+        (tmp_path / "vllm" / sub).mkdir(parents=True)
+        (tmp_path / "vllm" / sub / name).write_text("stock\n")
     (tmp_path / "vllm" / "__init__.py").write_text("")
-    (target / "rejection_sampler.py").write_text("stock\n")
     env = os.environ | {"PYTHONPATH": str(tmp_path)}
     subprocess.run(["bash", str(REMOTE / "stack.sh"), "patch-vllm"], env=env, check=True, capture_output=True)
-    patched = REMOTE.parents[1] / "docker" / "vllm" / "rejection_sampler.py"
-    assert (target / "rejection_sampler.py").read_text() == patched.read_text()
+    for name, sub in targets.items():
+        patched = REMOTE.parents[1] / "docker" / "vllm" / name
+        assert (tmp_path / "vllm" / sub / name).read_text() == patched.read_text()
 
 
 def queue(tmp_path, jobs: str, name: str = "p") -> subprocess.CompletedProcess:
@@ -325,7 +327,7 @@ def test_bootstrap_retries_the_weight_download(tmp_path, fails, ok):
 
 
 PROFILE = "qwen3.8-27b"
-IMAGE = "vllm/vllm-openai:v0.30.0@sha256:8a69ffad015f138d7170c4ddc429e230a3bc1c1719f67e14324749df200a4b90"
+IMAGE = "vllm/vllm-openai:v0.32.0@sha256:befccf0e7e4089aa23926bb6f887a85c0d46c2a99e6de5c5ffdf5cb7957c5b34"
 URL, HOST, PORT = "ssh://root@203.0.113.7:41022", "root@203.0.113.7", "41022"
 BOX = "/workspace/jev-brain"
 # Stand-ins for the local side's network tools: refuse by default; FAKE_RSYNC (below) records calls.

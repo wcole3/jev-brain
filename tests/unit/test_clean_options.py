@@ -32,11 +32,11 @@ def experiments(monkeypatch):
 
 def test_experiments_differ_from_the_served_layout_only_by_their_keys():
     served = asdict(LAYOUTS["blurb_header_reread"])
-    del served["name"], served["sha256"]
+    del served["name"], served["sha256"], served["again"]  # the arms ran with the joiner of their day
     keys = {CLEAN: {"index_arrays": True}, NOINDEX: {"same_name_once": False, "drop_label_names": False}}
     for name, flags in keys.items():
         arm = asdict(LAYOUTS[name])
-        del arm["name"], arm["sha256"]
+        del arm["name"], arm["sha256"], arm["again"]
         assert {k: arm.pop(k) for k in flags} == flags
         assert arm == {k: v for k, v in served.items() if k not in flags}
 

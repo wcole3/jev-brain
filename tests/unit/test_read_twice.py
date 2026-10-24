@@ -1,3 +1,4 @@
+import json
 from dataclasses import replace
 
 import pytest
@@ -16,11 +17,11 @@ ONE = {"hle": HLE["hle"]}
 
 @pytest.fixture
 def arms(monkeypatch):
-    """Arm B and blurb_header, both without letter names, and the served layout with each read_twice mode."""
+    """Arm B (with the served joiner) and blurb_header, both without letter names, and the served layout per mode."""
     arm_b = load_layout(PROMPTS_DIR / "experiments" / "blurb-header-again-b.toml")
     served = LAYOUTS[NAME]
     for name, layout in {
-        "arm-b": replace(arm_b, drop_letter_names=True),
+        "arm-b": replace(arm_b, drop_letter_names=True, again=served.again),
         "once": replace(LAYOUTS["blurb_header"], drop_letter_names=True),
         "always": replace(served, read_twice="always"),
         "off": replace(served, read_twice="off"),
@@ -98,7 +99,7 @@ def test_middle_padding_has_no_site_in_a_context_read_twice(qwen_tok, arms):
     ("change", "message"),
     [
         (('read_twice = "one-question"', 'read_twice = "twice"'), "one of"),
-        (('again = "\\n\\nHmm, I should read that again before answer\\n\\n"', ""), "again text"),
+        ((f"again = {json.dumps(LAYOUTS[NAME].again)}", ""), "again text"),
         (('"context", "question"', '"context", "again", "question"'), "no again part"),
         (('["questions", "context", "question", "options"]', '["question", "options", "context"]'), "shared part"),
     ],

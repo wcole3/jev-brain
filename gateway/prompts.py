@@ -31,10 +31,11 @@ class ChatFrame:
 
 
 def chat_frame(tok, layout: Layout) -> ChatFrame:
-    """decider's ChatTemplate: one user turn, no system prompt, thinking off."""
+    """decider's ChatTemplate: one user turn (after the layout's system turn, if any), thinking off."""
     kwargs = {"enable_thinking": False} if "enable_thinking" in str(tok.chat_template) else {}
+    system = [{"role": "system", "content": layout.system}] if layout.system else []
     text = tok.apply_chat_template(
-        [{"role": "user", "content": SENTINEL}], tokenize=False, add_generation_prompt=True, **kwargs
+        [*system, {"role": "user", "content": SENTINEL}], tokenize=False, add_generation_prompt=True, **kwargs
     )
     head, tail = text.split(SENTINEL)
     for opened, closed in CLOSE_THINKING.items():

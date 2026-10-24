@@ -1,0 +1,19 @@
+# H2 arm: blurb_header_reread plus Aleria Judge's system turn, without its rating clause (we read letters only).
+# and no _index on long state arrays (DS-045).
+order = ["questions", "context", "question", "options"]
+questions = "You will be asked questions about the following context. Answer each with the letter of the best option.\n\nQuestions that will be asked about the context:\n{questions}\n\n"
+question_item = "- {question}"
+context = "Context:\n{state}"
+question = "\n\nQuestion: {question}\nOptions:"
+option = "\n({label}) {text}"
+answer = "Answer: ("
+described = "{name}: {description}"
+noul = ["no", "yes"]
+noul_question = "Which answer fits the context?"
+drop_letter_names = true
+again = "\n\nHmm, I should read that again before answering...\n\n"
+read_twice = "one-question"
+same_name_once = true
+drop_label_names = true
+index_arrays = false
+system = "You are a decision function. You will be given a context and one question with labelled options. Reply as \"Answer: (X)\" with the label X of the best option. No other words, no explanation."

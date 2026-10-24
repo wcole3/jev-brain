@@ -38,6 +38,7 @@ class Layout:
     drop_label_names: bool = False  # like drop_letter_names, and "(A)", "(B)", ... count as letter names too
     index_arrays: bool = True  # JSON states number arrays of 8 or more items with _index
     read_twice: str = "off"  # when the shared parts are read again after the again joiner (prompts.reads_twice)
+    system: str = ""  # a system turn before the user turn; empty means none
 
     @property
     def option_open(self) -> str:
@@ -130,6 +131,7 @@ def load_layout(path: Path) -> Layout:
         drop_label_names=data.get("drop_label_names", False),
         index_arrays=data.get("index_arrays", True),
         read_twice=data.get("read_twice", "off"),
+        system=data.get("system", ""),
     )
 
 

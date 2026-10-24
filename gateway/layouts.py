@@ -8,7 +8,8 @@ from pathlib import Path
 from gateway.config import ROOT
 
 PROMPTS_DIR = ROOT / "prompts"
-PARTS = ("questions", "context", "question", "options", "again")
+PARTS = ("questions", "context", "question", "options", "again", "plain_options")
+PER_QUESTION = ("question", "options", "plain_options")
 FLAGS = ("drop_letter_names", "same_name_once", "drop_label_names", "index_arrays")
 READ_TWICE = ("off", "one-question", "always")
 LABEL_SETS = ("letters", "lower", "spaced", "digits", "symbols", "unused", "content", "shuffled", "shuffled-q")
@@ -39,6 +40,7 @@ class Layout:
     index_arrays: bool = True  # JSON states number arrays of 8 or more items with _index
     read_twice: str = "off"  # when the shared parts are read again after the again joiner (prompts.reads_twice)
     system: str = ""  # a system turn before the user turn; empty means none
+    plain_option: str = ""  # one unlabelled option line ("{text}") for the plain_options part, in caller order
 
     @property
     def option_open(self) -> str:
@@ -62,8 +64,9 @@ def _check_read_twice(name: str, data: dict) -> None:
     mode, order = data.get("read_twice", "off"), data["order"]
     if mode not in READ_TWICE:
         raise ValueError(f"{name}: read_twice must be one of {READ_TWICE}")
-    if mode != "off" and (not data.get("again") or "again" in order or order[0] in ("question", "options")):
-        raise ValueError(f"{name}: read_twice needs the again text, no again part, and a shared part first")
+    shared = order[: next(i for i, part in enumerate(order) if part in PER_QUESTION)]
+    if mode != "off" and (not data.get("again") or "again" in shared or not shared):
+        raise ValueError(f"{name}: read_twice needs the again text, no shared again part, and a shared part first")
 
 
 def _check(name: str, data: dict) -> None:
@@ -89,6 +92,8 @@ def _check(name: str, data: dict) -> None:
             raise ValueError(f"{name}: {key} needs {placeholder}")
     if "again" in order and not data.get("again"):
         raise ValueError(f"{name}: an again part needs the again text")
+    if "plain_options" in order and ("{text}" not in data.get("plain_option", "") or order.index("plain_options") < order.index("question")):
+        raise ValueError(f"{name}: plain_options needs plain_option with {{text}} and comes after a question part")
     _check_read_twice(name, data)
     for flag in FLAGS:
         if type(data.get(flag, False)) is not bool:
@@ -132,6 +137,7 @@ def load_layout(path: Path) -> Layout:
         index_arrays=data.get("index_arrays", True),
         read_twice=data.get("read_twice", "off"),
         system=data.get("system", ""),
+        plain_option=data.get("plain_option", ""),
     )
 
 

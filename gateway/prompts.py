@@ -5,7 +5,7 @@ from itertools import takewhile
 
 from gateway.images import Image
 from gateway.labels import NARROW, Labels, question_labels
-from gateway.layouts import Layout
+from gateway.layouts import PER_QUESTION, Layout
 from gateway.padding import OFF, Padding
 from gateway.questions import Rendered
 from gateway.schema import ImageError
@@ -148,7 +148,7 @@ def options_and_reads(tok, layout: Layout, labels: Labels, texts: list[str]) -> 
 
 
 def opens_blank(layout: Layout, part: str) -> bool:
-    template = layout.option if part == "options" else getattr(layout, part)
+    template = {"options": layout.option, "plain_options": layout.plain_option}.get(part) or getattr(layout, part)
     return template.startswith("\n\n")
 
 
@@ -160,7 +160,7 @@ def spelled_order(layout: Layout) -> list[str]:
 
 def shared_parts(layout: Layout) -> list[str]:
     """The parts placed before the first per-question part: every row starts with the head and these."""
-    return list(takewhile(lambda part: part not in ("question", "options"), spelled_order(layout)))
+    return list(takewhile(lambda part: part not in PER_QUESTION, spelled_order(layout)))
 
 
 def reads_twice(layout: Layout, questions: int, images: bool) -> bool:
@@ -269,6 +269,8 @@ def build_rows(
     rows = []
     for qid, q in questions.items():
         parts["question"] = encode(tok, layout.question.format(question=q.text))
+        if "plain_options" in layout.order:  # one encode in caller order, so every order of the question shares it
+            parts["plain_options"] = encode(tok, "".join(layout.plain_option.format(text=o) for o in q.options))
         for perm in perms[qid]:
             shown = [q.options[i] for i in perm]
             parts["options"], reads, tag = options_and_reads(tok, layout, labels, shown)

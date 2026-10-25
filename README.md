@@ -37,6 +37,21 @@ Decision Index scores of the model behind each profile, as served by this repo.
   Every profile passes the board's gate (median, mean and p80 each ≤ 1,000 ms). See
   [Results](#results).
 
+## Versus vLLM's own `/v1/systemone`
+
+vLLM 0.32 ships an uncalibrated `/v1/systemone` (one read per question, at most 26 options; not served for Gemma 4).
+Same model (qwen3.8-27b), same GPU, same 1,994 Decision Index requests (index-dev-2k), 2026-10-25:
+
+| | jev-brain | vLLM native |
+|---|---|---|
+| Requests answered | 1,994 / 1,994 | 1,787 / 1,994 (207 refused: over 26 options) |
+| Accuracy, all questions | **79.7%** | 71.8% |
+| Accuracy, questions both answer | **80.9%** | 76.0% |
+| Latency ms, median / mean / p80 (latency-v1, 600 W, requests both answer) | 263 / 540 / 598 | **138 / 272 / 276** |
+
+Frankly: ours is more accurate, at about twice the latency; both pass the board's 1,000 ms gate. Details and caveats:
+[2026-10-25-vs-vllm-native-systemone.md](docs/results/2026-10-25-vs-vllm-native-systemone.md).
+
 ## Quick start
 
 Requirements:

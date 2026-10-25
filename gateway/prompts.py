@@ -163,18 +163,22 @@ def shared_parts(layout: Layout) -> list[str]:
     return list(takewhile(lambda part: part not in PER_QUESTION, spelled_order(layout)))
 
 
-def reads_twice(layout: Layout, questions: int, images: bool) -> bool:
-    """The layout's read_twice gate for one request: always, or one-question with exactly one question."""
-    if images:  # images are shown once, so a request with images never reads its context twice
+def reads_twice(mode: str, questions: int, images: bool) -> bool:
+    """A read-twice gate for one request: always, or one-question with exactly one question."""
+    if images:  # images are shown once, and image requests keep the layout they were measured with
         return False
-    return layout.read_twice == "always" or (layout.read_twice == "one-question" and questions == 1)
+    return mode == "always" or (mode == "one-question" and questions == 1)
 
 
 def as_read(layout: Layout, questions: int, images: bool) -> Layout:
-    """The layout one request reads: with read-twice on, the shared parts, the again joiner, then them again."""
-    if not reads_twice(layout, questions, images):
-        return layout
-    return replace(layout, order=(*shared_parts(layout), "again", *layout.order))
+    """The layout one request reads: the shared parts and/or each row's question and options again after the joiner."""
+    order = layout.order
+    if reads_twice(layout.read_question_twice, questions, images):
+        first = next(i for i, part in enumerate(order) if part in PER_QUESTION)
+        order = (*order, "again", *order[first:])
+    if reads_twice(layout.read_twice, questions, images):
+        order = (*shared_parts(layout), "again", *order)
+    return layout if order == layout.order else replace(layout, order=order)
 
 
 def joined(parts: dict[str, list[int]], names: list[str]) -> list[int]:

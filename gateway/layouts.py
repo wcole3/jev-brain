@@ -39,6 +39,7 @@ class Layout:
     drop_label_names: bool = False  # like drop_letter_names, and "(A)", "(B)", ... count as letter names too
     index_arrays: bool = True  # JSON states number arrays of 8 or more items with _index
     read_twice: str = "off"  # when the shared parts are read again after the again joiner (prompts.reads_twice)
+    read_question_twice: str = "off"  # when each row reads its question and options again after the joiner
     system: str = ""  # a system turn before the user turn; empty means none
     plain_option: str = ""  # one unlabelled option line ("{text}") for the plain_options part, in caller order
 
@@ -58,6 +59,15 @@ def _check_image_label(name: str, label: str) -> None:
         label.format(n=1)
     except (KeyError, IndexError, ValueError) as e:
         raise ValueError(f"{name}: image_label must format with {{n}} only ({e!r})") from None
+
+
+def _check_read_question_twice(name: str, data: dict) -> None:
+    mode, order = data.get("read_question_twice", "off"), data["order"]
+    if mode not in READ_TWICE:
+        raise ValueError(f"{name}: read_question_twice must be one of {READ_TWICE}")
+    first = next(i for i, part in enumerate(order) if part in PER_QUESTION)
+    if mode != "off" and (not data.get("again") or not set(order[first:]) <= set(PER_QUESTION)):
+        raise ValueError(f"{name}: read_question_twice needs the again text and the per-question parts last")
 
 
 def _check_read_twice(name: str, data: dict) -> None:
@@ -95,6 +105,7 @@ def _check(name: str, data: dict) -> None:
     if "plain_options" in order and ("{text}" not in data.get("plain_option", "") or order.index("plain_options") < order.index("question")):
         raise ValueError(f"{name}: plain_options needs plain_option with {{text}} and comes after a question part")
     _check_read_twice(name, data)
+    _check_read_question_twice(name, data)
     for flag in FLAGS:
         if type(data.get(flag, False)) is not bool:
             raise ValueError(f"{name}: {flag} must be true or false")
@@ -136,6 +147,7 @@ def load_layout(path: Path) -> Layout:
         drop_label_names=data.get("drop_label_names", False),
         index_arrays=data.get("index_arrays", True),
         read_twice=data.get("read_twice", "off"),
+        read_question_twice=data.get("read_question_twice", "off"),
         system=data.get("system", ""),
         plain_option=data.get("plain_option", ""),
     )

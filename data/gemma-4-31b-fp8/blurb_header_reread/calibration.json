@@ -1,0 +1,174 @@
+{
+ "format": 2,
+ "version": 1,
+ "date": "2026-10-25T10:20:15Z",
+ "comments": [
+  {
+   "version": 1,
+   "date": "2026-10-25T10:20:15Z",
+   "text": "refit: default reads question twice (H1q, cap 32), vLLM 0.32; choice: fitted T 4.020, score: pooled T 5.385, noul: fitted T 7.215, b not shipped"
+  },
+  {
+   "version": 1,
+   "date": "2026-10-25T14:51:01Z",
+   "text": "borrowed from gemma-4-31b/calibration.json"
+  }
+ ],
+ "stamp": {
+  "tokenizer_sha256": "7bec87cafac6d39e8774e5a39b4f6116d968d0bc987e0e400a577de9ed8fb911",
+  "layout_sha256": "ea6c117117b7a229eff6ef76fb15c4c97fffae18c9ca472956f6ea09915dcbe1",
+  "hf_revision": "d7242548c457ab4b45bd3adb8937f2659af4739d",
+  "prefix_pad": "off",
+  "prefix_block": 0
+ },
+ "types": {
+  "choice": {
+   "T": 4.0203754009072075
+  },
+  "score": {
+   "T": 5.38542849820243
+  },
+  "noul": {
+   "T": 7.214539306366964,
+   "b": 0.0
+  }
+ },
+ "fit": {
+  "split": "data/splits/calib.json",
+  "split_sha256": "c8c8dba6f809a0e3da433fe50964205e061194af20463b1afa4ce3e7dadc09ed",
+  "orders": "top_p:0.9+reversed",
+  "n": {
+   "choice": 920,
+   "score": 259,
+   "noul": 670
+  },
+  "calib": {
+   "nll": {
+    "before": {
+     "choice": 1.7012772616633818,
+     "score": 10.552420090073449,
+     "noul": 1.0196173948381924
+    },
+    "after": {
+     "choice": 0.5479596403960135,
+     "score": 2.075219951252677,
+     "noul": 0.22146882327748524
+    }
+   },
+   "ece": {
+    "before": {
+     "choice": 0.11165000336660837,
+     "score": 0.5398653733602482,
+     "noul": 0.0740350794557517
+    },
+    "after": {
+     "choice": 0.03629387584501256,
+     "score": 0.4386919340004004,
+     "noul": 0.021103181668523728
+    }
+   }
+  },
+  "eval": {
+   "nll": {
+    "before": {
+     "choice": 2.0344263524794277,
+     "score": 5.296536237690168,
+     "noul": 1.1094952888044036
+    },
+    "after": {
+     "choice": 0.5932891202906395,
+     "score": 1.1958694070618603,
+     "noul": 0.24213145233713457
+    }
+   },
+   "ece": {
+    "before": {
+     "choice": 0.14044799476844547,
+     "score": 0.2945964865708488,
+     "noul": 0.07444933202839729
+    },
+    "after": {
+     "choice": 0.07604183781253847,
+     "score": 0.17711925515557822,
+     "noul": 0.029228430372986853
+    }
+   }
+  },
+  "b_decision": {
+   "ship": false,
+   "acc": [
+    0.0,
+    -0.006006006006006093,
+    0.006006006006005982
+   ],
+   "ece": [
+    -0.004568630448561577,
+    -0.02032804132205538,
+    0.009362078525425449
+   ],
+   "b_fitted": -0.3224753262414991
+  },
+  "t_decision": {
+   "choice": {
+    "fitted_T": 4.0203754009072075,
+    "pooled_T": 5.38542849820243,
+    "shipped_T": 4.0203754009072075,
+    "source": "fitted",
+    "ece": [
+     -0.064406156955907,
+     -0.06820382194004572,
+     -0.05137094416173986
+    ],
+    "ece_pooled": [
+     -0.04179587101164868,
+     -0.06263505373852685,
+     -0.021738762165515305
+    ]
+   },
+   "score": {
+    "fitted_T": 19.99906500967625,
+    "pooled_T": 5.38542849820243,
+    "shipped_T": 5.38542849820243,
+    "source": "pooled",
+    "ece": [
+     -0.041641228062616276,
+     -0.11798714801793872,
+     0.03436251130911627
+    ],
+    "ece_pooled": [
+     -0.11747723141527058,
+     -0.13928416455897005,
+     -0.07104935477113108
+    ]
+   },
+   "noul": {
+    "fitted_T": 7.214539306366964,
+    "pooled_T": 5.38542849820243,
+    "shipped_T": 7.214539306366964,
+    "source": "fitted",
+    "ece": [
+     -0.04522090165541044,
+     -0.06001017331706937,
+     -0.016577905609960093
+    ],
+    "ece_pooled": [
+     -0.029519699612578637,
+     -0.03701674644323416,
+     -0.013980060939646849
+    ]
+   }
+  }
+ },
+ "borrowed": {
+  "profile": "gemma-4-31b",
+  "file": "calibration.json",
+  "stamp": {
+   "tokenizer_sha256": "c3500ca1d4b2a588b1e2eeb042d7e6284f6f1cbc74d25afbd0e871d9d6eb6405",
+   "layout_sha256": "ea6c117117b7a229eff6ef76fb15c4c97fffae18c9ca472956f6ea09915dcbe1",
+   "hf_revision": "842da3794eaa0b77d5f08bae87a17459d91ff475",
+   "prefix_pad": "off",
+   "prefix_block": 0
+  },
+  "date": "2026-10-25T14:51:01Z"
+ }
+}

@@ -1,0 +1,174 @@
+{
+ "format": 2,
+ "version": 1,
+ "date": "2026-10-25T14:09:57Z",
+ "comments": [
+  {
+   "version": 1,
+   "date": "2026-10-25T14:09:57Z",
+   "text": "refit: default reads question twice (H1q, cap 32), vLLM 0.32; choice: fitted T 1.660, score: pooled T 2.131, noul: fitted T 1.593, b not shipped"
+  },
+  {
+   "version": 1,
+   "date": "2026-10-25T14:51:14Z",
+   "text": "borrowed from qwen3.6-27b/calibration.json"
+  }
+ ],
+ "stamp": {
+  "tokenizer_sha256": "f1738377fb7acbc5a747d00bc34135bac9fd81777240ba1aaa8eb53c0aed08e1",
+  "layout_sha256": "ea6c117117b7a229eff6ef76fb15c4c97fffae18c9ca472956f6ea09915dcbe1",
+  "hf_revision": "e89b16ebf1988b3d6befa7de50abc2d76f26eb09",
+  "prefix_pad": "front",
+  "prefix_block": 800
+ },
+ "types": {
+  "choice": {
+   "T": 1.659824132956001
+  },
+  "score": {
+   "T": 2.1314605853423614
+  },
+  "noul": {
+   "T": 1.5932935918585747,
+   "b": 0.0
+  }
+ },
+ "fit": {
+  "split": "data/splits/calib.json",
+  "split_sha256": "c8c8dba6f809a0e3da433fe50964205e061194af20463b1afa4ce3e7dadc09ed",
+  "orders": "identity",
+  "n": {
+   "choice": 898,
+   "score": 259,
+   "noul": 670
+  },
+  "calib": {
+   "nll": {
+    "before": {
+     "choice": 0.6475413848297747,
+     "score": 3.7469430324190283,
+     "noul": 0.2798083134239661
+    },
+    "after": {
+     "choice": 0.5187933763875621,
+     "score": 1.9899495765487192,
+     "noul": 0.2489932861112423
+    }
+   },
+   "ece": {
+    "before": {
+     "choice": 0.06658405736757357,
+     "score": 0.42177979852111164,
+     "noul": 0.05297491326993575
+    },
+    "after": {
+     "choice": 0.023479573855439903,
+     "score": 0.3027272623204872,
+     "noul": 0.029852852248705705
+    }
+   }
+  },
+  "eval": {
+   "nll": {
+    "before": {
+     "choice": 0.5438342207432192,
+     "score": 2.0110327017156293,
+     "noul": 0.2780144413230285
+    },
+    "after": {
+     "choice": 0.4564778284042502,
+     "score": 1.226053816923384,
+     "noul": 0.24924772092498448
+    }
+   },
+   "ece": {
+    "before": {
+     "choice": 0.08287783021301609,
+     "score": 0.20321215055523742,
+     "noul": 0.055966895923644594
+    },
+    "after": {
+     "choice": 0.01477475184879204,
+     "score": 0.15084103765211748,
+     "noul": 0.033273725885468605
+    }
+   }
+  },
+  "b_decision": {
+   "ship": false,
+   "acc": [
+    0.0,
+    -0.006006006006005982,
+    0.006006006006005982
+   ],
+   "ece": [
+    -0.0047578594929746434,
+    -0.017607041712031243,
+    0.008616935443729393
+   ],
+   "b_fitted": 0.3315374033171955
+  },
+  "t_decision": {
+   "choice": {
+    "fitted_T": 1.659824132956001,
+    "pooled_T": 2.1314605853423614,
+    "shipped_T": 1.659824132956001,
+    "source": "fitted",
+    "ece": [
+     -0.06810307836422405,
+     -0.0723909968312542,
+     -0.04270401012760232
+    ],
+    "ece_pooled": [
+     -0.024196791634697838,
+     -0.0514849993563854,
+     0.006395934019193805
+    ]
+   },
+   "score": {
+    "fitted_T": 9.39554306903077,
+    "pooled_T": 2.1314605853423614,
+    "shipped_T": 2.1314605853423614,
+    "source": "pooled",
+    "ece": [
+     0.10495577485490928,
+     0.027489345050719233,
+     0.16672728640094422
+    ],
+    "ece_pooled": [
+     -0.05237111290311994,
+     -0.09637959102304244,
+     -0.005698856298202909
+    ]
+   },
+   "noul": {
+    "fitted_T": 1.5932935918585747,
+    "pooled_T": 2.1314605853423614,
+    "shipped_T": 1.5932935918585747,
+    "source": "fitted",
+    "ece": [
+     -0.02269317003817599,
+     -0.034663612369194303,
+     0.0016357423665935358
+    ],
+    "ece_pooled": [
+     -9.86810946169564e-05,
+     -0.026557144541977086,
+     0.027758858765480177
+    ]
+   }
+  }
+ },
+ "borrowed": {
+  "profile": "qwen3.6-27b",
+  "file": "calibration.json",
+  "stamp": {
+   "tokenizer_sha256": "f1738377fb7acbc5a747d00bc34135bac9fd81777240ba1aaa8eb53c0aed08e1",
+   "layout_sha256": "ea6c117117b7a229eff6ef76fb15c4c97fffae18c9ca472956f6ea09915dcbe1",
+   "hf_revision": "6a9e13bd6fc8f0983b9b99948120bc37f49c13e9",
+   "prefix_pad": "front",
+   "prefix_block": 800
+  },
+  "date": "2026-10-25T14:51:14Z"
+ }
+}

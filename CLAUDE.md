@@ -103,4 +103,5 @@ in `README.md` and `docs/development.md`.
 - Ports bind to `127.0.0.1`. vLLM's `/health`, `/metrics`, `/version` and `/tokenize` stay
   open even with `VLLM_API_KEY`, so port 8000 must never be published (DS-012 waiver;
   `scripts/check_bind.py` refuses it). vLLM 0.32 also serves its own uncalibrated
-  `/v1/systemone` on 8000, behind `VLLM_API_KEY`.
+  `/v1/systemone` on 8000, behind `VLLM_API_KEY`, for some architectures only (Qwen3/3.5 yes;
+  Gemma 4 returns 501).

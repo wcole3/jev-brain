@@ -321,3 +321,15 @@ async def test_identity_profile_answers_with_its_text_fit(engine):
     e = dataclasses.replace(engine, calibration=engine.calibration | {"decider_chat": fit})
     r = await read_rows(e, request())
     assert (await decide(e, request()))["answers"] == answers_for(r.questions, r.reads, fit)
+
+
+async def test_a_request_too_long_to_read_twice_is_read_once(engine):
+    req = request(questions={"department": QUICKSTART["department"]}, layout="blurb_header_reread")
+    _, _, twice = await build_batch(engine, req)
+    once_layout = dataclasses.replace(engine.layouts["blurb_header_reread"], read_twice="off", read_question_twice="off")
+    once_engine = dataclasses.replace(engine, layouts=engine.layouts | {"blurb_header_reread": once_layout})
+    _, _, once = await build_batch(once_engine, req)
+    assert once.longest < twice.longest
+    fits_once = dataclasses.replace(engine.settings, systemone_max_len=once.longest + 1)
+    _, _, got = await build_batch(dataclasses.replace(engine, settings=fits_once), req)
+    assert [r.ids for r in got.rows] == [r.ids for r in once.rows]

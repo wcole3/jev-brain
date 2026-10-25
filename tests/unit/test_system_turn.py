@@ -35,6 +35,6 @@ def test_rows_differ_only_by_the_head(tok_name, request, h2):
 
 
 def test_h2_is_the_served_layout_plus_a_system_turn(h2):
-    assert replace(LAYOUTS[H2], name="blurb_header_reread", sha256=LAYOUTS["blurb_header_reread"].sha256, system="") == (
-        LAYOUTS["blurb_header_reread"]
-    )
+    served = LAYOUTS["blurb_header_reread"]  # H2 ran before the question reread
+    arm = replace(LAYOUTS[H2], name=served.name, sha256=served.sha256, system="")
+    assert arm == replace(served, read_question_twice="off", question_twice_max_options=0)

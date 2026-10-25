@@ -83,6 +83,10 @@ def decode_then_build(
     return rows(padding, pad_rows, images=image_context(engine.tokenizer, layout, items, engine.vision))
 
 
+def reads_twice_at_all(layout: Layout) -> bool:
+    return layout.read_twice != "off" or layout.read_question_twice != "off"
+
+
 async def build_batch(
     engine: Engine,
     request: SystemOneRequest,
@@ -115,6 +119,13 @@ async def build_batch(
     )
     first = functools.partial(decode_then_build, engine, layout, request, rows) if images else rows
     batch = await asyncio.to_thread(first, engine.padding, pad_rows)
+    if batch.longest >= s.systemone_max_len and not images and reads_twice_at_all(layout):
+        # a request too long to read twice is read once, as if read-twice were off
+        layout = replace(layout, read_twice="off", read_question_twice="off")
+        rows = functools.partial(
+            build_rows, engine.tokenizer, engine.frames[name], layout, engine.labels[name], state, questions, perms
+        )
+        batch = await asyncio.to_thread(rows, engine.padding, pad_rows)
     if batch.longest >= s.systemone_max_len and engine.padding.enabled:
         # the pad must never refuse a request that fits without it; decoded images are reused
         batch = await asyncio.to_thread(rows, OFF, pad_rows, images=batch.images)

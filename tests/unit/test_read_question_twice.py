@@ -1,3 +1,5 @@
+from dataclasses import asdict, replace
+
 import pytest
 
 from gateway.layouts import PROMPTS_DIR, load_layout
@@ -8,8 +10,10 @@ ONE = {"hle": HLE["hle"]}
 
 @pytest.fixture
 def arms(monkeypatch):
-    for name in ("reread-h1", "reread-h1q", "reread-h1q-opts"):
+    for name in ("reread-h1", "reread-h1q", "reread-h1q-opts", "reread-h1q-cap32"):
         monkeypatch.setitem(LAYOUTS, name, load_layout(PROMPTS_DIR / "experiments" / f"{name}.toml"))
+    served = LAYOUTS["blurb_header_reread"]  # the shared block twice only
+    monkeypatch.setitem(LAYOUTS, "shared-only", replace(served, read_question_twice="off", question_twice_max_options=0))
 
 
 def ids(batch):
@@ -30,6 +34,19 @@ def test_more_questions_read_like_the_default(tok_name, request, arms):
     assert ids(batch_for(tok, "reread-h1q", QUICKSTART)) == ids(batch_for(tok, "blurb_header_reread", QUICKSTART))
 
 
+def test_served_layout_is_h1q_capped_at_32_options(arms):
+    ignore = {"name", "sha256"}
+    served, arm = asdict(LAYOUTS["blurb_header_reread"]), asdict(LAYOUTS["reread-h1q-cap32"])
+    assert {k: v for k, v in served.items() if k not in ignore} == {k: v for k, v in arm.items() if k not in ignore}
+
+
+@pytest.mark.parametrize("tok_name", ["qwen_tok", "gemma_tok"])
+def test_served_layout_reads_one_question_like_cap32(tok_name, request, arms):
+    tok = request.getfixturevalue(tok_name)
+    assert ids(batch_for(tok, "blurb_header_reread", ONE, ORDERS)) == ids(batch_for(tok, "reread-h1q-cap32", ONE, ORDERS))
+    assert ids(batch_for(tok, "blurb_header_reread", QUICKSTART)) == ids(batch_for(tok, "shared-only", QUICKSTART))
+
+
 def test_needs_the_per_question_parts_last(tmp_path):
     text = (PROMPTS_DIR / "question_first.toml").read_text()
     (tmp_path / "bad.toml").write_text(text + '\nagain = "\\n\\nAgain\\n\\n"\nread_question_twice = "always"\n')
@@ -46,13 +63,13 @@ def test_question_again_replaces_the_joiner_and_question(tok_name, request, arms
 
 
 def test_question_again_needs_the_question_reread(tmp_path):
-    text = (PROMPTS_DIR / "blurb_header_reread.toml").read_text()
+    text = (PROMPTS_DIR / "blurb_header_reread.toml").read_text().replace('read_question_twice = "one-question"', "")
     (tmp_path / "bad.toml").write_text(text + '\nquestion_again = "\\n\\nAgain:"\n')
     with pytest.raises(ValueError, match="question_again needs read_question_twice"):
         load_layout(tmp_path / "bad.toml")
 
 
-@pytest.mark.parametrize(("cap", "like"), [(4, "blurb_header_reread"), (5, "reread-h1q")])
+@pytest.mark.parametrize(("cap", "like"), [(4, "shared-only"), (5, "reread-h1q")])
 def test_a_longer_option_list_than_the_cap_reads_once(cap, like, gemma_tok, arms, monkeypatch, tmp_path):
     text = (PROMPTS_DIR / "experiments" / "reread-h1q.toml").read_text()
     (tmp_path / "capped.toml").write_text(text + f"\nquestion_twice_max_options = {cap}\n")

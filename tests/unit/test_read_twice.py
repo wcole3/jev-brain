@@ -17,14 +17,17 @@ ONE = {"hle": HLE["hle"]}
 
 @pytest.fixture
 def arms(monkeypatch):
-    """Arm B (with the served joiner) and blurb_header, both without letter names, and the served layout per mode."""
+    """Arm B (with the served joiner) and blurb_header, both without letter names, and the served layout per mode,
+    with the per-question reread off."""
     arm_b = load_layout(PROMPTS_DIR / "experiments" / "blurb-header-again-b.toml")
     served = LAYOUTS[NAME]
+    shared = replace(served, read_question_twice="off", question_twice_max_options=0)  # only the shared block twice
     for name, layout in {
         "arm-b": replace(arm_b, drop_letter_names=True, again=served.again),
         "once": replace(LAYOUTS["blurb_header"], drop_letter_names=True),
-        "always": replace(served, read_twice="always"),
-        "off": replace(served, read_twice="off"),
+        "shared": shared,
+        "always": replace(shared, read_twice="always"),
+        "off": replace(shared, read_twice="off"),
     }.items():
         monkeypatch.setitem(LAYOUTS, name, layout)
 
@@ -36,15 +39,17 @@ def ids(batch):
 def test_served_layout_is_blurb_header_plus_the_new_keys():
     served, base = LAYOUTS[NAME], LAYOUTS["blurb_header"]
     plain = replace(served, name=base.name, sha256=base.sha256, drop_letter_names=False, again="", read_twice="off",
-                    same_name_once=False, drop_label_names=False, index_arrays=True)
+                    same_name_once=False, drop_label_names=False, index_arrays=True,
+                    read_question_twice="off", question_twice_max_options=0)
     assert plain == base
     assert (served.drop_letter_names, served.read_twice) == (True, "one-question")
+    assert (served.read_question_twice, served.question_twice_max_options) == ("one-question", 32)
 
 
 @pytest.mark.parametrize("tok_name", ["qwen_tok", "gemma_tok"])
 def test_one_question_reads_like_arm_b(tok_name, request, arms):
     tok = request.getfixturevalue(tok_name)
-    assert ids(batch_for(tok, NAME, ONE, ORDERS)) == ids(batch_for(tok, "arm-b", ONE, ORDERS))
+    assert ids(batch_for(tok, "shared", ONE, ORDERS)) == ids(batch_for(tok, "arm-b", ONE, ORDERS))
     assert ids(batch_for(tok, "always", ONE, ORDERS)) == ids(batch_for(tok, "arm-b", ONE, ORDERS))
 
 
@@ -78,7 +83,7 @@ def test_images_read_once(gemma_tok, arms):
 @pytest.mark.parametrize("mode", ["front", "end"])
 def test_padding_keeps_one_shared_prefix(qwen_tok, mode, arms):
     pad = Padding(mode, 800, always=True, token=newline_token(qwen_tok))
-    batch = batch_for(qwen_tok, NAME, ONE, ORDERS, padding=pad)
+    batch = batch_for(qwen_tok, "shared", ONE, ORDERS, padding=pad)
     assert batch.shared_len % 800 == 0 and batch.shared_len > batch.unpadded_len
     assert all(r.ids[: batch.shared_len] == batch.rows[0].ids[: batch.shared_len] for r in batch.rows)
     unpadded = batch_for(qwen_tok, "arm-b", ONE, ORDERS)
@@ -89,7 +94,7 @@ def test_padding_keeps_one_shared_prefix(qwen_tok, mode, arms):
 
 def test_middle_padding_has_no_site_in_a_context_read_twice(qwen_tok, arms):
     pad = Padding("middle", 800, always=True, token=newline_token(qwen_tok))
-    batch = batch_for(qwen_tok, NAME, ONE, ORDERS, padding=pad)
+    batch = batch_for(qwen_tok, "shared", ONE, ORDERS, padding=pad)
     assert batch.shared_len == batch.unpadded_len
     assert ids(batch) == ids(batch_for(qwen_tok, "arm-b", ONE, ORDERS))
     assert batch_for(qwen_tok, NAME, padding=pad).shared_len % 800 == 0  # read once: padded as before

@@ -212,7 +212,9 @@ decider's T = 1.943). Accuracy in %; ECE is calibration error (lower is better):
 | qwen3.8-27b | 86.4 | 90.4 | 86.2 | 0.033 | 81 ms |
 | qwen3.6-27b | 84.3 | 91.9 | 83.5 | 0.053 | 83 ms |
 
-Since then `header` is the default layout for all three profiles (owner, 2026-10-04; full Index
-confirmation in [docs/results/archive/m3-recommendations.md](results/archive/m3-recommendations.md)).
+Since then the default layout moved to `header` (owner, 2026-10-04; full Index confirmation in
+[docs/results/archive/m3-recommendations.md](results/archive/m3-recommendations.md)), then `blurb_header` (round 4,
+2026-10-20) and `blurb_header_reread` with H1q on vLLM 0.32 (DS-045, 2026-10-25;
+[read-twice.md](background/read-twice.md)). Current scores and latency: README "Scores".
 Choice is level with Jev; most of the gap is in noul and score. Details and caveats:
 [docs/results/archive/jevbench-vs-jev.md](results/archive/jevbench-vs-jev.md).

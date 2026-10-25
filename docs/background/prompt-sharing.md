@@ -276,7 +276,7 @@ the shared prefix is at least `WARM_MIN_PREFIX_TOKENS` long.
 | Profile | Setting | Why |
 |---|---|---|
 | qwen3.6 / qwen3.8 | `WARM_UP=row`, threshold 784, front padding | Recurrent layers need a saved state at the prefix end |
-| gemma-4-31b | `WARM_UP=prefix`, threshold 4,096, plus vLLM `--prefix-cache-retention-interval 32` | Sliding-window blocks must be hashed densely; under chunked prefill the shared prefix must also be computed before the rows arrive (update below) |
+| gemma (31B, 12B) | `WARM_UP=prefix`, threshold 1,024 on gemma-4-31b, 4,096 on the others, plus vLLM `--prefix-cache-retention-interval` (32; 64 on the 12B) | Sliding-window blocks must be hashed densely; under chunked prefill the shared prefix must also be computed before the rows arrive (update below) |
 
 **Qwen (hybrid, recurrent layers).** vLLM keeps a recurrent-state checkpoint only at the last
 784-token boundary of a prefill ([kv-cache.md §6](kv-cache.md)). Row 1 is the padded prefix plus its question (~480 tokens,
@@ -316,6 +316,12 @@ So gemma now sends the shared prefix alone first (`WARM_UP=prefix`) when it is a
 At 1,024 it also fired on 2,048-token states, where it gains little and cost req/s at 16 clients
 (0.7 to 0.6; KV peak 52% to 82%, likely the warmed prefix evicted while its rows queue). Full table and method:
 [prompt-layouts.md §3](prompt-layouts.md).
+
+**Update 2026-10-25: gemma-4-31b warms from 1,024 tokens.** Rows sent together recompute the shared prefix past one
+1,024-token chunk. On latency-v1 (one client, the board's design) the lower threshold cut mean latency 3 to 7% and
+p95 9 to 24%, at the 16-client cost above (0.7 → 0.6 req/s). These figures are from commit a65828f; no summary in
+`docs/results/` records the threshold A/B by name. gemma-4-31b-fp8 and the 12B profiles still use 4,096 (not
+re-measured).
 
 **Rule of thumb for a new model:** measure, don't guess. Send one multi-question request
 straight to vLLM and read `vllm:prompt_tokens_cached_total` around each call: does row 2 reuse

@@ -8,9 +8,10 @@ the same method as [prompt-sharing.md](prompt-sharing.md) §4: it rebuilds the r
 
 ## Short answer
 
-- **A layout is the order of the pieces in the prompt.** We ship four: `decider_chat`
+- **A layout is the order of the pieces in the prompt.** We ship five: `decider_chat`
   (state, then question), `header` (question list, state, question), `blurb_header` (`header` with an
-  intro blurb; the default) and `question_first` (question, then state).
+  intro blurb), `blurb_header_reread` (`blurb_header` with read-twice; the default) and `question_first`
+  (question, then state).
 - **The order decides how much prefix sharing survives.** `decider_chat` and `header` keep each
   row's question outside the shared prefix; `question_first` shares nothing. With today's padding
   and warm-up, `header` computes 1.02–1.09× the minimum on Qwen (1.34 for a tiny 256-token × 4 request: the pad) and ~1.0× on gemma for multi-question
@@ -20,9 +21,10 @@ the same method as [prompt-sharing.md](prompt-sharing.md) §4: it rebuilds the r
   a full state prefill per question.
 - **Option order** (bias, averaging and its cost) has its own doc: [option-ordering.md](option-ordering.md).
 - **`decider_chat`, `header` and `question_first` have a calibration file per profile** (`data/<profile>/<layout>/calibration.json`, §4).
-  `blurb_header_reread` is the default on all 9 profiles (DS-045); quantized profiles borrow their bf16 base's fit. Experiment layouts have none.
+  `blurb_header_reread` is the default on all 9 profiles (DS-045), fitted on vLLM 0.32 (2026-10-25); quantized profiles borrow their bf16 base's fit. Experiment layouts have none.
 - **Read-twice** (DS-045): `blurb_header_reread` writes the blurb, question list and state twice when a request has
-  one question; +0.8 to +2.1 points on choice questions off-suite, +22% latency. See [read-twice.md](read-twice.md).
+  one question; +0.8 to +2.1 points on choice questions off-suite, +22% latency. Since 2026-10-25 (H1q) such a request
+  also reads each row's question and options twice, up to 32 options. See [read-twice.md](read-twice.md).
 - **An intro blurb** (one sentence before the prompt, round 4) moves text accuracy by +0.2 to +1.0 points; only
   gemma's `decider_chat` gain has a CI above 0. No image CI excludes 0. `decider_chat` trails `header` on text by
   1.5–3.6 points on both models, with or without the blurb (§5).
@@ -39,7 +41,7 @@ common before their first question-specific part
 | [`decider_chat`](../../prompts/decider_chat.toml) | context, question, options | chat header + state |
 | [`header`](../../prompts/header.toml) | questions, context, question, options | chat header + list of all questions + state |
 | [`blurb_header`](../../prompts/blurb_header.toml) | questions, context, question, options | as `header`, behind a 2-sentence blurb |
-| [`blurb_header_reread`](../../prompts/blurb_header_reread.toml) (default) | as `blurb_header`; one-question requests read questions + context twice | as `blurb_header`, twice behind a joiner when one question |
+| [`blurb_header_reread`](../../prompts/blurb_header_reread.toml) (default) | as `blurb_header`; one-question requests read questions + context twice, then question + options twice (≤ 32 options) | as `blurb_header`, twice behind a joiner when one question |
 | [`question_first`](../../prompts/question_first.toml) | question, options, context | chat header only (3 tokens) |
 
 A tiny request rendered with each layout (state "Order 17: 3 widgets shipped on Monday.", first
@@ -134,7 +136,8 @@ Computed ÷ usage, where usage is the state once plus each question once:
 - **Gemma:** with `--long-prefill-token-threshold 1024` (DS-025) every prefill advances 1,024 tokens a step, so rows
   sent together prefill side by side and each computes its own copy of the state. Sending the shared prefix alone
   first fixes it; for short prefixes it only adds a round trip (+60 ms at 256 × 4). Gemma now uses
-  `WARM_UP=prefix` with `WARM_MIN_PREFIX_TOKENS=4096`, where the gain is large (prompt-sharing.md §7). Ratios below 1 come from template text cached by earlier
+  `WARM_UP=prefix` with `WARM_MIN_PREFIX_TOKENS=4096`, where the gain is large; gemma-4-31b lowered it to 1,024 on
+  2026-10-25 (prompt-sharing.md §7). Ratios below 1 come from template text cached by earlier
   requests.
 
 ### Before padding: the 2026-09-29 replay
@@ -185,15 +188,15 @@ share, so it is free), and A/B `header` on long, multi-question states.
 Update 2026-10-03: M3 measured `header` and the owner made it qwen3.6's default layout; qwen3.8 and gemma kept
 `decider_chat`.
 
-Update 2026-10-04: `header` ships for all three profiles (since superseded by `blurb_header`, round 4). Full Decision Index runs beat `decider_chat` by 3.4 to 4.5
+Update 2026-10-04: `header` ships for all three profiles (since superseded by `blurb_header`, round 4, then `blurb_header_reread`, DS-045). Full Decision Index runs beat `decider_chat` by 3.4 to 4.5
 points on each (the offline index-dev and eval splits had understated it), at +10–17 ms median latency and 7–11
 refused rows per profile ([m3-recommendations.md](../results/archive/m3-recommendations.md)).
 
 ## 4. Calibration status per layout
 
-`blurb_header_reread` (the default) runs uncalibrated (T = 1): its 2026-10-23 fits went stale when the rendering
-cleanups shipped ([read-twice.md §8](read-twice.md#8-alerias-rendering-cleanups)) and are pending a refit; the
-quantized profiles will borrow their base's fit. The table below predates both read-twice layouts.
+`blurb_header_reread` (the default) was refit for H1q on vLLM 0.32 on 2026-10-25 for the four bf16 profiles; the
+quantized profiles borrow their base's fit ([read-twice.md §9](read-twice.md#9-h1q-the-question-read-twice-too-2026-10-25)).
+The table below predates both read-twice layouts.
 
 Files in `data/<profile>/<layout>/` (date of the current fit):
 

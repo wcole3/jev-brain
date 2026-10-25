@@ -22,9 +22,12 @@ labels listed in [Runs](#runs).
   off-suite eval split, choice accuracy rises on all four bf16 models (+0.8 to +2.1 points); score and noul are mixed.
 - **Aleria's other rendering cleanups ship too** (§8): a name equal to its description shown once, "(A)" names
   dropped, no `_index` on long state arrays. Accuracy-neutral on gemma-4-31b; the `_index` drop saves 2.7% of
-  tokens. Shipping them made the §6 fits stale: **the default runs at T = 1 until the refit.**
+  tokens.
 - **Cost:** +22% median and mean latency on gemma-4-31b (151.5 → 185.5 ms median), all three board-gate figures
   still under 1,000 ms.
+- **H1q ships on top (§9, 2026-10-25):** one-question requests also read each row's question and labelled options
+  twice, up to 32 options. All profiles are refit on vLLM 0.32 for it; the 600 W latency runs pass the board gate
+  on every profile but qwen3.8-27b-nvfp4.
 
 ## 1. What it is
 
@@ -291,13 +294,59 @@ gemma-4-31b, identity + reversed reads, against `blurb_header_reread` as it was:
 - **Noise reference:** HLE states are empty, so no HLE prompt changes in the `_index` arm, yet HLE showed 0 fixes and
   2 breaks.
 - **Both ship in `blurb_header_reread`** (owner decision, 2026-10-23). The served layout's hash changed, so its label
-  tables were rebuilt and its calibration files removed; the bf16 calib/eval refit and the quant borrows are pending.
+  tables were rebuilt and its calibration files removed. The refit and the quant borrows landed with H1q (§9).
+
+## 9. H1q: the question read twice too (2026-10-25)
+
+On vLLM 0.32 the arms of [experiments vs public](../results/2026-10-25-experiments-vs-public.md) went one step
+further. H1 also writes each row's question and labelled options a second time, after the joiner; H1q does that only
+for one-question requests, so multi-question requests keep their tokens. The shipped form
+([`blurb_header_reread.toml`](../../prompts/blurb_header_reread.toml)) adds two limits:
+
+- **`question_twice_max_options = 32`:** a request with a longer option list reads its question once (long lists
+  cost the most).
+- **Length fallback:** a request too long to read twice is read once instead of refused
+  ([`decide.py`](../../gateway/decide.py)); uncapped H1 pushed 12 eval requests (255 options) past 65,536 tokens.
+
+Refit on calib per bf16 profile at its served orders, eval accuracy against the previous `blurb_header_reread` fit;
+the quantized profiles borrow their base's fit:
+
+| Profile | Choice | Score | Noul | T choice / score / noul | Fit |
+|---|---|---|---|---|---|
+| gemma-4-31b | 0.847 → 0.853 | 0.675 → 0.688 | 0.916 → 0.919 | 4.020 / 5.385 / 7.215 | [summary](../results/archive/gemma-4-31b/2026-10-25T101916Z-calibrate/summary.md) |
+| qwen3.8-27b | 0.840 → 0.846 | 0.682 → 0.700 | 0.881 → 0.887 | 1.739 / 1.000 / 1.396 | [summary](../results/archive/qwen3.8-27b/2026-10-25T111642Z-calibrate/summary.md) |
+| qwen3.6-27b | 0.837 → 0.843 | 0.668 → 0.671 | 0.890 → 0.893 | 1.660 / 2.131 / 1.593 | [summary](../results/archive/qwen3.6-27b/2026-10-25T140912Z-calibrate/summary.md) |
+| gemma-4-12b | 0.815 → 0.830 | 0.605 → 0.585 | 0.878 → 0.883 | 4.018 pooled | [summary](../results/archive/gemma-4-12b/2026-10-25T144736Z-calibrate/summary.md) |
+
+The previous fits are the 2026-10-24 gemma-4-31b 0.32 refit and the 2026-10-23 (vLLM 0.30) fits for the others.
+No noul offset b ships.
+
+Latency, latency-v1 at 600 W on the local workstation, each profile as shipped (median / mean / p80 / p95 ms):
+
+| Profile | Latency | Profile | Latency |
+|---|---|---|---|
+| [gemma-4-31b](../results/archive/gemma-4-31b/2026-10-25T131631Z-latency/summary.md) | 199.7 / 467.9 / 652.4 / 1,282.6 | [qwen3.6-27b](../results/archive/qwen3.6-27b/2026-10-25T141532Z-latency/summary.md) | 162.8 / 399.8 / 494.1 / 901.2 |
+| [gemma-4-31b-fp8](../results/archive/gemma-4-31b-fp8/2026-10-25T150150Z-latency/summary.md) | 135.5 / 329.0 / 431.9 / 789.7 | [qwen3.6-27b-fp8](../results/archive/qwen3.6-27b-fp8/2026-10-25T152157Z-latency/summary.md) | 151.4 / 344.9 / 408.6 / 835.5 |
+| [gemma-4-12b](../results/archive/gemma-4-12b/2026-10-25T145052Z-latency/summary.md) | 85.9 / 165.9 / 206.0 / 397.1 | [qwen3.8-27b](../results/archive/qwen3.8-27b/2026-10-25T124823Z-latency/summary.md) | 287.9 / 622.0 / 822.3 / 1,272.3 |
+| [gemma-4-12b-qat](../results/archive/gemma-4-12b-qat/2026-10-25T150932Z-latency/summary.md) | 83.2 / 161.7 / 204.2 / 394.9 | [qwen3.8-27b-fp8](../results/archive/qwen3.8-27b-fp8/2026-10-25T153711Z-latency/summary.md) | 248.4 / 531.1 / 722.5 / 1,171.9 |
+| | | [qwen3.8-27b-nvfp4](../results/archive/qwen3.8-27b-nvfp4/2026-10-25T160045Z-latency/summary.md) | 487.3 / **1,009.5 / 1,272.0** / 2,880.5 |
+
+- **qwen3.8-27b-nvfp4 fails the board gate** on mean and p80. Why the qwen3.8 profiles are slower than on
+  2026-10-20: [qwen3.8 latency note](../results/2026-10-25-qwen38-latency.md).
+- **What H1q costs, gemma-4-31b at 510 W, served orders, same session:** `blurb_header_reread` before H1q
+  [160.0 / 408.1 / 594.6 ms](../results/archive/gemma-4-31b/2026-10-25T045851Z-latency-blurb_header_reread/summary.md),
+  H1q capped at 32
+  [199.4 / 439.6 / 637.2 ms](../results/archive/gemma-4-31b/2026-10-25T045317Z-latency-blurb_header_reread_h1q_cap32/summary.md)
+  (median / mean / p80).
+- **gemma-4-31b warms its shared prefix from 1,024 tokens** (was 4,096; [prompt-sharing.md §7](prompt-sharing.md)).
 
 ## Caveats
 
-- **gemma-4-31b only for the arms, the gate and latency.** The other three bf16 models have eval fits only.
+- **gemma-4-31b only for the arms, the gate and latency.** The other three bf16 models have eval fits only; §9
+  adds a latency run per profile.
 - **No full Index run** under the new default, and no private-set number: the board's Full score is 60% private
-  same-skill and 40% private new-domain tests, and none of the numbers above measure those.
+  same-skill and 40% private new-domain tests, and none of the numbers above measure those. A gemma-4-31b full text
+  and Vision run is in progress.
 - **The gate was read off suite rows** (index-dev-2k, 36 benchmarks with 2–240 questions each). The board reads
   selection on public rows sceptically; the off-suite data has no multi-question requests to confirm it.
 - **Single runs.** One collect and one latency run per arm; bf16 noise is about 0.25% of questions (5 fixes and
@@ -317,6 +366,8 @@ gemma-4-31b, identity + reversed reads, against `blurb_header_reread` as it was:
   2026-10-20/21 `-calibrate` runs with collect label `blurb`.
 - Latency: [blurb_header](../results/archive/gemma-4-31b/2026-10-23T051704Z-latency-blurb_header-identity+reversed/summary.md),
   [blurb_header_reread](../results/archive/gemma-4-31b/2026-10-23T052356Z-latency-blurb_header_reread-identity+reversed/summary.md).
+- H1q (§9): collect label `h1qcap`; calibrations `docs/results/archive/<profile>/2026-10-25T*-calibrate/`; the 510 W
+  study runs `docs/results/archive/gemma-4-31b/2026-10-25T0*-latency-*`; the 600 W runs linked in §9.
 - Ticket: DS-045. Follow-up idea (model thinking in the cached prefix): DS-046.
 
 ## Sources

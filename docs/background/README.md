@@ -9,7 +9,7 @@ the order below goes from "how a request works" to "how good the answers are".
 | [Decision readout](decision-readout.md) | One request traced through the code: label tables, piecewise tokens, one-token readout, softmax, Jev answers (real token ids) |
 | [Request lifecycle](request-lifecycle.md) | Client → gateway → vLLM sequence diagrams, auth, error codes, disconnect cancellation, timeouts |
 | [Prompt layouts](prompt-layouts.md) | The three layouts, where the question should go for long documents, what each costs in prefix sharing, and the round 4 intro-blurb screen (DS-043) |
-| [Read-twice](read-twice.md) | Block stacking: writing the shared block twice for one-question requests, the four arms, the gate, letter names, calibration and latency of `blurb_header_reread` (DS-045) |
+| [Read-twice](read-twice.md) | Block stacking: writing the shared block twice for one-question requests, the four arms, the gate, letter names, H1q (question and options read twice), calibration and latency of `blurb_header_reread` (DS-045) |
 | [Option ordering](option-ordering.md) | Showing options in several orders and averaging back: position and letter bias, PriDe, cost, and the M3 and round 1-4 order results on text and images (DS-041, DS-043) |
 | [Answer labels](answer-labels.md) | Which token the model answers with: letters vs lowercase, spaced, digits, symbols, unused, content and shuffled labels, their token checks and round 3 screen (DS-042) |
 | [Images](images.md) | How `/v1/systemone` decides about images: placeholders and soft-token counts per model, the token-in readout, image prompt sharing, and the vision suite (DS-024) |

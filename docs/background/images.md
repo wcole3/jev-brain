@@ -146,7 +146,8 @@ piecewise token ids and the single-token label checks would no longer hold.
   not in the chunk) and `logprobs` = N + 1. The spare is ignored. vLLM refuses sample `logprobs` above
   `--max-logprobs` (default 20), so the vision profiles start vLLM with `--max-logprobs 128`.
 - **Warm-up:** as for text, but measured on the expanded shared tokens. gemma (`WARM_UP=prefix`): when the shared
-  prefix reaches 4,096 tokens, it is sent alone first, with its images. qwen (`WARM_UP=row`): from 800 shared tokens,
+  prefix reaches the profile's threshold (1,024 tokens on gemma-4-31b, 4,096 on the others), it is sent alone
+  first, with its images. qwen (`WARM_UP=row`): from 800 shared tokens,
   row 1 goes first and the rest follow; one image takes a request past 800.
 - **Scheduling:** the DS-007 governor (waves while chat decodes) and decision priority apply as for text.
 
@@ -169,7 +170,7 @@ Results: [gemma](../results/archive/gemma-4-31b/2026-10-16T014917Z-image-sharing
 [qwen](../results/archive/qwen3.8-27b/2026-10-16T012611Z-image-sharing/summary.md).
 
 - **Gemma:** rows share the image without any warm-up; sending the prefix first only adds a round trip, so the
-  4,096-token prefix warm-up is left for long states.
+  prefix warm-up is left for long states (from 4,096 tokens; 1,024 on gemma-4-31b since 2026-10-25).
 - **Qwen:** rows sent together recompute the image, as text rows recompute the state (prompt-sharing.md §2). Sending
   the prefix first cuts that to 1.62 (the 800-block pad included). The profile's `WARM_UP=row` (row 1 first, then the
   rest) was not measured here; it runs on every image request, since one image reaches its 800-token threshold.

@@ -23,13 +23,13 @@ bf16, vLLM 0.32, H1q default:
 
 | | local (WSL2, Ryzen 7 3800X) | vast (native Linux, 3960X) |
 |---|---|---|
-| latency-v1 median / mean / p80 / p95 | 287.5 / 622.0 / 822.3 / 1,272.3 ms | 282.3 / 546.8 / 846.3 / 1,269.9 ms |
+| latency-v1 median / mean / p80 / p95 | 287.9 / 622.0 / 822.3 / 1,272.3 ms | 282.3 / 546.8 / 846.3 / 1,269.9 ms |
 | CUDA kernel launch | 16 µs | 6.5 µs |
 | 16-token prompt | 114 ms | 45 ms |
 | fresh 2,400-token prefill | ~470 ms | ~520 ms |
 
 WSL2 makes launches ~2.5× dearer, which shows on tiny requests and in the tail, not in the gate metrics.
-Run: [archive/qwen3.8-27b/2026-10-25T174201Z-latency](archive/qwen3.8-27b/2026-10-25T174201Z-latency/summary.md).
+Run: [archive/qwen3.8-27b/2026-10-25T174201Z-latency-vast-native](archive/qwen3.8-27b/2026-10-25T174201Z-latency-vast-native/summary.md).
 
 ## Mostly not vLLM 0.32
 
@@ -47,7 +47,7 @@ Same vast box, vLLM 0.30.0 (pip venv with the 0.30 rejection-sampler patch, not 
 is unchanged from the 0.30 runs: qwen3.8 TTFT 84.3 s and 14.6 tok/s, qwen3.6 85.1 s and 14.8 tok/s
 ([qwen3.8](archive/qwen3.8-27b/2026-10-25T173535Z-long-context/summary.md),
 [qwen3.6](archive/qwen3.6-27b/2026-10-25T172350Z-long-context/summary.md)).
-0.30 run: [archive/qwen3.8-27b/2026-10-25T180258Z-latency](archive/qwen3.8-27b/2026-10-25T180258Z-latency/summary.md).
+0.30 run: [archive/qwen3.8-27b/2026-10-25T180258Z-latency-vast-v030](archive/qwen3.8-27b/2026-10-25T180258Z-latency-vast-v030/summary.md).
 
 Stock 0.32 without our `scheduler.py` patch took the same 3.3 steps per row and hit `CUDA error: an illegal memory
 access` after ~200 decision rows (once). The patch stays.

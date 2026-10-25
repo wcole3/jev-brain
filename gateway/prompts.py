@@ -170,12 +170,17 @@ def reads_twice(mode: str, questions: int, images: bool) -> bool:
     return mode == "always" or (mode == "one-question" and questions == 1)
 
 
-def as_read(layout: Layout, questions: int, images: bool) -> Layout:
-    """The layout one request reads: the shared parts and/or each row's question and options again after the joiner."""
+def as_read(layout: Layout, questions: int, images: bool, options: int = 0) -> Layout:
+    """The layout one request reads: the shared parts and/or each row's question and options again after the joiner.
+    options: the longest option list; over question_twice_max_options the question is read once (long lists cost most)."""
     order = layout.order
-    if reads_twice(layout.read_question_twice, questions, images):
+    capped = 0 < layout.question_twice_max_options < options
+    if reads_twice(layout.read_question_twice, questions, images) and not capped:
         first = next(i for i, part in enumerate(order) if part in PER_QUESTION)
-        order = (*order, "again", *order[first:])
+        if layout.question_again:  # one header in place of the joiner and the question
+            order = (*order, "question_again", *(part for part in order[first:] if part != "question"))
+        else:
+            order = (*order, "again", *order[first:])
     if reads_twice(layout.read_twice, questions, images):
         order = (*shared_parts(layout), "again", *order)
     return layout if order == layout.order else replace(layout, order=order)
@@ -251,7 +256,7 @@ def build_rows(
 ) -> Batch:
     """One row per (question, option order). Parts shared by all rows are encoded once.
     pad_rows, when given, is the row count the padding decision assumes instead of the real one."""
-    layout = as_read(layout, len(questions), images is not None)
+    layout = as_read(layout, len(questions), images is not None, max(len(q.options) for q in questions.values()))
     if images is not None and layout.order.count("context") > 1:
         raise ValueError(f"layout {layout.name}: images are shown once, and this layout repeats the context")
     context = images.ids if images is not None else encode(tok, layout.context.format(state=state))
@@ -273,6 +278,8 @@ def build_rows(
     rows = []
     for qid, q in questions.items():
         parts["question"] = encode(tok, layout.question.format(question=q.text))
+        if "question_again" in layout.order:
+            parts["question_again"] = encode(tok, layout.question_again.format(question=q.text))
         if "plain_options" in layout.order:  # one encode in caller order, so every order of the question shares it
             parts["plain_options"] = encode(tok, "".join(layout.plain_option.format(text=o) for o in q.options))
         for perm in perms[qid]:

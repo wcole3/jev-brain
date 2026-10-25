@@ -40,6 +40,8 @@ class Layout:
     index_arrays: bool = True  # JSON states number arrays of 8 or more items with _index
     read_twice: str = "off"  # when the shared parts are read again after the again joiner (prompts.reads_twice)
     read_question_twice: str = "off"  # when each row reads its question and options again after the joiner
+    question_again: str = ""  # replaces the joiner and question before the second read of the options; empty: both
+    question_twice_max_options: int = 0  # read_question_twice skips a request with a longer option list; 0: no cap
     system: str = ""  # a system turn before the user turn; empty means none
     plain_option: str = ""  # one unlabelled option line ("{text}") for the plain_options part, in caller order
 
@@ -68,6 +70,11 @@ def _check_read_question_twice(name: str, data: dict) -> None:
     first = next(i for i, part in enumerate(order) if part in PER_QUESTION)
     if mode != "off" and (not data.get("again") or not set(order[first:]) <= set(PER_QUESTION)):
         raise ValueError(f"{name}: read_question_twice needs the again text and the per-question parts last")
+    if "question_again" in data and (mode == "off" or "{" in data["question_again"].replace("{question}", "")):
+        raise ValueError(f"{name}: question_again needs read_question_twice, and {{question}} is its only placeholder")
+    cap = data.get("question_twice_max_options", 0)
+    if type(cap) is not int or cap < 0 or (cap and mode == "off"):
+        raise ValueError(f"{name}: question_twice_max_options must be a whole number >= 0, with read_question_twice on")
 
 
 def _check_read_twice(name: str, data: dict) -> None:
@@ -148,6 +155,8 @@ def load_layout(path: Path) -> Layout:
         index_arrays=data.get("index_arrays", True),
         read_twice=data.get("read_twice", "off"),
         read_question_twice=data.get("read_question_twice", "off"),
+        question_again=data.get("question_again", ""),
+        question_twice_max_options=data.get("question_twice_max_options", 0),
         system=data.get("system", ""),
         plain_option=data.get("plain_option", ""),
     )

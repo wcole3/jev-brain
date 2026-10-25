@@ -40,7 +40,7 @@ Decision Index scores of the model behind each profile, as served by this repo.
 ## Versus vLLM's own `/v1/systemone`
 
 vLLM 0.32 ships an uncalibrated `/v1/systemone` (one read per question, at most 26 options; not served for Gemma 4).
-Same model (qwen3.8-27b), same GPU, same 1,994 Decision Index requests (index-dev-2k), 2026-10-25:
+We evaluate the same model (qwen3.8-27b) in jev-brain and vLLM's native '/v1/systemone'; same GPU, same 1,994 Decision Index requests (index-dev-2k), 2026-10-25:
 
 | | jev-brain | vLLM native |
 |---|---|---|
@@ -49,8 +49,11 @@ Same model (qwen3.8-27b), same GPU, same 1,994 Decision Index requests (index-de
 | Accuracy, questions both answer | **80.9%** | 76.0% |
 | Latency ms, median / mean / p80 (latency-v1, 600 W, requests both answer) | 263 / 540 / 598 | **138 / 272 / 276** |
 
-Frankly: ours is more accurate, at about twice the latency; both pass the board's 1,000 ms gate. Details and caveats:
+Summary: jev-brain is more accurate, at about twice the latency; both pass the board's 1,000 ms gate. Details and caveats:
 [2026-10-25-vs-vllm-native-systemone.md](docs/results/2026-10-25-vs-vllm-native-systemone.md).
+
+As stated above, vLLM is not able to serve Gemma 4 as a decision model even though it is currently (2026-10-25) the best
+performing non-finetuned model. A future effort will investigate enabling it.
 
 ## Quick start
 

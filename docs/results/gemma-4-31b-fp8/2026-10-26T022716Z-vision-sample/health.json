@@ -1,0 +1,138 @@
+{
+  "status": "ok",
+  "profile": "gemma-4-31b-fp8",
+  "served_model": "gemma-4-31b-fp8",
+  "hf_model": "RedHatAI/gemma-4-31B-it-FP8-block",
+  "hf_revision": "d7242548c457ab4b45bd3adb8937f2659af4739d",
+  "prompt_layout": "blurb_header_reread",
+  "option_orders": "top_p:0.9+reversed",
+  "option_orders_images": "identity",
+  "prefix_pad": "off",
+  "prefix_block": 0,
+  "prefix_pad_always": false,
+  "systemone_max_len": 32768,
+  "systemone_priority": 0,
+  "systemone_images": true,
+  "mm_processor_kwargs": {
+    "max_soft_tokens": 560
+  },
+  "warm_min_prefix_tokens": 4096,
+  "warm_up": "prefix",
+  "governor_duty": 0.5,
+  "governor_wave": 8,
+  "chats_decoding": 0,
+  "calibration": {
+    "blurb_header": {
+      "T": {
+        "choice": 4.064415802187677,
+        "score": 5.312632033618169,
+        "noul": 6.658402657273458
+      },
+      "b": 0.0,
+      "source": "gemma-4-31b-fp8/blurb_header/calibration.json",
+      "orders": "top_p:0.9+reversed"
+    },
+    "blurb_header_reread": {
+      "T": {
+        "choice": 3.982799623803248,
+        "score": 5.301129957255362,
+        "noul": 7.148859552575357
+      },
+      "b": 0.0,
+      "source": "gemma-4-31b-fp8/blurb_header_reread/calibration.json",
+      "orders": "top_p:0.9+reversed"
+    },
+    "decider_chat": {
+      "T": {
+        "choice": 5.363447128397169,
+        "score": 5.363447128397169,
+        "noul": 7.429858290799572
+      },
+      "b": -0.6607285712296436,
+      "source": "gemma-4-31b-fp8/decider_chat/calibration.json",
+      "orders": "identity"
+    },
+    "header": {
+      "T": {
+        "choice": 4.26925012489692,
+        "score": 5.57005202284913,
+        "noul": 7.570546716767989
+      },
+      "b": 0.0,
+      "source": "gemma-4-31b-fp8/header/calibration.json",
+      "orders": "identity"
+    },
+    "question_first": {
+      "T": {
+        "choice": 3.871975258837799,
+        "score": 5.270830338695965,
+        "noul": 7.328579609654185
+      },
+      "b": -0.5101802033029419,
+      "source": "gemma-4-31b-fp8/question_first/calibration.json",
+      "orders": "identity"
+    }
+  },
+  "other_calibrations": {
+    "identity": {
+      "blurb_header": {
+        "T": {
+          "choice": 4.0800743849861645,
+          "score": 5.4011976215667685,
+          "noul": 7.147109801942421
+        },
+        "b": 0.0,
+        "source": "gemma-4-31b-fp8/blurb_header/calibration-identity.json",
+        "orders": "identity"
+      },
+      "blurb_header_reread": {
+        "T": {
+          "choice": 4.018926866464972,
+          "score": 5.366383698811015,
+          "noul": 7.327209275547249
+        },
+        "b": 0.0,
+        "source": "gemma-4-31b-fp8/blurb_header_reread/calibration-identity.json",
+        "orders": "identity"
+      },
+      "decider_chat": {
+        "T": {
+          "choice": 5.363447128397169,
+          "score": 5.363447128397169,
+          "noul": 7.429858290799572
+        },
+        "b": -0.6607285712296436,
+        "source": "gemma-4-31b-fp8/decider_chat/calibration.json",
+        "orders": "identity"
+      },
+      "header": {
+        "T": {
+          "choice": 4.26925012489692,
+          "score": 5.57005202284913,
+          "noul": 7.570546716767989
+        },
+        "b": 0.0,
+        "source": "gemma-4-31b-fp8/header/calibration.json",
+        "orders": "identity"
+      },
+      "question_first": {
+        "T": {
+          "choice": 3.871975258837799,
+          "score": 5.270830338695965,
+          "noul": 7.328579609654185
+        },
+        "b": -0.5101802033029419,
+        "source": "gemma-4-31b-fp8/question_first/calibration.json",
+        "orders": "identity"
+      }
+    }
+  },
+  "vllm_version": "0.32.0",
+  "layouts": [
+    "blurb_header",
+    "blurb_header_reread",
+    "decider_chat",
+    "header",
+    "question_first"
+  ]
+}

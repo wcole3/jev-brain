@@ -9,12 +9,24 @@ import pytest
 
 import gateway.decide
 from gateway.calibration import UNCALIBRATED, Calibration, softmax
-from gateway.decide import answers_for, blend, build_batch, calibration_for, combine, decide, probabilities, read_rows
+from gateway.decide import (
+    answers_for,
+    blend,
+    build_batch,
+    calibration_for,
+    combine,
+    decide,
+    probabilities,
+    read_rows,
+    reading_once,
+)
 from gateway.images import decode_image
+from gateway.labels import label_table
 from gateway.orders import option_orders
 from gateway.padding import Padding, newline_token
+from gateway.prompts import chat_frame
 from gateway.schema import ImageError, RequestError, SystemOneRequest
-from tests.helpers import QUICKSTART, STATE, SureOf, vision_for
+from tests.helpers import QUICKSTART, STATE, FavourFirstLabel, SureOf, vision_for
 
 
 def request(**kw):
@@ -225,6 +237,7 @@ def test_calibration_for_picks_the_fit_of_the_setting(engine):
     assert calibration_for(e, "decider_chat", "identity") is ident
     assert calibration_for(e, "header", "identity") == UNCALIBRATED
     assert calibration_for(e, "decider_chat", "cyclic:3") is e.calibration["decider_chat"]
+    assert calibration_for(e, "decider_chat", "reread_p:0.9") is e.calibration["decider_chat"]  # borrows the text fit
 
 
 TOP_P = "top_p:0.9+reversed"
@@ -333,3 +346,92 @@ async def test_a_request_too_long_to_read_twice_is_read_once(engine):
     fits_once = dataclasses.replace(engine.settings, systemone_max_len=once.longest + 1)
     _, _, got = await build_batch(dataclasses.replace(engine, settings=fits_once), req)
     assert [r.ids for r in got.rows] == [r.ids for r in once.rows]
+
+
+REREAD = "reread_p:0.9"
+STACKED = "blurb_header_reread"  # reads the shared block twice for one question
+
+
+def one_question(**kw):
+    """department alone: FavourFirstLabel tops it out at 0.665 at T = 1."""
+    return request(questions={"department": QUICKSTART["department"]}, layout=STACKED, **kw)
+
+
+async def rows_of(engine, req, **kw):
+    return (await build_batch(engine, req, **kw))[2]
+
+
+@pytest.mark.parametrize(("tau", "calls"), [(0.6, 1), (0.7, 2)])
+async def test_reread_p_gates_on_the_identity_read(engine, tau, calls):
+    await read_rows(engine, one_question(option_orders=f"reread_p:{tau}"))
+    assert len(engine.readout.calls) == calls
+
+
+async def test_reread_p_sure_question_reads_once_with_the_block_once(engine):
+    e = dataclasses.replace(engine, readout=SureOf(3))
+    r = await read_rows(e, one_question(option_orders=REREAD))
+    once = await rows_of(reading_once(engine, one_question()), one_question())
+    assert once.longest < (await rows_of(engine, one_question())).longest
+    assert [prompts for prompts, _, _ in e.readout.calls] == [[row.ids for row in once.rows]]
+    assert len(r.reads["department"]) == 1 and r.input_tokens == once.input_tokens
+
+
+async def test_reread_p_unsure_question_answers_from_two_stacked_reads(engine):
+    req = one_question(option_orders=REREAD)
+    r = await read_rows(engine, req)
+    first = await rows_of(reading_once(engine, req), req)
+    second = await rows_of(engine, req, pad_rows=1, perms={"department": [[0, 1, 2], [2, 1, 0]]})
+    assert [prompts for prompts, _, _ in engine.readout.calls] == [[row.ids for row in b.rows] for b in (first, second)]
+    assert [perm for _, perm in r.reads["department"]] == [[0, 1, 2], [2, 1, 0]]  # the block-once read is dropped
+    assert r.input_tokens == first.input_tokens + second.input_tokens
+    out = await decide(engine, req)
+    assert list(out["answers"]["department"]["probabilities"].values()) == pytest.approx([1 / 3] * 3, abs=1e-4)
+    assert out["usage"]["input_tokens"] == r.input_tokens
+
+
+@pytest.mark.parametrize(("warm_min", "warms"), [(800, False), (0, True)])
+async def test_reread_pass_warms_only_a_long_uncached_part(engine, warm_min, warms):
+    e = dataclasses.replace(engine, settings=dataclasses.replace(engine.settings, warm_min_prefix_tokens=warm_min))
+    r = await read_rows(e, one_question(option_orders=REREAD))
+    second = await rows_of(e, one_question(), pad_rows=1, perms={"department": [[0, 1, 2], [2, 1, 0]]})
+    assert e.readout.calls[0][2] == r.shared_len
+    assert e.readout.calls[1][2] == (second.shared_len if warms else 0)
+
+
+async def test_reread_pass_starts_with_the_first_pass_prefix(engine, qwen_tok, gemma_tok):
+    """The block-once first pass leaves its shared prefix in vLLM's cache; the stacked second pass starts with it."""
+    for tok in (qwen_tok, gemma_tok):
+        frames, labels = engine.frames | {STACKED: chat_frame(tok, engine.layouts[STACKED])}, {STACKED: label_table(tok)}
+        e = dataclasses.replace(engine, tokenizer=tok, frames=frames, labels=labels, readout=FavourFirstLabel())
+        r = await read_rows(e, one_question(option_orders=REREAD))
+        (first, _, _), (second, _, _) = e.readout.calls
+        assert r.shared_len > 0 and len(second[0]) > len(first[0])
+        assert all(ids[: r.shared_len] == first[0][: r.shared_len] for ids in second)
+
+
+async def reads_like_top_p(engine, req):
+    """reread_p and top_p send the same reads and keep the same results; returns the calls."""
+    got = []
+    for setting in (REREAD, TOP_P):
+        e = dataclasses.replace(engine, readout=FavourFirstLabel())
+        r = await read_rows(e, req.model_copy(update={"option_orders": setting}))
+        got.append((e.readout.calls, e.readout.image_calls, r.reads, r.input_tokens))
+    assert got[0] == got[1]
+    return got[0][0] or got[0][1]
+
+
+async def test_reread_p_reads_more_questions_like_top_p(engine):
+    calls = await reads_like_top_p(engine, request(layout=STACKED))
+    assert [len(prompts) for prompts, _, _ in calls] == [3, 3]  # every question is unsure at T = 1
+
+
+async def test_reread_p_reads_a_request_too_long_to_stack_like_top_p(engine):
+    once = await rows_of(reading_once(engine, one_question()), one_question())
+    e = dataclasses.replace(engine, settings=dataclasses.replace(engine.settings, systemone_max_len=once.longest + 1))
+    calls = await reads_like_top_p(e, one_question())
+    assert calls[0][0] == [row.ids for row in once.rows] and len(calls) == 2
+
+
+async def test_reread_p_reads_an_image_request_like_top_p(seeing):
+    calls = await reads_like_top_p(seeing, one_question(images=[png_b64()]))
+    assert len(calls) == 2

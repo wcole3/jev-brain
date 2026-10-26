@@ -13,9 +13,9 @@ from gateway.governor import Governor
 from gateway.images import context_items, image_items
 from gateway.labels import Labels
 from gateway.layouts import Layout
-from gateway.orders import average_back, gate, option_orders
+from gateway.orders import average_back, gate, option_orders, rereads
 from gateway.padding import OFF, Padding
-from gateway.prompts import Batch, ChatFrame, build_rows, image_context
+from gateway.prompts import Batch, ChatFrame, build_rows, image_context, reads_twice
 from gateway.questions import Rendered, render_question, render_state
 from gateway.schema import ImageError, RequestError, SystemOneRequest
 from gateway.vision import Vision
@@ -42,7 +42,7 @@ def calibration_for(engine: Engine, layout: str, orders: str) -> Calibration:
     """The fit for an order setting; an unknown setting (request override) uses the text fit."""
     if orders in engine.other_calibrations:
         return engine.other_calibrations[orders].get(layout, UNCALIBRATED)
-    return engine.calibration[layout]
+    return engine.calibration[layout]  # a reread_p experiment has no fit of its own: it borrows this one
 
 
 OrderFn = Callable[[int], list[list[int]]]
@@ -93,6 +93,7 @@ async def build_batch(
     orders: OrderFn | None = None,
     pad_rows: int | None = None,
     perms: dict[str, list[list[int]]] | None = None,
+    read_once_when_long: bool = True,
 ):
     """Render and tokenize every row. Refuses bad requests, but not long ones: read_rows does that.
     perms, when given, replaces orders; a question with [] gets no rows but stays in the shared prefix."""
@@ -119,7 +120,7 @@ async def build_batch(
     )
     first = functools.partial(decode_then_build, engine, layout, request, rows) if images else rows
     batch = await asyncio.to_thread(first, engine.padding, pad_rows)
-    if batch.longest >= s.systemone_max_len and not images and reads_twice_at_all(layout):
+    if read_once_when_long and batch.longest >= s.systemone_max_len and not images and reads_twice_at_all(layout):
         # a request too long to read twice is read once, as if read-twice were off
         layout = replace(layout, read_twice="off", read_question_twice="off")
         rows = functools.partial(
@@ -159,11 +160,8 @@ def gated_questions(reads: dict[str, list], questions: dict[str, Rendered], cal:
     return {qid for qid, q in questions.items() if max(softmax(reads[qid][0][0], cal.T[q.type])) < tau}
 
 
-async def second_pass(engine: Engine, request: SystemOneRequest, r: Reads, tau: float) -> int:
-    """Read the reversed order of the questions under tau into r.reads; returns the input tokens it used."""
-    kept = gated_questions(r.reads, r.questions, calibration_for(engine, r.layout, "identity"), tau)
-    if not kept:
-        return 0
+async def second_pass(engine: Engine, request: SystemOneRequest, r: Reads, kept: set[str]) -> int:
+    """Read the reversed order of the kept questions into r.reads; returns the input tokens it used."""
     perms = {qid: [list(range(len(q.options)))[::-1]] if qid in kept else [] for qid, q in r.questions.items()}
     # pad as the first pass did: it read one identity row per question
     _, _, batch = await build_batch(engine, request, pad_rows=len(request.questions), perms=perms)
@@ -171,20 +169,53 @@ async def second_pass(engine: Engine, request: SystemOneRequest, r: Reads, tau: 
     return batch.input_tokens
 
 
+def reading_once(engine: Engine, request: SystemOneRequest) -> Engine:
+    """The engine with the request's layout reading its shared block once; an unknown layout is build_batch's to refuse."""
+    name = request.layout or engine.settings.prompt_layout
+    if name not in engine.layouts:
+        return engine
+    return replace(engine, layouts=engine.layouts | {name: replace(engine.layouts[name], read_twice="off")})
+
+
+async def reread_pass(engine: Engine, request: SystemOneRequest, r: Reads, kept: set[str]) -> int | None:
+    """Read the kept questions in identity and reversed order with the block read twice; these reads replace their
+    first. None when the request does not stack the block (images, more questions, too long): read top_p's way."""
+    if not reads_twice(engine.layouts[r.layout].read_twice, len(r.questions), has_images(request)):
+        return None
+    perms = {qid: option_orders(len(q.options), "identity+reversed") if qid in kept else [] for qid, q in r.questions.items()}
+    _, _, batch = await build_batch(engine, request, pad_rows=len(request.questions), perms=perms, read_once_when_long=False)
+    if batch.longest >= engine.settings.systemone_max_len:
+        return None
+    for qid in kept:
+        r.reads[qid].clear()
+    # the first pass cached the block once; warm only if the rest of the shared prefix is long enough to pay
+    warm = batch.shared_len - r.shared_len >= engine.settings.warm_min_prefix_tokens
+    await read_into(r.reads, engine, batch, warm)
+    return batch.input_tokens
+
+
 async def read_rows(
     engine: Engine, request: SystemOneRequest, orders: OrderFn | None = None, pad_rows: int | None = None
 ) -> Reads:
-    """Read every row; a top_p setting then reads the reversed order of the unsure questions, unless orders is given."""
-    name, questions, batch = await build_batch(engine, request, orders, pad_rows)
+    """Read every row; a gated setting then reads the unsure questions again (second_pass or reread_pass), unless
+    orders is given. reread_p reads the block once first, so its reread starts with a cached prefix."""
+    setting = setting_for(engine, request)
+    first = reading_once(engine, request) if not orders and rereads(setting) else engine
+    name, questions, batch = await build_batch(first, request, orders, pad_rows)
     reads: dict[str, list] = {qid: [] for qid in questions}
     await read_into(reads, engine, batch)
     padded = batch.shared_len != batch.unpadded_len
-    setting = setting_for(engine, request)
     r = Reads(name, questions, reads, batch.input_tokens, batch.shared_len, padded, batch, setting)
     tau = None if orders else gate(setting)  # build_batch has refused a malformed setting
     if tau is None:
         return r
-    return replace(r, input_tokens=r.input_tokens + await second_pass(engine, request, r, tau))
+    kept = gated_questions(r.reads, r.questions, calibration_for(engine, r.layout, "identity"), tau)
+    if not kept:
+        return r
+    extra = await reread_pass(engine, request, r, kept) if rereads(setting) else None
+    if extra is None:
+        extra = await second_pass(engine, request, r, kept)
+    return replace(r, input_tokens=r.input_tokens + extra)
 
 
 def blend(reads: list[tuple[list[float], list[int]]], temperature: float, yes_offset: float = 0.0) -> list[float]:

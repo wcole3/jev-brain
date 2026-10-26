@@ -1,6 +1,6 @@
 import pytest
 
-from gateway.orders import average_back, gate, live_rows, option_orders
+from gateway.orders import average_back, gate, live_rows, option_orders, rereads
 from scripts.order_policies import Policy, perms, second_perm
 
 
@@ -36,9 +36,16 @@ def test_top_p_reads_identity_first_and_names_its_threshold():
     assert gate("min_n:4+reversed") is None and gate("identity") is None
 
 
+def test_reread_p_reads_identity_first_and_names_its_threshold():
+    assert option_orders(5, "reread_p:0.9") == [[0, 1, 2, 3, 4]]
+    assert gate("reread_p:0.9") == 0.9 and gate("reread_p:1") == 1.0
+    assert rereads("reread_p:0.9") and not rereads("top_p:0.9+reversed")
+
+
 @pytest.mark.parametrize(
     "bad",
-    ["min_n:x+reversed", "min_n:1+reversed", "min_n:4+half", "top_p:0+reversed", "top_p:1.5+reversed", "top_p:0.9"],
+    ["min_n:x+reversed", "min_n:1+reversed", "min_n:4+half", "top_p:0+reversed", "top_p:1.5+reversed", "top_p:0.9",
+     "reread_p:0", "reread_p:1.5", "reread_p:x", "reread_p:", "reread_p:0.9+reversed", "reread_p:0.9+"],
 )
 def test_malformed_gated_settings_raise(bad):
     with pytest.raises(ValueError):
@@ -50,6 +57,7 @@ def test_malformed_gated_settings_raise(bad):
 def test_live_rows_counts_what_the_first_pass_reads():
     assert live_rows([2, 4, 5], "min_n:4+reversed") == 5
     assert live_rows([2, 4, 5], "top_p:0.9+reversed") == 3
+    assert live_rows([2, 4, 5], "reread_p:0.9") == 3
 
 
 @pytest.mark.parametrize("n", [2, 3, 4, 5, 8])

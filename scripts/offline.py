@@ -9,7 +9,7 @@ from gateway.config import Settings
 from gateway.decide import probabilities
 from gateway.layouts import load_layouts
 from gateway.orders import gate as order_gate
-from gateway.orders import option_orders
+from gateway.orders import option_orders, rereads
 from gateway.questions import Rendered, render_question
 from gateway.schema import Question
 from scripts import metrics
@@ -36,6 +36,8 @@ def gold_index(q: Rendered, gold) -> int | None:
 
 def chosen_reads(q: Rendered, reads: list[dict], orders: str, gate_T: float | None = None) -> list[tuple[list[float], list[int]]]:
     """The collected reads an order setting would have made live, as (logprobs, perm) pairs."""
+    if rereads(orders):
+        raise ValueError(f"arm {orders} reads the block once, then twice: collect records neither pass")
     wanted = option_orders(len(q.options), orders)
     if (tau := order_gate(orders)) is not None:
         if gate_T is None:

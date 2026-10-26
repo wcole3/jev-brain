@@ -102,6 +102,12 @@ def test_chosen_reads_gated_without_gate_T_raises():
         chosen_reads(q, REC["questions"]["c"], "top_p:0.9+reversed")
 
 
+def test_chosen_reads_refuses_reread_p():
+    q = render_question(Question(**ROW["questions"]["c"]), LAYOUTS["decider_chat"])
+    with pytest.raises(ValueError, match="collect records neither pass"):
+        chosen_reads(q, REC["questions"]["c"], "reread_p:0.9", 1.0)
+
+
 def test_keyed_maps_row_and_question_to_scored():
     got = keyed([REC], {"r1": ROW}, Arm(), LAYOUTS)
     assert set(got) == {("r1", "c"), ("r1", "n")}

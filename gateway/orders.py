@@ -1,28 +1,36 @@
 """Show options in several orders and average the answers back to the caller's option positions."""
 
-FORMS = "identity, identity+reversed, cyclic:<k>, min_n:<k>+reversed (k >= 2) or top_p:<tau>+reversed (0 < tau <= 1)"
+FORMS = (
+    "identity, identity+reversed, cyclic:<k>, min_n:<k>+reversed (k >= 2), top_p:<tau>+reversed"
+    " or reread_p:<tau> (0 < tau <= 1)"
+)
 
 
 def _gated(setting: str) -> tuple[str, float] | None:
-    """(kind, value) for min_n:<k>+reversed and top_p:<tau>+reversed; None for other settings."""
+    """(kind, value) for min_n:<k>+reversed, top_p:<tau>+reversed and reread_p:<tau>; None for other settings."""
     kind, _, rest = setting.partition(":")
-    if kind not in ("min_n", "top_p"):
+    if kind not in ("min_n", "top_p", "reread_p"):
         return None
-    value, _, suffix = rest.partition("+")
+    value, plus, suffix = rest.partition("+")
     try:
         number = int(value) if kind == "min_n" else float(value)
     except ValueError:
         raise ValueError(f"bad option_orders {setting!r}: use {FORMS}") from None
     in_range = number >= 2 if kind == "min_n" else 0 < number <= 1
-    if suffix != "reversed" or not in_range:
+    if plus + suffix != ("" if kind == "reread_p" else "+reversed") or not in_range:
         raise ValueError(f"bad option_orders {setting!r}: use {FORMS}")
     return kind, number
 
 
 def gate(setting: str) -> float | None:
-    """The top_p threshold tau, or None when the setting has no probability gate."""
+    """The top_p or reread_p threshold tau, or None when the setting has no probability gate."""
     gated = _gated(setting)
-    return gated[1] if gated and gated[0] == "top_p" else None
+    return gated[1] if gated and gated[0] in ("top_p", "reread_p") else None
+
+
+def rereads(setting: str) -> bool:
+    """reread_p: an unsure question is read again with the shared block read twice (decide.reread_pass)."""
+    return setting.startswith("reread_p:")
 
 
 def live_rows(option_counts: list[int], setting: str) -> int:

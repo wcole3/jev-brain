@@ -1,4 +1,4 @@
-from dataclasses import asdict, replace
+from dataclasses import replace
 
 import pytest
 
@@ -34,17 +34,15 @@ def test_more_questions_read_like_the_default(tok_name, request, arms):
     assert ids(batch_for(tok, "reread-h1q", QUICKSTART)) == ids(batch_for(tok, "blurb_header_reread", QUICKSTART))
 
 
-def test_served_layout_is_h1q_capped_at_32_options(arms):
-    ignore = {"name", "sha256"}
-    served, arm = asdict(LAYOUTS["blurb_header_reread"]), asdict(LAYOUTS["reread-h1q-cap32"])
-    assert {k: v for k, v in served.items() if k not in ignore} == {k: v for k, v in arm.items() if k not in ignore}
+def test_served_layout_reads_the_question_once():
+    served = LAYOUTS["blurb_header_reread"]
+    assert (served.read_question_twice, served.question_twice_max_options) == ("off", 0)
 
 
 @pytest.mark.parametrize("tok_name", ["qwen_tok", "gemma_tok"])
-def test_served_layout_reads_one_question_like_cap32(tok_name, request, arms):
+def test_cap32_reads_one_short_question_like_h1q(tok_name, request, arms):
     tok = request.getfixturevalue(tok_name)
-    assert ids(batch_for(tok, "blurb_header_reread", ONE, ORDERS)) == ids(batch_for(tok, "reread-h1q-cap32", ONE, ORDERS))
-    assert ids(batch_for(tok, "blurb_header_reread", QUICKSTART)) == ids(batch_for(tok, "shared-only", QUICKSTART))
+    assert ids(batch_for(tok, "reread-h1q-cap32", ONE, ORDERS)) == ids(batch_for(tok, "reread-h1q", ONE, ORDERS))
 
 
 def test_needs_the_per_question_parts_last(tmp_path):

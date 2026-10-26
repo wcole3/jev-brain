@@ -43,7 +43,7 @@ def test_served_layout_is_blurb_header_plus_the_new_keys():
                     read_question_twice="off", question_twice_max_options=0)
     assert plain == base
     assert (served.drop_letter_names, served.read_twice) == (True, "one-question")
-    assert (served.read_question_twice, served.question_twice_max_options) == ("one-question", 32)
+    assert (served.read_question_twice, served.question_twice_max_options) == ("off", 0)
 
 
 @pytest.mark.parametrize("tok_name", ["qwen_tok", "gemma_tok"])

@@ -1,0 +1,174 @@
+{
+ "format": 2,
+ "version": 1,
+ "date": "2026-10-26T02:34:55Z",
+ "comments": [
+  {
+   "version": 1,
+   "date": "2026-10-26T02:34:55Z",
+   "text": "refit: default reads the shared block twice, question once (H1q off), vLLM 0.32; choice: pooled T 4.030, score: pooled T 4.030, noul: fitted T 3.760, b not shipped"
+  },
+  {
+   "version": 1,
+   "date": "2026-10-26T04:20:02Z",
+   "text": "borrowed from gemma-4-12b/calibration.json"
+  }
+ ],
+ "stamp": {
+  "tokenizer_sha256": "c3500ca1d4b2a588b1e2eeb042d7e6284f6f1cbc74d25afbd0e871d9d6eb6405",
+  "layout_sha256": "fc835afa2b9ad3cafba61116b8632ba67886d18bd51571a03b26685fa15f7618",
+  "hf_revision": "1d2c2d7f2466070e69d6fb3fd5ce9a7d75f2f6ee",
+  "prefix_pad": "off",
+  "prefix_block": 0
+ },
+ "types": {
+  "choice": {
+   "T": 4.02985209393941
+  },
+  "score": {
+   "T": 4.02985209393941
+  },
+  "noul": {
+   "T": 3.7595472755324946,
+   "b": 0.0
+  }
+ },
+ "fit": {
+  "split": "data/splits/calib.json",
+  "split_sha256": "c8c8dba6f809a0e3da433fe50964205e061194af20463b1afa4ce3e7dadc09ed",
+  "orders": "identity",
+  "n": {
+   "choice": 920,
+   "score": 259,
+   "noul": 670
+  },
+  "calib": {
+   "nll": {
+    "before": {
+     "choice": 1.340894651438938,
+     "score": 7.202716144315652,
+     "noul": 0.5069128069076826
+    },
+    "after": {
+     "choice": 0.6257856052592394,
+     "score": 1.9662613824713286,
+     "noul": 0.23808286562319084
+    }
+   },
+   "ece": {
+    "before": {
+     "choice": 0.12762189595476844,
+     "score": 0.5256768262639921,
+     "noul": 0.07183276668823786
+    },
+    "after": {
+     "choice": 0.07522096970145561,
+     "score": 0.3875817035057729,
+     "noul": 0.027475605839601215
+    }
+   }
+  },
+  "eval": {
+   "nll": {
+    "before": {
+     "choice": 1.3563352057797216,
+     "score": 3.9342586541275852,
+     "noul": 0.6116785872875049
+    },
+    "after": {
+     "choice": 0.6002679643773059,
+     "score": 1.389050890282695,
+     "noul": 0.26829328373219097
+    }
+   },
+   "ece": {
+    "before": {
+     "choice": 0.15266696534368132,
+     "score": 0.3353664902552186,
+     "noul": 0.09362000266848272
+    },
+    "after": {
+     "choice": 0.04240577751353111,
+     "score": 0.24350646512421853,
+     "noul": 0.024636278625211318
+    }
+   }
+  },
+  "b_decision": {
+   "ship": false,
+   "acc": [
+    0.0,
+    -0.009009009009008917,
+    0.007507507507507505
+   ],
+   "ece": [
+    -0.005067618883538072,
+    -0.016557348919049485,
+    0.009175432063304598
+   ],
+   "b_fitted": -0.10358965690390862
+  },
+  "t_decision": {
+   "choice": {
+    "fitted_T": 3.1621520846741324,
+    "pooled_T": 4.02985209393941,
+    "shipped_T": 4.02985209393941,
+    "source": "pooled",
+    "ece": [
+     -0.10239811418580683,
+     -0.11111459649997707,
+     -0.08583793230377676
+    ],
+    "ece_pooled": [
+     -0.11026118783015021,
+     -0.13330021617660645,
+     -0.07804310696972627
+    ]
+   },
+   "score": {
+    "fitted_T": 15.794362416389042,
+    "pooled_T": 4.02985209393941,
+    "shipped_T": 4.02985209393941,
+    "source": "pooled",
+    "ece": [
+     -0.05880071920110619,
+     -0.1278251308938989,
+     0.00968685666845892
+    ],
+    "ece_pooled": [
+     -0.09186002513100006,
+     -0.14259208159995987,
+     -0.03277452294150984
+    ]
+   },
+   "noul": {
+    "fitted_T": 3.7595472755324946,
+    "pooled_T": 4.02985209393941,
+    "shipped_T": 3.7595472755324946,
+    "source": "fitted",
+    "ece": [
+     -0.06898372404327141,
+     -0.07729604441833778,
+     -0.042769284615472504
+    ],
+    "ece_pooled": [
+     -0.06853089445166831,
+     -0.08153123645744875,
+     -0.03773541765723991
+    ]
+   }
+  }
+ },
+ "borrowed": {
+  "profile": "gemma-4-12b",
+  "file": "calibration.json",
+  "stamp": {
+   "tokenizer_sha256": "c3500ca1d4b2a588b1e2eeb042d7e6284f6f1cbc74d25afbd0e871d9d6eb6405",
+   "layout_sha256": "fc835afa2b9ad3cafba61116b8632ba67886d18bd51571a03b26685fa15f7618",
+   "hf_revision": "707f0a3b8a3c7ad586ed01e27eafbad8a27dd0f7",
+   "prefix_pad": "off",
+   "prefix_block": 0
+  },
+  "date": "2026-10-26T04:20:02Z"
+ }
+}

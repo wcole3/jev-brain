@@ -1,0 +1,174 @@
+{
+ "format": 2,
+ "version": 1,
+ "date": "2026-10-26T03:21:39Z",
+ "comments": [
+  {
+   "version": 1,
+   "date": "2026-10-26T03:21:39Z",
+   "text": "refit: default reads the shared block twice, question once (H1q off), vLLM 0.32; choice: fitted T 1.590, score: pooled T 2.041, noul: fitted T 1.425, b not shipped"
+  },
+  {
+   "version": 1,
+   "date": "2026-10-26T04:20:07Z",
+   "text": "borrowed from qwen3.6-27b/calibration.json"
+  }
+ ],
+ "stamp": {
+  "tokenizer_sha256": "f1738377fb7acbc5a747d00bc34135bac9fd81777240ba1aaa8eb53c0aed08e1",
+  "layout_sha256": "fc835afa2b9ad3cafba61116b8632ba67886d18bd51571a03b26685fa15f7618",
+  "hf_revision": "e89b16ebf1988b3d6befa7de50abc2d76f26eb09",
+  "prefix_pad": "front",
+  "prefix_block": 800
+ },
+ "types": {
+  "choice": {
+   "T": 1.5901413753593128
+  },
+  "score": {
+   "T": 2.0411689590206805
+  },
+  "noul": {
+   "T": 1.425465365168322,
+   "b": 0.0
+  }
+ },
+ "fit": {
+  "split": "data/splits/calib.json",
+  "split_sha256": "c8c8dba6f809a0e3da433fe50964205e061194af20463b1afa4ce3e7dadc09ed",
+  "orders": "identity",
+  "n": {
+   "choice": 898,
+   "score": 259,
+   "noul": 670
+  },
+  "calib": {
+   "nll": {
+    "before": {
+     "choice": 0.6366233863162625,
+     "score": 3.654881060031385,
+     "noul": 0.269995042263747
+    },
+    "after": {
+     "choice": 0.5291680847726883,
+     "score": 2.022244351879505,
+     "noul": 0.2522493219103557
+    }
+   },
+   "ece": {
+    "before": {
+     "choice": 0.05684989910790525,
+     "score": 0.4345702499479056,
+     "noul": 0.04415556096230368
+    },
+    "after": {
+     "choice": 0.022066263163064242,
+     "score": 0.3347350398761811,
+     "noul": 0.03597748031796093
+    }
+   }
+  },
+  "eval": {
+   "nll": {
+    "before": {
+     "choice": 0.5427556204863744,
+     "score": 1.9703577986363536,
+     "noul": 0.27578590050426904
+    },
+    "after": {
+     "choice": 0.4747255149343451,
+     "score": 1.2600955769442315,
+     "noul": 0.25659443270618393
+    }
+   },
+   "ece": {
+    "before": {
+     "choice": 0.07583543720316775,
+     "score": 0.21246236280047667,
+     "noul": 0.044213516247407506
+    },
+    "after": {
+     "choice": 0.022047920070452438,
+     "score": 0.1819070569854345,
+     "noul": 0.036051744562406826
+    }
+   }
+  },
+  "b_decision": {
+   "ship": false,
+   "acc": [
+    -0.0030030030030030463,
+    -0.012012012012012074,
+    0.006006006006005982
+   ],
+   "ece": [
+    -0.00030037330483710656,
+    -0.014749800211879764,
+    0.013332806057282647
+   ],
+   "b_fitted": 0.45790147013007676
+  },
+  "t_decision": {
+   "choice": {
+    "fitted_T": 1.5901413753593128,
+    "pooled_T": 2.0411689590206805,
+    "shipped_T": 1.5901413753593128,
+    "source": "fitted",
+    "ece": [
+     -0.05378751713271532,
+     -0.06663932219016508,
+     -0.03282274914001391
+    ],
+    "ece_pooled": [
+     -0.00810074869092646,
+     -0.035147933238117296,
+     0.019871174384574405
+    ]
+   },
+   "score": {
+    "fitted_T": 9.398386367799402,
+    "pooled_T": 2.0411689590206805,
+    "shipped_T": 2.0411689590206805,
+    "source": "pooled",
+    "ece": [
+     0.1379176343657724,
+     0.06777401976063982,
+     0.1997912301782695
+    ],
+    "ece_pooled": [
+     -0.030555305815042177,
+     -0.07031162160704701,
+     0.022721104088810812
+    ]
+   },
+   "noul": {
+    "fitted_T": 1.425465365168322,
+    "pooled_T": 2.0411689590206805,
+    "shipped_T": 1.425465365168322,
+    "source": "fitted",
+    "ece": [
+     -0.00816177168500068,
+     -0.02482913011022915,
+     0.01141035063066444
+    ],
+    "ece_pooled": [
+     0.017865512372628234,
+     -0.011607575457267177,
+     0.042189174923280254
+    ]
+   }
+  }
+ },
+ "borrowed": {
+  "profile": "qwen3.6-27b",
+  "file": "calibration.json",
+  "stamp": {
+   "tokenizer_sha256": "f1738377fb7acbc5a747d00bc34135bac9fd81777240ba1aaa8eb53c0aed08e1",
+   "layout_sha256": "fc835afa2b9ad3cafba61116b8632ba67886d18bd51571a03b26685fa15f7618",
+   "hf_revision": "6a9e13bd6fc8f0983b9b99948120bc37f49c13e9",
+   "prefix_pad": "front",
+   "prefix_block": 800
+  },
+  "date": "2026-10-26T04:20:07Z"
+ }
+}

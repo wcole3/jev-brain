@@ -1,0 +1,174 @@
+{
+ "format": 2,
+ "version": 1,
+ "date": "2026-10-26T04:12:45Z",
+ "comments": [
+  {
+   "version": 1,
+   "date": "2026-10-26T04:12:45Z",
+   "text": "refit: default reads the shared block twice, question once (H1q off), vLLM 0.32; choice: fitted T 1.669, score: none T 1.000, noul: fitted T 1.344, b not shipped"
+  },
+  {
+   "version": 1,
+   "date": "2026-10-26T04:20:17Z",
+   "text": "borrowed from qwen3.8-27b/calibration.json"
+  }
+ ],
+ "stamp": {
+  "tokenizer_sha256": "97610cfe649c3109ec2b01e232b9dbd4412b2b3105029c704cb36e2a6ee210c1",
+  "layout_sha256": "fc835afa2b9ad3cafba61116b8632ba67886d18bd51571a03b26685fa15f7618",
+  "hf_revision": "319f741cce68d7914884900c138a1fbb70a42f30",
+  "prefix_pad": "front",
+  "prefix_block": 800
+ },
+ "types": {
+  "choice": {
+   "T": 1.6694253320949457
+  },
+  "score": {
+   "T": 1.0
+  },
+  "noul": {
+   "T": 1.3442156081674206,
+   "b": 0.0
+  }
+ },
+ "fit": {
+  "split": "data/splits/calib.json",
+  "split_sha256": "c8c8dba6f809a0e3da433fe50964205e061194af20463b1afa4ce3e7dadc09ed",
+  "orders": "min_n:4+reversed",
+  "n": {
+   "choice": 898,
+   "score": 259,
+   "noul": 670
+  },
+  "calib": {
+   "nll": {
+    "before": {
+     "choice": 0.5721162415987688,
+     "score": 2.747319998727473,
+     "noul": 0.2538955870548333
+    },
+    "after": {
+     "choice": 0.4670975762347334,
+     "score": 2.747319998727473,
+     "noul": 0.2432522817444187
+    }
+   },
+   "ece": {
+    "before": {
+     "choice": 0.06147425771399052,
+     "score": 0.3527160898209341,
+     "noul": 0.039786747375122576
+    },
+    "after": {
+     "choice": 0.024655181692013178,
+     "score": 0.3527160898209341,
+     "noul": 0.03720239033521458
+    }
+   }
+  },
+  "eval": {
+   "nll": {
+    "before": {
+     "choice": 0.4960943558479359,
+     "score": 1.5726824473527377,
+     "noul": 0.24820344887605392
+    },
+    "after": {
+     "choice": 0.4497296447643947,
+     "score": 1.5726824473527377,
+     "noul": 0.2413587459752119
+    }
+   },
+   "ece": {
+    "before": {
+     "choice": 0.057922054015739736,
+     "score": 0.14978912245032344,
+     "noul": 0.044488215079256994
+    },
+    "after": {
+     "choice": 0.025860808355217733,
+     "score": 0.14978912245032344,
+     "noul": 0.043887383119228185
+    }
+   }
+  },
+  "b_decision": {
+   "ship": false,
+   "acc": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "ece": [
+    -0.0006616955634028004,
+    -0.007600939900449855,
+    0.004213744216465247
+   ],
+   "b_fitted": 0.03186463035261425
+  },
+  "t_decision": {
+   "choice": {
+    "fitted_T": 1.6694253320949457,
+    "pooled_T": 2.0029335369010237,
+    "shipped_T": 1.6694253320949457,
+    "source": "fitted",
+    "ece": [
+     -0.032061245660522,
+     -0.049883659743956685,
+     -0.0055412640450218376
+    ],
+    "ece_pooled": [
+     0.003349198734456528,
+     -0.02470264753672933,
+     0.02889708997528989
+    ]
+   },
+   "score": {
+    "fitted_T": 6.009047586393807,
+    "pooled_T": 2.0029335369010237,
+    "shipped_T": 1.0,
+    "source": "none",
+    "ece": [
+     0.191414978316377,
+     0.12705140096957807,
+     0.22792605159859475
+    ],
+    "ece_pooled": [
+     0.07285475073910097,
+     0.028167014810957403,
+     0.0962546556256112
+    ]
+   },
+   "noul": {
+    "fitted_T": 1.3442156081674206,
+    "pooled_T": 2.0029335369010237,
+    "shipped_T": 1.3442156081674206,
+    "source": "fitted",
+    "ece": [
+     -0.0006008319600288095,
+     -0.012542818990209176,
+     0.014316990689909555
+    ],
+    "ece_pooled": [
+     0.029568582641693632,
+     0.003825726056924994,
+     0.04979184759836717
+    ]
+   }
+  }
+ },
+ "borrowed": {
+  "profile": "qwen3.8-27b",
+  "file": "calibration.json",
+  "stamp": {
+   "tokenizer_sha256": "97610cfe649c3109ec2b01e232b9dbd4412b2b3105029c704cb36e2a6ee210c1",
+   "layout_sha256": "fc835afa2b9ad3cafba61116b8632ba67886d18bd51571a03b26685fa15f7618",
+   "hf_revision": "1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0",
+   "prefix_pad": "front",
+   "prefix_block": 800
+  },
+  "date": "2026-10-26T04:20:17Z"
+ }
+}

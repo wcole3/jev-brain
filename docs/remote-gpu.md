@@ -271,6 +271,8 @@ Earlier queues (host-compare, latency, Index runs, DS-024 phase B) are in git hi
   holes, and its retry (same run dir) reruns only those rows.
 - The `stack` job is `stack.sh up PROFILE`: vLLM (`docker/vllm-entrypoint.sh`, 1800 s to
   healthy) then the gateway, both on `127.0.0.1`, logs `logs/vllm.log` and `logs/gateway.log`.
+  A restart keeps the earlier log as `logs/vllm.<UTC of its last write>.log` (same for the gateway),
+  so a crash's log survives the retry; pull copies them too.
   `stack.sh status` and `stack.sh down` also exist. A no-op when already healthy.
 - Every GPU job (host-compare, index, collect) starts with `stack.sh up PROFILE &&`. A vLLM
   crash fails the job, and its retry brings the stack back.

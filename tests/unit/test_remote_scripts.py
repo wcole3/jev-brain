@@ -110,6 +110,19 @@ def test_stack_patch_installs_the_patched_vllm_files(tmp_path):
         assert (tmp_path / "vllm" / sub / name).read_text() == patched.read_text()
 
 
+def test_stack_start_keeps_the_earlier_log(tmp_path):
+    """A restart after a crash must not overwrite the log that shows the crash."""
+    logs = tmp_path / ".cache" / "remote" / "logs"
+    logs.mkdir(parents=True)
+    (logs / "demo.log").write_text("crash\n")
+    (tmp_path / "scripts" / "remote").mkdir(parents=True)
+    functions = (REMOTE / "stack.sh").read_text().split("\ncase ")[0]  # everything but the command dispatch
+    script = functions + "\nstart demo echo restarted\nwait\n"
+    subprocess.run(["bash", "-c", script], cwd=tmp_path / "scripts" / "remote", check=True, capture_output=True)
+    assert (logs / "demo.log").read_text() == "restarted\n"
+    assert [p.read_text() for p in logs.glob("demo.*Z.log")] == ["crash\n"]
+
+
 def queue(tmp_path, jobs: str, name: str = "p") -> subprocess.CompletedProcess:
     jobfile = tmp_path / f"{name}.txt"
     jobfile.write_text(jobs)

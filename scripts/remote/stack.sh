@@ -17,9 +17,11 @@ gateway_profile() {
 }
 
 # start NAME CMD...: run CMD in its own session (so stop can signal the whole group), log and pid under .cache/remote.
+# An earlier log is kept under the time it was last written, so a crash's log survives the restart.
 start() {
-  local name=$1
+  local name=$1 log=$logs/$1.log
   shift
+  if [[ -f $log ]]; then mv "$log" "$logs/$name.$(date -u -r "$log" +%Y%m%dT%H%M%SZ).log"; fi
   setsid nohup "$@" > "$logs/$name.log" 2>&1 < /dev/null &
   echo $! > "$remote/$name.pid"
 }

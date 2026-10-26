@@ -1,9 +1,10 @@
 """Fit calibration from collected logprobs: T per type (+ noul yes-offset when it earns its place on eval).
 
 usage: uv run python scripts/calibrate.py --profile qwen3.6-27b [--layouts decider_chat,header] [--orders identity]
-       [--collect-label L] [--comment TEXT] [--dry-run]
+       [--collect-label L] [--choice-tn] [--comment TEXT] [--dry-run]
 Fits on data/splits/calib.json only (never Jev outputs, never Index rows); judges on eval.
---dry-run writes nothing: the report goes to stdout.
+--choice-tn also fits choice T(n) = a + b ln n, a candidate in the T gate. --dry-run writes nothing: the report
+goes to stdout.
 """
 
 import argparse
@@ -13,7 +14,7 @@ import hashlib
 import json
 from pathlib import Path
 
-from gateway.calibration import STAMP_KEYS, TYPES, Calibration
+from gateway.calibration import STAMP_KEYS, TYPES, Calibration, Temperature, to_json
 from gateway.config import ROOT, Settings
 from gateway.decide import probabilities
 from gateway.layouts import load_layouts
@@ -80,7 +81,7 @@ def ship_offset(eval_noul, with_b: tuple[float, float], without_b: float) -> tup
     return ship, {"acc": acc, "ece": ece}
 
 
-def ece_change(questions, q_type: str, T: float, b: float = 0.0) -> list[float]:
+def ece_change(questions, q_type: str, T: Temperature, b: float = 0.0) -> list[float]:
     """Eval ECE at (T, b) minus ECE at T = 1, b = 0: [mean, CI low, CI high] from the paired bootstrap."""
     if not questions:
         return [0.0, 0.0, 0.0]
@@ -89,13 +90,29 @@ def ece_change(questions, q_type: str, T: float, b: float = 0.0) -> list[float]:
     return list(fits.bootstrap_diff(raw, cal, metrics.ece))
 
 
-def gate_temperatures(fit: dict, held: dict) -> dict:
-    """Per type: of the candidates whose eval ECE-change CI low is <= 0, ship the lowest point ECE.
+def pick(candidates: list[tuple[str, Temperature, list[float]]], b: float) -> tuple[str, Temperature]:
+    """Of the candidates whose eval ECE-change CI low is <= 0, the lowest point ECE; none passing: T = 1."""
+    passing = [c for c in candidates if c[2][1] <= 0]
+    if b != 0 and passing and passing[0][0] == "fitted":
+        passing = passing[:1]  # the owner chose to keep b: it never competes
+    if not passing:
+        return "none", 1.0
+    source, T, _ = min(passing, key=lambda c: c[2][0])
+    return source, T
 
-    Candidates in order: fitted, b0 (noul with b != 0 only: noul T refit at b = 0), pooled.
-    T = 1 ("none") ships only when every candidate is significantly worse than T = 1.
-    A noul b that passes ships as is; any source but "fitted" drops b.
-    """
+
+def versus(questions, constant: float, curve: Temperature) -> dict:
+    """Eval ECE and NLL of choice under the constant the gate would ship without the curve, and under the curve."""
+    out = {"constant_T": constant}
+    for name, T in (("constant", constant), ("curve", curve)):
+        s = summarize(questions, "choice", Calibration({t: T for t in TYPES}))
+        out[name] = {"ece": s["ece"], "nll": s["nll"]}
+    return out
+
+
+def gate_temperatures(fit: dict, held: dict) -> dict:
+    """Per type: pick() over the candidates fitted, b0 (noul with b != 0 only: noul T refit at b = 0), pooled, and
+    with --choice-tn, the choice curve. A noul b that passes ships as is; any source but "fitted" drops b."""
     gate, pooled = {}, fit["pooled"]["T"]
     for t in TYPES:
         fitted, b = fit[t]["T"], fit["noul"]["b"] if t == "noul" else 0.0
@@ -105,13 +122,12 @@ def gate_temperatures(fit: dict, held: dict) -> dict:
         if b != 0:
             d["ece_b0"] = ece_change(held[t], t, fit["noul_b0"]["T"])
             candidates.insert(1, ("b0", fit["noul_b0"]["T"], d["ece_b0"]))
-        passing = [c for c in candidates if c[2][1] <= 0]
-        if b != 0 and passing and passing[0][0] == "fitted":
-            passing = passing[:1]  # the owner chose to keep b: it never competes
-        if passing:
-            d["source"], d["shipped_T"], _ = min(passing, key=lambda c: c[2][0])
-        else:
-            d["source"], d["shipped_T"] = "none", 1.0
+        d["source"], d["shipped_T"] = pick(candidates, b)
+        if t == "choice" and "choice_curve" in fit and held[t]:
+            curve = fit["choice_curve"]["T"]
+            d["curve"], d["ece_curve"] = curve, ece_change(held[t], t, curve)
+            d["versus"] = versus(held[t], d["shipped_T"], curve)
+            d["source"], d["shipped_T"] = pick([*candidates, ("curve", curve, d["ece_curve"])], b)
         gate[t] = d
     return gate
 
@@ -170,9 +186,11 @@ def split_questions(recs, rows, layout: str, orders: str, name: str, gate: Calib
     return by_type, stamp
 
 
-def fit_and_judge(layout: str, calib: dict, held: dict) -> LayoutResult:
+def fit_and_judge(layout: str, calib: dict, held: dict, choice_tn: bool = False) -> LayoutResult:
     """Fit on calib, decide b on eval, and measure before (T = 1, b = 0) and after on both splits."""
     fit = fit_layout(calib)
+    if choice_tn and len(calib["choice"]) >= MIN_QUESTIONS:
+        fit["choice_curve"] = {"T": fits.fit_curve(calib["choice"])}
     if held["noul"]:
         ship, stats = ship_offset(held["noul"], (fit["noul"]["T"], fit["noul"]["b"]), fit["noul_b0"]["T"])
     else:
@@ -212,7 +230,7 @@ def calibrate_layout(args, s, layout, recs, rows) -> list[str]:
     held, eval_stamp = split_questions(recs["eval"], rows["eval"], layout, args.orders, "eval", gate)
     if stamp != eval_stamp:
         raise SystemExit(f"{layout}: calib and eval were collected under different stamps")
-    r = fit_and_judge(layout, calib, held)
+    r = fit_and_judge(layout, calib, held, args.choice_tn)
     b_decision = {"ship": r.ship, "acc": list(r.stats["acc"]), "ece": list(r.stats["ece"]), "b_fitted": r.b_fitted}
     path = s.setting_file(layout, args.orders)
     comment = f"{args.comment or default_comment(path, args.orders)}; {gate_outcome(r)}"
@@ -221,7 +239,7 @@ def calibrate_layout(args, s, layout, recs, rows) -> list[str]:
                             {"b_decision": b_decision, "t_decision": r.gate}, history(path), comment, now_iso())
     if not args.dry_run:
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(data, indent=1) + "\n")
+        path.write_text(json.dumps(data, indent=1, default=to_json) + "\n")
     return layout_report(r)
 
 
@@ -231,6 +249,7 @@ def main(argv=None) -> None:
     p.add_argument("--layouts")
     p.add_argument("--orders", default="identity")
     p.add_argument("--collect-label", help="read <split>-<label>.jsonl.gz instead of <split>.jsonl.gz")
+    p.add_argument("--choice-tn", action="store_true", help="also fit choice T(n) = a + b ln n; the T gate decides")
     p.add_argument("--comment", help="one line for this file's change history")
     p.add_argument("--dry-run", action="store_true")
     args = p.parse_args(argv)
@@ -243,6 +262,7 @@ def main(argv=None) -> None:
     revision = git_revision()  # before any file is written, so our own output doesn't read as "dirty"
     lines = [line for layout in layouts for line in calibrate_layout(args, s, layout, recs, rows)]
     meta = {"timestamp": stamp_utc, "repo commit": revision, "profile": args.profile, "orders": args.orders,
+            **({"choice T(n)": "a candidate in the T gate (--choice-tn)"} if args.choice_tn else {}),
             "calib split sha256": split_sha256(),
             "collect label": args.collect_label or "(none)",
             "collect": (COLLECT / args.profile).relative_to(ROOT) / f"{{calib,eval}}{suffix}.jsonl.gz"}

@@ -71,7 +71,7 @@ def pride_prior(recs, rows_by_id, layout: str, cal: Calibration, layouts,
             if t == "noul":
                 continue
             k = len(chosen[0][0])
-            by_shown = [softmax(lp, cal.T[t]) for lp, _ in chosen]
+            by_shown = [softmax(lp, cal.temperature(t, k)) for lp, _ in chosen]
             avg = [sum(p[j] for p in by_shown) / len(chosen) for j in range(k)]
             sums[k] = avg if k not in sums else [a + b for a, b in zip(sums[k], avg, strict=True)]
             counts[k] += 1

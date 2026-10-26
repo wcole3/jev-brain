@@ -58,7 +58,8 @@ def offline_answers(engine, row: dict, rec: dict, layout: str, orders: str) -> d
     out = {}
     for qid, reads in rec["questions"].items():
         q = render_question(Question(**row["questions"][qid]), engine.layouts[layout])
-        gate_T = calibration_for(engine, layout, "identity").T[q.type] if gate(orders) is not None else None
+        gate_T = (calibration_for(engine, layout, "identity").temperature(q.type, len(q.options))
+                  if gate(orders) is not None else None)
         chosen = chosen_reads(q, reads, orders, gate_T)
         out[qid] = answer(q, probabilities(chosen, q.type, calibration_for(engine, layout, orders)))
     return out

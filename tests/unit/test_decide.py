@@ -8,7 +8,7 @@ import PIL.Image
 import pytest
 
 import gateway.decide
-from gateway.calibration import UNCALIBRATED, Calibration, softmax
+from gateway.calibration import UNCALIBRATED, Calibration, Curve, softmax
 from gateway.decide import (
     answers_for,
     blend,
@@ -16,6 +16,7 @@ from gateway.decide import (
     calibration_for,
     combine,
     decide,
+    gated_questions,
     probabilities,
     read_rows,
     reading_once,
@@ -435,3 +436,47 @@ async def test_reread_p_reads_a_request_too_long_to_stack_like_top_p(engine):
 async def test_reread_p_reads_an_image_request_like_top_p(seeing):
     calls = await reads_like_top_p(seeing, one_question(images=[png_b64()]))
     assert len(calls) == 2
+
+
+CURVE = Curve(6.85, -0.8)
+
+
+def test_probabilities_take_the_curve_at_each_question_option_count():
+    cal = Calibration({"choice": CURVE, "score": 1.0, "noul": 1.0})
+    two = [([0.0, -2.0], [0, 1]), ([-2.5, 0.0], [1, 0])]
+    five = [([0.0, -1.0, -2.0, -3.0, -4.0], [0, 1, 2, 3, 4])]
+    assert probabilities(two, "choice", cal) == pytest.approx(combine(two, CURVE(2)))
+    assert probabilities(five, "choice", cal) == pytest.approx(combine(five, CURVE(5)))
+    assert CURVE(2) != CURVE(5)
+
+
+@pytest.mark.parametrize("seed", range(5))
+def test_a_curve_never_changes_the_top_answer(seed):
+    import random
+
+    rng = random.Random(seed)
+    curve, flat = Calibration({"choice": CURVE, "score": 1, "noul": 1}), Calibration({"choice": 3.98, "score": 1, "noul": 1})
+    for n in (2, 3, 5, 9, 20, 40):
+        reads = [([rng.gauss(0, 3) for _ in range(n)], list(range(n)))]
+        a, b = probabilities(reads, "choice", curve), probabilities(reads, "choice", flat)
+        assert a.index(max(a)) == b.index(max(b))
+
+
+def test_gate_softmaxes_the_first_read_at_the_identity_fit_for_its_option_count():
+    from types import SimpleNamespace
+
+    questions = {"q": SimpleNamespace(type="choice", options=["a", "b", "c"])}
+    reads = {"q": [([0.0, -2.0, -2.0], [0, 1, 2])]}  # top 0.79 at T = 1
+    flat = Calibration({"choice": 1.0, "score": 1.0, "noul": 1.0}, orders="identity")
+    assert gated_questions(reads, questions, flat, 0.9) == {"q"} and gated_questions(reads, questions, flat, 0.7) == set()
+    curved = Calibration({"choice": Curve(1.0 + math.log(3), -1.0), "score": 1.0, "noul": 1.0}, orders="identity")
+    assert gated_questions(reads, questions, curved, 0.7) == set()  # T(3) = 1
+
+
+async def test_top_p_gate_ignores_a_curve_in_the_answer_fit(engine):
+    sharp = Calibration({"choice": Curve(0.1, 0.0), "score": 0.1, "noul": 0.1}, orders=TOP_P)
+    ident = Calibration({"choice": 1.0, "score": 1.0, "noul": 1.0}, orders="identity")
+    e = dataclasses.replace(gated(engine, SureOf(3)), calibration=engine.calibration | {"decider_chat": sharp},
+                            other_calibrations={"identity": {"decider_chat": ident}})
+    r = await read_rows(e, request(questions={"sure": QUICKSTART["department"], "unsure": QUICKSTART["is_urgent"]}))
+    assert [len(r.reads[q]) for q in ("sure", "unsure")] == [1, 2]

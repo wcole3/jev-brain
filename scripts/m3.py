@@ -11,7 +11,7 @@ import argparse
 import json
 from concurrent.futures import ProcessPoolExecutor
 
-from gateway.calibration import Calibration, load_calibration, orders_warning
+from gateway.calibration import Calibration, load_calibration, orders_warning, to_json
 from gateway.config import ROOT, Settings
 from gateway.layouts import load_layouts
 from gateway.orders import option_orders
@@ -152,7 +152,7 @@ def write(report: dict, markdown: str, name: str, dry_run: bool) -> None:
     meta = report["meta"]
     out = results_dir(meta["profile"], f"{meta['timestamp']}-{name}", archive=True)
     (out / "summary.md").write_text(markdown)
-    (out / "report.json").write_text(json.dumps(report, indent=1) + "\n")
+    (out / "report.json").write_text(json.dumps(report, indent=1, default=to_json) + "\n")
     print(out / "summary.md")
 
 

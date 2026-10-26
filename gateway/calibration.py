@@ -3,7 +3,7 @@
 import json
 import logging
 import math
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from pathlib import Path
 
 from gateway.labels import tokenizer_sha256
@@ -14,15 +14,52 @@ STAMP_KEYS = ("tokenizer_sha256", "layout_sha256", "hf_revision", "prefix_pad", 
 STALE = "move the stale file aside (T = 1 meanwhile), recollect calib and eval, then rerun scripts/calibrate.py"
 
 
+FLOOR = 0.05  # a curve never goes below this T, however many options
+
+
+@dataclass(frozen=True)
+class Curve:
+    """T(n) = max(floor, a + b ln n): a temperature that depends on the question's option count n."""
+
+    a: float
+    b: float
+    floor: float = FLOOR
+
+    def __call__(self, n: int) -> float:
+        return max(self.floor, self.a + self.b * math.log(n))
+
+    def __format__(self, spec: str) -> str:
+        return f"{self.a:{spec}} {self.b:+{spec}} ln n"
+
+
+Temperature = float | Curve
+
+
+def temperature(T: Temperature, n: int) -> float:
+    return T(n) if isinstance(T, Curve) else T
+
+
+def to_json(value):
+    """json.dumps default: a Curve is written as {"a", "b", "floor"}, as the calibration file holds it."""
+    if isinstance(value, Curve):
+        return asdict(value)
+    raise TypeError(f"{type(value).__name__} is not JSON serializable")
+
+
 @dataclass(frozen=True)
 class Calibration:
-    T: dict[str, float]
+    T: dict[str, Temperature]
     b: float = 0.0  # noul: added to the "yes" logit after dividing by T
     source: str = "uncalibrated"
     orders: str | None = None  # the option orders it was fitted under; None when not fitted
 
+    def temperature(self, q_type: str, n: int) -> float:
+        """The T for a question of this type with n options."""
+        return temperature(self.T[q_type], n)
+
     def as_dict(self) -> dict:
-        return {"T": dict(self.T), "b": self.b, "source": self.source, "orders": self.orders}
+        T = {t: asdict(v) if isinstance(v, Curve) else v for t, v in self.T.items()}
+        return {"T": T, "b": self.b, "source": self.source, "orders": self.orders}
 
 
 UNCALIBRATED = Calibration({t: 1.0 for t in TYPES})
@@ -60,6 +97,14 @@ def finite_number(path: Path, name: str, value, positive: bool = False) -> float
     return x
 
 
+def temperature_from(path: Path, name: str, value) -> Temperature:
+    """A number, or a curve {"a", "b", "floor"?} whose floor keeps T > 0."""
+    if not isinstance(value, dict):
+        return finite_number(path, name, value, positive=True)
+    a, b = (finite_number(path, f"{name}.{k}", value.get(k)) for k in ("a", "b"))
+    return Curve(a, b, finite_number(path, f"{name}.floor", value.get("floor", FLOOR), positive=True))
+
+
 def load_calibration(path: Path, expect: dict | None) -> Calibration:
     """Refuse v1, unstamped, stale or malformed files; with no file, run uncalibrated."""
     if not path.exists():
@@ -73,7 +118,7 @@ def load_calibration(path: Path, expect: dict | None) -> Calibration:
         if file != expect[key]:
             raise RuntimeError(f"{path}: {key} changed ({file} != {expect[key]}); {STALE}")
     types = data["types"]
-    T = {t: finite_number(path, f"types.{t}.T", types[t]["T"], positive=True) for t in TYPES}
+    T = {t: temperature_from(path, f"types.{t}.T", types[t]["T"]) for t in TYPES}
     b = finite_number(path, "types.noul.b", types["noul"].get("b", 0.0))
     # source is relative to the data root (<profile>/<layout>/calibration.json), so host and container agree
     source = path.relative_to(path.parents[2]).as_posix()

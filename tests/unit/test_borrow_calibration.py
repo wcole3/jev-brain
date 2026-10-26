@@ -3,7 +3,7 @@ import json
 
 import pytest
 
-from gateway.calibration import load_calibration
+from gateway.calibration import Curve, load_calibration
 from gateway.config import Settings
 from scripts import borrow_calibration
 
@@ -54,6 +54,16 @@ def test_gateway_accepts_the_borrowed_file_for_the_quant_only(run, tmp_path):
     assert cal.T == {"choice": 3.9, "score": 5.2, "noul": 6.7} and cal.b == 0.4
     with pytest.raises(RuntimeError, match="hf_revision changed"):
         load_calibration(path, STAMPS[BASE])
+
+
+def test_a_curve_is_borrowed_as_is(run, tmp_path):
+    curve = {"a": 6.85, "b": -0.8, "floor": 0.05}
+    types = FIT["types"] | {"choice": {"T": curve}}
+    put(tmp_path, BASE, "calibration.json", FIT | {"types": types, "stamp": STAMPS[BASE]})
+    run()
+    path = tmp_path / QUANT / LAYOUT / "calibration.json"
+    assert json.loads(path.read_text())["types"]["choice"]["T"] == curve
+    assert load_calibration(path, STAMPS[QUANT]).T["choice"] == Curve(6.85, -0.8, 0.05)
 
 
 def test_dry_run_writes_nothing(run, tmp_path, capsys):

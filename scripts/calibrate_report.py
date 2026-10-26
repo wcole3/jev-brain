@@ -37,7 +37,8 @@ def ci(x: list[float]) -> str:
 
 def gate_text(g: dict) -> str:
     b0 = f"; b = 0 {ci(g['ece_b0'])}" if "ece_b0" in g else ""
-    return f"fitted {ci(g['ece'])}{b0}; pooled {ci(g['ece_pooled'])} → {g['source']}"
+    curve = f"; curve {ci(g['ece_curve'])}" if "ece_curve" in g else ""
+    return f"fitted {ci(g['ece'])}{b0}; pooled {ci(g['ece_pooled'])}{curve} → {g['source']}"
 
 
 def type_row(r: LayoutResult, t: str) -> str:
@@ -52,6 +53,19 @@ def type_row(r: LayoutResult, t: str) -> str:
     return "| " + " | ".join(cells) + " |"
 
 
+def curve_line(g: dict) -> list[str]:
+    """The choice T(n) candidate against the constant the gate would ship without it, on eval."""
+    if "curve" not in g:
+        return []
+    c, v = g["curve"], g["versus"]
+    edge = at_edge(c.a, fits.LOG_A, log=True) or at_edge(c.b, fits.SLOPE)
+    at = ", ".join(f"T({n}) {c(n):.2f}" for n in (2, 4, 16))
+    verdict = "shipped" if g["source"] == "curve" else "not shipped"
+    return [mark(f"choice T(n) = {c:.3f} ({at})", edge) + f": eval ECE {fmt(v['constant']['ece'])} at constant T "
+            f"{v['constant_T']:.3f} → {fmt(v['curve']['ece'])} on the curve, eval NLL {fmt(v['constant']['nll'])} → "
+            f"{fmt(v['curve']['nll'])} → {verdict}", ""]
+
+
 def layout_report(r: LayoutResult) -> list[str]:
     head = ("| type | n calib/eval | T | T gate (eval ECE change vs T = 1) | b | NLL before → after (calib) "
             "| NLL before → after (eval) | ECE before → after (calib) | ECE before → after (eval) | eval acc |")
@@ -61,7 +75,7 @@ def layout_report(r: LayoutResult) -> list[str]:
     verdict = "shipped" if r.ship else "not shipped (b = 0)"
     b_text = mark(f"{r.b_fitted:+.3f}", at_edge(r.b_fitted, fits.B_RANGE))
     pooled = r.fit["pooled"]["T"]
-    lines += ["", f"pooled T (one T for every type, b = 0; the gate's fallback): {pooled:.3f}", "",
+    lines += ["", *curve_line(r.gate["choice"]), f"pooled T (one T for every type, b = 0; the gate's fallback): {pooled:.3f}", "",
               (f"noul offset: fitted b = {b_text}; eval accuracy change {acc[0]:+.4f} [{acc[1]:+.4f}, {acc[2]:+.4f}],"
                f" ECE change {ece[0]:+.4f} [{ece[1]:+.4f}, {ece[2]:+.4f}] → {verdict}"), ""]
     return lines

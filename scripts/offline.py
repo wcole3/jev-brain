@@ -79,7 +79,7 @@ def questions(record: dict, row: dict, layout: str, orders: str, layouts: dict,
         if gold is None:
             continue
         try:
-            chosen = chosen_reads(q, reads, orders, gate.T[q.type] if gate else None)
+            chosen = chosen_reads(q, reads, orders, gate.temperature(q.type, len(q.options)) if gate else None)
         except ValueError as e:
             raise ValueError(f"{record['id']}/{qid}: {e}") from None
         yield qid, q.type, chosen, gold

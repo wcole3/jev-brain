@@ -17,7 +17,15 @@ from collections import Counter, defaultdict
 from dataclasses import dataclass, replace
 from pathlib import Path
 
-from gateway.calibration import UNCALIBRATED, Calibration, load_calibration, orders_warning
+from gateway.calibration import (
+    UNCALIBRATED,
+    Calibration,
+    Temperature,
+    load_calibration,
+    orders_warning,
+    temperature,
+    to_json,
+)
 from gateway.config import ROOT, Settings, read_env_file
 from gateway.decide import blend, probabilities
 from gateway.orders import option_orders
@@ -88,7 +96,7 @@ def items_of(recs: list[dict], orders: str) -> tuple[list[Item], dict[str, int]]
     return [Item(r, chosen_reads(r, orders), str(fold(r["group"]))) for r in keep], skipped
 
 
-def fitted_T(items: list[Item], text_T: float) -> dict:
+def fitted_T(items: list[Item], text_T: Temperature) -> dict:
     if len(items) < MIN_FIT:
         return {"n": len(items), "T": text_T, "fallback": True}
     return {"n": len(items), "T": fit_temperature([(i.reads, i.rec["gold"]) for i in items]), "fallback": False}
@@ -117,7 +125,7 @@ def debiased(item: Item, prior: dict[str, list[float]]) -> Item:
     return replace(item, reads=[([x - b for x, b in zip(lp, p, strict=True)], perm) for lp, perm in item.reads])
 
 
-def fit_fold(arm: str, train: list[Item], scored: list[Item], text_T: float) -> dict:
+def fit_fold(arm: str, train: list[Item], scored: list[Item], text_T: Temperature) -> dict:
     """The parameters the scored items get, fitted on the train items only."""
     if arm == "fit-T":
         return fitted_T(train, text_T)
@@ -133,11 +141,13 @@ def fit_fold(arm: str, train: list[Item], scored: list[Item], text_T: float) -> 
 
 
 def fold_probs(arm: str, item: Item, params: dict) -> list[float]:
+    """A fallback T may be the text fit's curve: it is taken at the item's option count."""
+    n = len(item.rec["names"])
     if arm == "fit-T-bench":
-        return blend(item.reads, params["benchmarks"][item.rec["benchmark"]]["T"])
+        return blend(item.reads, temperature(params["benchmarks"][item.rec["benchmark"]]["T"], n))
     if arm == "pride":
-        return blend(debiased(item, params["prior"]).reads, params["T"])
-    return blend(item.reads, params["T"])
+        return blend(debiased(item, params["prior"]).reads, temperature(params["T"], n))
+    return blend(item.reads, temperature(params["T"], n))
 
 
 def fallbacks(arm: str, folds: dict[str, dict]) -> list[str]:
@@ -147,7 +157,7 @@ def fallbacks(arm: str, folds: dict[str, dict]) -> list[str]:
     return [name[k] for k, f in folds.items() if f["fallback"]]
 
 
-def fits(arm: str, items: list[Item], text_T: float) -> dict[str, dict]:
+def fits(arm: str, items: list[Item], text_T: Temperature) -> dict[str, dict]:
     """2-fold cross-fit: each fold's parameters come from the other fold."""
     in_fold = {k: [i for i in items if i.fold == k] for k in ("0", "1")}
     return {k: {"fitted_on": o} | fit_fold(arm, in_fold[o], in_fold[k], text_T) for k, o in (("0", "1"), ("1", "0"))}
@@ -268,7 +278,7 @@ def run(args) -> dict:
     args.out.mkdir(parents=True, exist_ok=True)
     with gzip.open(args.out / "scored.jsonl.gz", "wt", encoding="utf-8") as f:
         f.writelines(json.dumps(r) + "\n" for r in rows)
-    (args.out / "arm.json").write_text(json.dumps(arm, indent=1) + "\n")
+    (args.out / "arm.json").write_text(json.dumps(arm, indent=1, default=to_json) + "\n")
     print(f"{args.arm} {args.orders}: scored {len(rows)}, skipped {report['skipped']}, "
           f"fallbacks {report['fallbacks']} -> {args.out}")
     return arm

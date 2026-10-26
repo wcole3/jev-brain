@@ -157,7 +157,8 @@ async def read_into(reads: dict[str, list], engine: Engine, batch: Batch, warm: 
 
 def gated_questions(reads: dict[str, list], questions: dict[str, Rendered], cal: Calibration, tau: float) -> set[str]:
     """The questions whose first read, softmaxed at the identity fit's T (no b), tops out under tau."""
-    return {qid for qid, q in questions.items() if max(softmax(reads[qid][0][0], cal.T[q.type])) < tau}
+    return {qid for qid, q in questions.items()
+            if max(softmax(reads[qid][0][0], cal.temperature(q.type, len(q.options)))) < tau}
 
 
 async def second_pass(engine: Engine, request: SystemOneRequest, r: Reads, kept: set[str]) -> int:
@@ -237,7 +238,8 @@ def combine(reads: list[tuple[list[float], list[int]]], temperature: float, yes_
 
 
 def probabilities(reads: list[tuple[list[float], list[int]]], q_type: str, cal: Calibration) -> list[float]:
-    return combine(reads, cal.T[q_type], cal.b if q_type == "noul" else 0.0)
+    """The question's T at its option count (one logprob per option), then combine."""
+    return combine(reads, cal.temperature(q_type, len(reads[0][0])), cal.b if q_type == "noul" else 0.0)
 
 
 def answers_for(questions: dict[str, Rendered], reads: dict, cal: Calibration) -> dict:

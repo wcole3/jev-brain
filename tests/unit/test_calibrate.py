@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from gateway.calibration import Calibration
+from gateway.calibration import Calibration, Curve, load_calibration
 from gateway.config import Settings
 from scripts import calibrate, calibrate_report
 from scripts import fit as fits
@@ -221,7 +221,7 @@ def test_calibrate_writes_the_file_the_gateway_reads_for_that_block(tmp_path, mo
     monkeypatch.setattr(calibrate, "gate_outcome", lambda r: "gate")
     monkeypatch.setattr(calibrate, "layout_report", lambda r: [])
     monkeypatch.setattr(calibrate, "calibration_file", lambda *a: {"format": 2})
-    args = SimpleNamespace(orders="identity", comment="c", dry_run=False)
+    args = SimpleNamespace(orders="identity", comment="c", dry_run=False, choice_tn=False)
     calibrate.calibrate_layout(args, s, LAYOUT, {"calib": [], "eval": []}, {"calib": {}, "eval": {}})
     assert (tmp_path / "p" / LAYOUT / "calibration-784.json").read_text().startswith('{\n "format"')
     assert not (tmp_path / "p" / LAYOUT / "calibration.json").exists()
@@ -359,3 +359,52 @@ def test_calibrate_gated_refuses_without_identity_fit(tmp_path, monkeypatch):
         "format": 2, "stamp": STAMP, "types": {t: {"T": 1.0} for t in calibrate.TYPES}, "fit": {"orders": "cyclic:2"}}))
     with pytest.raises(SystemExit, match="identity"):
         run_calibrate("--orders", "top_p:0.9+reversed")
+
+
+def by_option_count(n=200):
+    """Two options right 80% of the time (T 1.44), sixteen right 95% (T 0.35), same logit gap: no one T fits both."""
+    out = []
+    for i in range(n):
+        out.append(([([0.0, -2.0], [0, 1])], 0 if i % 100 < 80 else 1))
+        out.append(([([0.0] + [-2.0] * 15, list(range(16)))], 0 if i % 100 < 95 else 1))
+    return out
+
+
+def test_choice_curve_ships_when_it_beats_the_constant_on_eval():
+    qs = by_option_count()
+    held = {"choice": qs, "score": [], "noul": []}
+    curve = fits.fit_curve(qs)
+    fit = gate_fit(fits.fit_temperature(qs), 1.0) | {"choice_curve": {"T": curve}}
+    g = calibrate.gate_temperatures(fit, held)["choice"]
+    assert g["source"] == "curve" and g["shipped_T"] == curve and curve.b < 0
+    assert g["versus"]["curve"]["ece"] < g["versus"]["constant"]["ece"]
+    assert g["versus"]["constant_T"] == fit["choice"]["T"]
+
+
+def test_choice_curve_does_not_ship_when_it_loses_on_eval():
+    held = {"choice": calibrated_choice(), "score": [], "noul": []}
+    fit = gate_fit(1.0, 1.05) | {"choice_curve": {"T": Curve(20.0, 0.0)}}
+    g = calibrate.gate_temperatures(fit, held)["choice"]
+    assert g["source"] == "fitted" and g["shipped_T"] == 1.0 and g["ece_curve"][1] > 0
+
+
+def test_without_the_flag_no_curve_is_fitted_or_judged():
+    qs = by_option_count()
+    r = calibrate.fit_and_judge(LAYOUT, {"choice": qs, "score": [], "noul": []},
+                                {"choice": qs, "score": [], "noul": []})
+    assert "choice_curve" not in r.fit and "curve" not in r.gate["choice"]
+    assert not isinstance(r.fit["choice"]["T"], Curve)
+
+
+def test_a_shipped_curve_reaches_the_file_and_the_report(tmp_path):
+    qs = by_option_count()
+    split = {"choice": qs, "score": [], "noul": []}
+    r = calibrate.fit_and_judge(LAYOUT, split, split, choice_tn=True)
+    assert r.gate["choice"]["source"] == "curve"
+    data = calibrate.calibration_file(r.fit, STAMP, "identity", {"choice": len(qs)}, {}, {"t_decision": r.gate},
+                                      (0, []), "c", "2026-10-26T00:00:00Z")
+    path = tmp_path / "calibration.json"
+    path.write_text(json.dumps(data, default=calibrate.to_json))
+    assert load_calibration(path, STAMP).T["choice"] == r.fit["choice"]["T"]
+    assert "choice: curve T" in calibrate.gate_outcome(r)
+    assert any(line.startswith("choice T(n) = ") and line.endswith("→ shipped") for line in calibrate.layout_report(r))

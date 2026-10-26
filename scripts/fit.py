@@ -3,11 +3,15 @@
 import math
 import random
 
+from gateway.calibration import Curve, softmax
 from gateway.decide import combine
+from gateway.orders import average_back
 
 Question = tuple[list[tuple[list[float], list[int]]], int]
 LOG_T = (math.log(0.05), math.log(20.0))
 B_RANGE = (-10.0, 10.0)
+LOG_A = (math.log(0.05), math.log(100.0))  # a curve's intercept: T at n = 1
+SLOPE = (-8.0, 8.0)  # a curve's slope per ln n
 RATIO = (math.sqrt(5) - 1) / 2
 
 
@@ -47,6 +51,26 @@ def fit_noul(questions: list[Question]) -> tuple[float, float]:
             break
         last = now
     return T, b
+
+
+def mean_logprobs(questions: list[Question]) -> list[tuple[list[float], int]]:
+    """Each question's reads averaged back to caller order, once: a curve fit softmaxes them many times."""
+    return [(average_back([lp for lp, _ in reads], [perm for _, perm in reads]), gold) for reads, gold in questions]
+
+
+def curve_nll(means: list[tuple[list[float], int]], curve: Curve) -> float:
+    return sum(-math.log(max(softmax(lp, curve(len(lp)))[gold], 1e-12)) for lp, gold in means) / len(means)
+
+
+def fit_curve(questions: list[Question]) -> Curve:
+    """T(n) = max(floor, a + b ln n) by NLL: golden search on b, each b with its best log a."""
+    means = mean_logprobs(questions)
+
+    def best_a(b: float) -> float:
+        return math.exp(golden_min(lambda la: curve_nll(means, Curve(math.exp(la), b)), *LOG_A))
+
+    b = golden_min(lambda b: curve_nll(means, Curve(best_a(b), b)), *SLOPE, tol=1e-3)
+    return Curve(best_a(b), b)
 
 
 def bootstrap_diff(a: list, b: list, metric, resamples: int = 2000, seed: int = 0) -> tuple[float, float, float]:

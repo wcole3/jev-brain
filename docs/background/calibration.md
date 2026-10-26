@@ -87,6 +87,9 @@ vLLM letter logprobs  →  average over option orders  →  + b·T on "yes"  →
   file and names the field, as it does for `labels.json`. To refit, move the stale file
   aside, recollect calib and eval (`collect.py` ignores calibration files), then rerun
   `calibrate.py`.
+- **A T can be a curve.** `types.<type>.T` is a number, or `{"a", "b", "floor"}` meaning
+  T(n) = max(floor, a + b·ln n) at the question's option count n (floor 0.05). Files with
+  numbers stay valid; format stays 2. Only `choice` is fitted as a curve (see below).
 - **A fit holds for one option-order setting** (`fit.orders`); see
   [option-ordering.md §1](option-ordering.md#1-how-the-gateway-shows-and-averages-orders).
 - vLLM returns logprobs over the whole vocabulary: `logprob = logit − log Z`. The
@@ -196,6 +199,25 @@ Eval split, before (T = 1, b = 0) → after, from the report (each file's `fit.e
 
 - **Replaces decider's 1.943**, one T for every type (decider SERVING.md §8); the old value
   sits in the file's first comment.
+
+**Choice T(n) (2026-10-26).** The Index is far more two-option heavy than calib (choice
+questions with 2 options: 59% of index-dev-2k, 3% of calib), and on gemma two-option
+questions want a higher T than many-option ones. `calibrate.py --choice-tn` fits
+T(n) = a + b·ln n for choice by NLL on calib and adds it to the ECE gate as one more
+candidate: it ships only when its eval ECE beats the constant's. Score and noul stay
+constant. The `top_p` gate keeps its identity fit's constant T, so a curve changes no
+answers and no second reads. Eval, choice (block-twice collects, [gemma-4-31b
+report](../results/archive/gemma-4-31b/2026-10-26T144030Z-calibrate/summary.md)):
+
+| Profile | Curve (calib fit) | ECE constant → curve | NLL constant → curve | Ships |
+|---|---|---|---|---|
+| gemma-4-31b | 6.849 − 0.792 ln n | 0.078 → 0.046 | 0.622 → 0.511 | yes |
+| gemma-4-12b | 4.892 − 0.501 ln n | 0.042 → 0.020 | 0.600 → 0.545 | yes |
+| qwen3.6-27b | 2.235 − 0.197 ln n | 0.022 → 0.030 | 0.475 → 0.471 | no |
+| qwen3.8-27b | 1.965 − 0.089 ln n | 0.026 → 0.033 | 0.450 → 0.451 | no |
+
+Quants borrow their base's file, curve included. Dev check (index-dev-2k, never fitted on),
+gemma-4-31b choice + noul, the study's near-identical 6.85 − 0.80 ln n: ECE 0.115 → 0.075, same answers.
 
 Worked example, three options with letter logprobs −0.1, −2.5, −5.0:
 

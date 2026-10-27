@@ -1,7 +1,8 @@
 # Read-twice (block stacking)
 
 Based on DS-045 (2026-10-22/23): a review of the Decision Index board, four prompt arms collected on gemma-4-31b,
-calibration fits on all four bf16 models, and one latency A/B. The analysis scripts are kept in
+calibration fits on all four bf16 models, and one latency A/B; §9 adds the H1q trial, the vLLM 0.32 refits, latency
+on every profile and a full Index run (2026-10-25 to 27). The analysis scripts are kept in
 `.firecrawl/background/read-twice/` (git-ignored); the collect files are in `.cache/collect/<profile>/` under the
 labels listed in [Runs](#runs).
 
@@ -23,11 +24,13 @@ labels listed in [Runs](#runs).
 - **Aleria's other rendering cleanups ship too** (§8): a name equal to its description shown once, "(A)" names
   dropped, no `_index` on long state arrays. Accuracy-neutral on gemma-4-31b; the `_index` drop saves 2.7% of
   tokens.
-- **Cost:** +22% median and mean latency on gemma-4-31b (151.5 → 185.5 ms median), all three board-gate figures
+- **Cost:** +22% median and mean latency on gemma-4-31b (151.5 → 185.5 ms median, §7), all three board-gate figures
   still under 1,000 ms.
-- **H1q ships on top (§9, 2026-10-25):** one-question requests also read each row's question and labelled options
-  twice, up to 32 options. All profiles are refit on vLLM 0.32 for it; the 600 W latency runs pass the board gate
-  on every profile but qwen3.8-27b-nvfp4.
+- **H1q was tried and dropped (§9):** reading each row's question and labelled options twice as well shipped on
+  2026-10-25 and was dropped the next day. On gemma-4-31b-fp8 it cost latency-v1 136 / 329 / 432 ms against
+  116 / 297 / 391 ms without it (median / mean / p80, 600 W), for an estimated +0.18 public points (CI includes 0).
+- **Where it stands (§9):** all profiles are refit for the block read twice on vLLM 0.32, all nine pass the board's
+  latency gate at 600 W, and gemma-4-31b-fp8's full runs score public text 63.64 and Vision 74.41.
 
 ## 1. What it is
 
@@ -294,22 +297,16 @@ gemma-4-31b, identity + reversed reads, against `blurb_header_reread` as it was:
 - **Noise reference:** HLE states are empty, so no HLE prompt changes in the `_index` arm, yet HLE showed 0 fixes and
   2 breaks.
 - **Both ship in `blurb_header_reread`** (owner decision, 2026-10-23). The served layout's hash changed, so its label
-  tables were rebuilt and its calibration files removed. The refit and the quant borrows landed with H1q (§9).
+  tables were rebuilt and its calibration files removed. The refits and the quant borrows came later (§9).
 
-## 9. H1q: the question read twice too (2026-10-25)
+## 9. H1q: tried and dropped (2026-10-25/26)
+
+### What H1q was
 
 On vLLM 0.32 the arms of [experiments vs public](../results/2026-10-25-experiments-vs-public.md) went one step
 further. H1 also writes each row's question and labelled options a second time, after the joiner; H1q does that only
-for one-question requests, so multi-question requests keep their tokens. The shipped form
-([`blurb_header_reread.toml`](../../prompts/blurb_header_reread.toml)) adds two limits:
-
-- **`question_twice_max_options = 32`:** a request with a longer option list reads its question once (long lists
-  cost the most).
-- **Length fallback:** a request too long to read twice is read once instead of refused
-  ([`decide.py`](../../gateway/decide.py)); uncapped H1 pushed 12 eval requests (255 options) past 65,536 tokens.
-
-Refit on calib per bf16 profile at its served orders, eval accuracy against the previous `blurb_header_reread` fit;
-the quantized profiles borrow their base's fit:
+for one-question requests, so multi-question requests keep their tokens. It shipped in `blurb_header_reread` on
+2026-10-25 (`read_question_twice = "one-question"`, at most 32 options) and was refit on every bf16 profile:
 
 | Profile | Choice | Score | Noul | T choice / score / noul | Fit |
 |---|---|---|---|---|---|
@@ -318,35 +315,95 @@ the quantized profiles borrow their base's fit:
 | qwen3.6-27b | 0.837 → 0.843 | 0.668 → 0.671 | 0.890 → 0.893 | 1.660 / 2.131 / 1.593 | [summary](../results/archive/qwen3.6-27b/2026-10-25T140912Z-calibrate/summary.md) |
 | gemma-4-12b | 0.815 → 0.830 | 0.605 → 0.585 | 0.878 → 0.883 | 4.018 pooled | [summary](../results/archive/gemma-4-12b/2026-10-25T144736Z-calibrate/summary.md) |
 
-The previous fits are the 2026-10-24 gemma-4-31b 0.32 refit and the 2026-10-23 (vLLM 0.30) fits for the others.
+Eval accuracy, previous `blurb_header_reread` fit → H1q. These fits were removed with H1q.
+
+### Why it was dropped
+
+- **Latency.** gemma-4-31b-fp8, latency-v1 at 600 W, same workstation: H1q
+  [135.5 / 329.0 / 431.9 ms](../results/archive/gemma-4-31b-fp8/2026-10-25T150150Z-latency/summary.md), block read
+  twice [116.0 / 297.2 / 390.5 ms](../results/archive/gemma-4-31b-fp8/2026-10-26T012140Z-latency/summary.md), read once
+  [94.3 / 267.7 / 355.8 ms](../results/archive/gemma-4-31b-fp8/2026-10-25T233841Z-latency-blurb_header/summary.md)
+  (median / mean / p80). On qwen3.8-27b-nvfp4 H1q failed the gate (table below).
+- **Accuracy.** H1q's estimated public gain over the block read twice is +0.18 [−0.50, +0.83]
+  ([experiments vs public](../results/2026-10-25-experiments-vs-public.md)): too small to pay for the latency.
+- **The layout went back byte for byte** to the file before H1q, so its label tables and gemma-4-31b's 0.32 fit
+  (2026-10-24) were valid again. `read_question_twice` stays in the code for experiment layouts
+  (`prompts/experiments/reread-h1q*.toml`).
+
+### No length cap, and an opt-in gated re-read
+
+- **No length cap.** A cap (read once when the read-once prompt passes k × 1,024 tokens) was studied offline on
+  gemma-4-31b's index-dev-2k collects as a cheaper H1q. No cap from 1,024 to 6,144 tokens beat no cap on the public
+  estimate, and reading every request once cost about 1.4 points. With H1q gone the default passes the gate
+  without one. The only limit left is the fallback: a request too long to read twice is read once
+  ([`decide.py`](../../gateway/decide.py)). Analysis in `.firecrawl/gemma-latency/cap-study/` (git-ignored).
+- **`reread_p:<tau>`** is an opt-in order setting (`OPTION_ORDERS`, or a request's `option_orders` override). It reads
+  the block once, then re-reads only the unsure one-question requests (top probability below tau) with the block
+  twice, in identity + reversed; the first copy is a prefix-cache hit. Multi-question, image and too-long requests
+  read as `top_p`. It borrows the layout's fit. On gemma-4-31b-fp8 (latency-v1, 600 W) it lowers the median but
+  raises the tail, and the estimated public score falls 0.24 to 0.38 points (`.firecrawl/gemma-latency/cap-study/gated/`),
+  so it does not ship:
+
+  | tau | median / mean / p80 / p95 ms | Run |
+  |---|---|---|
+  | 0.85 | 98.4 / 288.4 / 344.0 / 903.3 | [summary](../results/archive/gemma-4-31b-fp8/2026-10-26T013742Z-latency-reread_p-0.85/summary.md) |
+  | 0.9 | 105.0 / 311.4 / 420.6 / 916.4 | [summary](../results/archive/gemma-4-31b-fp8/2026-10-26T014159Z-latency-reread_p-0.9/summary.md) |
+  | 0.95 | 115.7 / 327.5 / 477.1 / 933.6 | [summary](../results/archive/gemma-4-31b-fp8/2026-10-26T014629Z-latency-reread_p-0.95/summary.md) |
+  | default (`top_p:0.9+reversed`) | 116.0 / 297.2 / 390.5 / 684.9 | [summary](../results/archive/gemma-4-31b-fp8/2026-10-26T012140Z-latency/summary.md) |
+
+### The shipped fits (vLLM 0.32, block read twice)
+
+Refit on calib per bf16 profile at its served orders; the quantized profiles borrow their base's file. Eval
+accuracy and the shipped T (a choice curve is T(n) = a + b ln n, see
+[calibration.md](calibration.md)):
+
+| Profile | Choice acc | Score acc | Noul acc | T choice / score / noul | Fit |
+|---|---|---|---|---|---|
+| gemma-4-31b | 0.847 | 0.675 | 0.916 | 6.849 − 0.792 ln n / 5.301 / 7.149 | [summary](../results/archive/gemma-4-31b/2026-10-26T144030Z-calibrate/summary.md) |
+| gemma-4-12b | 0.822 | 0.603 | 0.884 | 4.892 − 0.501 ln n / 4.030 / 3.760 | [summary](../results/archive/gemma-4-12b/2026-10-26T144032Z-calibrate/summary.md) |
+| qwen3.6-27b | 0.837 | 0.664 | 0.892 | 1.590 / 2.041 / 1.425 | [summary](../results/archive/qwen3.6-27b/2026-10-26T144031Z-calibrate/summary.md) |
+| qwen3.8-27b | 0.842 | 0.682 | 0.884 | 1.669 / 1.000 / 1.344 | [summary](../results/archive/qwen3.8-27b/2026-10-26T144030Z-calibrate/summary.md) |
+
 No noul offset b ships.
 
-Latency, latency-v1 at 600 W on the local workstation, each profile as shipped (median / mean / p80 / p95 ms):
+### Latency and the full Index
 
-| Profile | Latency | Profile | Latency |
-|---|---|---|---|
-| [gemma-4-31b](../results/archive/gemma-4-31b/2026-10-25T131631Z-latency/summary.md) | 199.7 / 467.9 / 652.4 / 1,282.6 | [qwen3.6-27b](../results/archive/qwen3.6-27b/2026-10-25T141532Z-latency/summary.md) | 162.8 / 399.8 / 494.1 / 901.2 |
-| [gemma-4-31b-fp8](../results/archive/gemma-4-31b-fp8/2026-10-25T150150Z-latency/summary.md) | 135.5 / 329.0 / 431.9 / 789.7 | [qwen3.6-27b-fp8](../results/archive/qwen3.6-27b-fp8/2026-10-25T152157Z-latency/summary.md) | 151.4 / 344.9 / 408.6 / 835.5 |
-| [gemma-4-12b](../results/archive/gemma-4-12b/2026-10-25T145052Z-latency/summary.md) | 85.9 / 165.9 / 206.0 / 397.1 | [qwen3.8-27b](../results/archive/qwen3.8-27b/2026-10-25T124823Z-latency/summary.md) | 287.9 / 622.0 / 822.3 / 1,272.3 |
-| [gemma-4-12b-qat](../results/archive/gemma-4-12b-qat/2026-10-25T150932Z-latency/summary.md) | 83.2 / 161.7 / 204.2 / 394.9 | [qwen3.8-27b-fp8](../results/archive/qwen3.8-27b-fp8/2026-10-25T153711Z-latency/summary.md) | 248.4 / 531.1 / 722.5 / 1,171.9 |
-| | | [qwen3.8-27b-nvfp4](../results/archive/qwen3.8-27b-nvfp4/2026-10-25T160045Z-latency/summary.md) | 487.3 / **1,009.5 / 1,272.0** / 2,880.5 |
+latency-v1 at 600 W on the local workstation, each profile as shipped, median / mean / p80 / p95 ms. The H1q column
+is the 2026-10-25 run of each profile:
 
-- **qwen3.8-27b-nvfp4 fails the board gate** on mean and p80. Why the qwen3.8 profiles are slower than on
-  2026-10-20: [qwen3.8 latency note](../results/2026-10-25-qwen38-latency.md).
-- **What H1q costs, gemma-4-31b at 510 W, served orders, same session:** `blurb_header_reread` before H1q
-  [160.0 / 408.1 / 594.6 ms](../results/archive/gemma-4-31b/2026-10-25T045851Z-latency-blurb_header_reread/summary.md),
-  H1q capped at 32
-  [199.4 / 439.6 / 637.2 ms](../results/archive/gemma-4-31b/2026-10-25T045317Z-latency-blurb_header_reread_h1q_cap32/summary.md)
-  (median / mean / p80).
+| Profile | Block read twice (2026-10-26) | With H1q (2026-10-25) |
+|---|---|---|
+| gemma-4-31b | [148.4 / 368.4 / 535.1 / 872.9](../results/archive/gemma-4-31b/2026-10-26T052132Z-latency/summary.md) | [199.7 / 467.9 / 652.4 / 1,282.6](../results/archive/gemma-4-31b/2026-10-25T131631Z-latency/summary.md) |
+| gemma-4-31b-fp8 | [116.0 / 297.2 / 390.5 / 684.9](../results/archive/gemma-4-31b-fp8/2026-10-26T012140Z-latency/summary.md) | [135.5 / 329.0 / 431.9 / 789.7](../results/archive/gemma-4-31b-fp8/2026-10-25T150150Z-latency/summary.md) |
+| gemma-4-12b | [63.9 / 145.3 / 178.4 / 358.9](../results/archive/gemma-4-12b/2026-10-26T023713Z-latency/summary.md) | [85.9 / 165.9 / 206.0 / 397.1](../results/archive/gemma-4-12b/2026-10-25T145052Z-latency/summary.md) |
+| gemma-4-12b-qat | [65.8 / 142.5 / 172.7 / 365.4](../results/archive/gemma-4-12b-qat/2026-10-26T042800Z-latency/summary.md) | [83.2 / 161.7 / 204.2 / 394.9](../results/archive/gemma-4-12b-qat/2026-10-25T150932Z-latency/summary.md) |
+| qwen3.6-27b | [147.4 / 419.4 / 530.3 / 978.4](../results/archive/qwen3.6-27b/2026-10-26T032741Z-latency/summary.md) | [162.8 / 399.8 / 494.1 / 901.2](../results/archive/qwen3.6-27b/2026-10-25T141532Z-latency/summary.md) |
+| qwen3.6-27b-fp8 | [121.7 / 312.6 / 384.6 / 833.8](../results/archive/qwen3.6-27b-fp8/2026-10-26T044047Z-latency/summary.md) | [151.4 / 344.9 / 408.6 / 835.5](../results/archive/qwen3.6-27b-fp8/2026-10-25T152157Z-latency/summary.md) |
+| qwen3.8-27b | [213.1 / 498.8 / 718.6 / 997.8](../results/archive/qwen3.8-27b/2026-10-26T041951Z-latency/summary.md) | [287.9 / 622.0 / 822.3 / 1,272.3](../results/archive/qwen3.8-27b/2026-10-25T124823Z-latency/summary.md) |
+| qwen3.8-27b-fp8 | [164.5 / 379.6 / 531.4 / 816.1](../results/archive/qwen3.8-27b-fp8/2026-10-26T045400Z-latency/summary.md) | [248.4 / 531.1 / 722.5 / 1,171.9](../results/archive/qwen3.8-27b-fp8/2026-10-25T153711Z-latency/summary.md) |
+| qwen3.8-27b-nvfp4 | [232.5 / 558.7 / 794.9 / 1,224.1](../results/archive/qwen3.8-27b-nvfp4/2026-10-26T051046Z-latency/summary.md) | [487.3 / **1,009.5 / 1,272.0** / 2,880.5](../results/archive/qwen3.8-27b-nvfp4/2026-10-25T160045Z-latency/summary.md) |
+
+- **All nine pass the board gate** (median, mean and p80 ≤ 1,000 ms) with the block read twice; under H1q
+  qwen3.8-27b-nvfp4 failed on mean and p80. Why the qwen3.8 profiles are slower than on 2026-10-20:
+  [qwen3.8 latency note](../results/2026-10-25-qwen38-latency.md).
+- **qwen3.6-27b is the exception:** its mean and p80 came out higher without H1q (single runs; not investigated).
+- **The 2026-10-26 runs predate the choice T(n)** fits. T(n) changes probabilities only: the `top_p` gate keeps the
+  identity fit's constant T, so no reads change.
 - **gemma-4-31b warms its shared prefix from 1,024 tokens** (was 4,096; [prompt-sharing.md §7](prompt-sharing.md)).
+- **Full Index, gemma-4-31b-fp8, everything as shipped** (T(n), 65,536-token cap; one rented RTX PRO 6000 at 500 W):
+  public text Index [63.64, ECE 0.079, 140,178 of 140,178 ok](../results/gemma-4-31b-fp8/2026-10-26T153317Z-vast-index/summary.md),
+  public Vision Index [74.41, 12,210 of 12,210 ok](../results/gemma-4-31b-fp8/2026-10-27T035039Z-vision/summary.md).
+  The same box measured latency-v1
+  [112.6 / 342.1 / 454.7 ms](../results/archive/gemma-4-31b-fp8/2026-10-26T155153Z-latency-vast/summary.md).
+  The run before it (constant choice T, 32,768-token cap) scored
+  [63.51, ECE 0.119, 11 unsupported](../results/gemma-4-31b-fp8/2026-10-26T020911Z-vast-index/summary.md).
 
 ## Caveats
 
 - **gemma-4-31b only for the arms, the gate and latency.** The other three bf16 models have eval fits only; §9
   adds a latency run per profile.
-- **No full Index run** under the new default, and no private-set number: the board's Full score is 60% private
-  same-skill and 40% private new-domain tests, and none of the numbers above measure those. A gemma-4-31b full text
-  and Vision run is in progress.
+- **One full Index run** under the current default (gemma-4-31b-fp8, §9), and no private-set number: the board's
+  Full score is 60% private same-skill and 40% private new-domain tests, and none of the numbers above measure those.
 - **The gate was read off suite rows** (index-dev-2k, 36 benchmarks with 2–240 questions each). The board reads
   selection on public rows sceptically; the off-suite data has no multi-question requests to confirm it.
 - **Single runs.** One collect and one latency run per arm; bf16 noise is about 0.25% of questions (5 fixes and
@@ -368,6 +425,9 @@ Latency, latency-v1 at 600 W on the local workstation, each profile as shipped (
   [blurb_header_reread](../results/archive/gemma-4-31b/2026-10-23T052356Z-latency-blurb_header_reread-identity+reversed/summary.md).
 - H1q (§9): collect label `h1qcap`; calibrations `docs/results/archive/<profile>/2026-10-25T*-calibrate/`; the 510 W
   study runs `docs/results/archive/gemma-4-31b/2026-10-25T0*-latency-*`; the 600 W runs linked in §9.
+- Block read twice, vLLM 0.32 (§9): collect labels `reread32` (gemma-4-31b) and `block32` (the others); calibrations
+  `docs/results/archive/<profile>/2026-10-26T*-calibrate/`; gemma-4-31b-fp8 latency arms
+  `docs/results/archive/gemma-4-31b-fp8/2026-10-2[56]T*-latency-*`.
 - Ticket: DS-045. Follow-up idea (model thinking in the cached prefix): DS-046.
 
 ## Sources

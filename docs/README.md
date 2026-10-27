@@ -42,7 +42,7 @@ relying on the numbers.
 | 4 | [The inference technique](4-inference-technique.md) | How the no-training trick works, the projects, pitfalls |
 | 5 | [One server for chat + decisions](5-combined-server.md) | Options ranked, and a step-by-step build for your RTX PRO 6000 |
 | 6 | [Same answers as Jev?](6-answer-compatibility.md) | Source-code audit of answer shapes, `noul`, and `confidence` across ~25 servers |
-| – | [Submitting to the Decision Index](decision-index-submission.md) | Requirements, gaps and selection risk for a board submission (2026-10-04) |
+| – | [Submitting to the Decision Index](decision-index-submission.md) | Requirements, gaps and selection risk for a board submission (status 2026-10-27) |
 | – | [Sources](sources.md) | Links, plus open engine bugs to track |
 | – | [Appendix](appendix/) | Detailed research notes with citations |
 | – | [Background](background/) | Deep dives on how jev-brain works, with our measurements |

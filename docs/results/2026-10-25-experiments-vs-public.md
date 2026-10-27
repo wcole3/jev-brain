@@ -1,5 +1,7 @@
 # Prompt and readout experiments against the public Index (gemma-4-31b, 2026-10-22 to 25)
 
+> Since then (2026-10-26) H1q was dropped again and gemma-4-31b-fp8 had a full run under the default: [public 63.64](gemma-4-31b-fp8/2026-10-26T153317Z-vast-index/summary.md) ([read-twice.md §9](../background/read-twice.md#9-h1q-tried-and-dropped-2026-10-2526)).
+
 This report covers every prompt and readout arm run on gemma-4-31b from 2026-10-22 to 2026-10-25, set against our
 public Decision Index scores. No arm had a full Index run. The public numbers are estimates built from index-dev-2k
 deltas on top of the latest full run. CPU-only analysis, 2026-10-25. The scripts and their raw output are in

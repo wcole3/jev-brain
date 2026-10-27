@@ -21,10 +21,11 @@ the same method as [prompt-sharing.md](prompt-sharing.md) §4: it rebuilds the r
   a full state prefill per question.
 - **Option order** (bias, averaging and its cost) has its own doc: [option-ordering.md](option-ordering.md).
 - **`decider_chat`, `header` and `question_first` have a calibration file per profile** (`data/<profile>/<layout>/calibration.json`, §4).
-  `blurb_header_reread` is the default on all 9 profiles (DS-045), fitted on vLLM 0.32 (2026-10-25); quantized profiles borrow their bf16 base's fit. Experiment layouts have none.
+  `blurb_header_reread` is the default on all 9 profiles (DS-045), fitted on vLLM 0.32 (2026-10-24 to 26); quantized profiles borrow their bf16 base's fit. Experiment layouts have none.
 - **Read-twice** (DS-045): `blurb_header_reread` writes the blurb, question list and state twice when a request has
-  one question; +0.8 to +2.1 points on choice questions off-suite, +22% latency. Since 2026-10-25 (H1q) such a request
-  also reads each row's question and options twice, up to 32 options. See [read-twice.md](read-twice.md).
+  one question; +0.8 to +2.1 points on choice questions off-suite, +22% latency. Reading each row's question and
+  options twice as well (H1q) shipped on 2026-10-25 and was dropped on 2026-10-26: too slow for its gain. See
+  [read-twice.md](read-twice.md).
 - **An intro blurb** (one sentence before the prompt, round 4) moves text accuracy by +0.2 to +1.0 points; only
   gemma's `decider_chat` gain has a CI above 0. No image CI excludes 0. `decider_chat` trails `header` on text by
   1.5–3.6 points on both models, with or without the blurb (§5).
@@ -41,7 +42,7 @@ common before their first question-specific part
 | [`decider_chat`](../../prompts/decider_chat.toml) | context, question, options | chat header + state |
 | [`header`](../../prompts/header.toml) | questions, context, question, options | chat header + list of all questions + state |
 | [`blurb_header`](../../prompts/blurb_header.toml) | questions, context, question, options | as `header`, behind a 2-sentence blurb |
-| [`blurb_header_reread`](../../prompts/blurb_header_reread.toml) (default) | as `blurb_header`; one-question requests read questions + context twice, then question + options twice (≤ 32 options) | as `blurb_header`, twice behind a joiner when one question |
+| [`blurb_header_reread`](../../prompts/blurb_header_reread.toml) (default) | as `blurb_header`; one-question requests read questions + context twice | as `blurb_header`, twice behind a joiner when one question |
 | [`question_first`](../../prompts/question_first.toml) | question, options, context | chat header only (3 tokens) |
 
 A tiny request rendered with each layout (state "Order 17: 3 widgets shipped on Monday.", first
@@ -194,9 +195,10 @@ refused rows per profile ([m3-recommendations.md](../results/archive/m3-recommen
 
 ## 4. Calibration status per layout
 
-`blurb_header_reread` (the default) was refit for H1q on vLLM 0.32 on 2026-10-25 for the four bf16 profiles; the
-quantized profiles borrow their base's fit ([read-twice.md §9](read-twice.md#9-h1q-the-question-read-twice-too-2026-10-25)).
-The table below predates both read-twice layouts.
+`blurb_header_reread` (the default) is fitted on vLLM 0.32 for the four bf16 profiles (gemma-4-31b 2026-10-24, the
+others 2026-10-26; gemma's choice T is a curve over the option count since 2026-10-26); the quantized profiles borrow
+their base's fit ([read-twice.md §9](read-twice.md#the-shipped-fits-vllm-032-block-read-twice)). The table below
+predates both read-twice layouts.
 
 Files in `data/<profile>/<layout>/` (date of the current fit):
 

@@ -11,7 +11,12 @@ and the papers under Sources.
   of many answers together, not of one answer.
 - **The gateway calibrates with a temperature T per question type:**
   `p = softmax(logprobs / T)`, plus a yes-offset `b` for noul: `p(yes) = σ(Δ/T + b)`.
-  All three profiles have our own fit for all three layouts (2026-10-02, §2).
+  Every bf16 profile has our own fit for the default `blurb_header_reread`; quantized profiles
+  borrow their base's (§2).
+- **On gemma the choice T depends on the option count:** T(n) = max(floor, a + b·ln n), since
+  2026-10-26 (§2). The Index is two-option heavy and our calib split is not. On gemma-4-31b-fp8's
+  full Index runs our ECE went from [0.119](../results/gemma-4-31b-fp8/2026-10-26T020911Z-vast-index/summary.md)
+  (constant T) to [0.079](../results/gemma-4-31b-fp8/2026-10-26T153317Z-vast-index/summary.md) (curve).
 - **For a fixed set of reads, T never changes which answer wins,** so accuracy and the side of
   0.5 a `noul` lands on are unchanged. Answers can change through `b` (it ships only when it
   helps on held-out rows) or a `top_p:<τ>+reversed` gate, whose identity-fit T picks which
@@ -97,7 +102,9 @@ vLLM letter logprobs  →  average over option orders  →  + b·T on "yes"  →
   scaling logits.
 
 `header` ships for all three profiles (qwen3.6 since 2026-10-03, qwen3.8 and gemma since 2026-10-04; see
-[m3-recommendations.md](../results/archive/m3-recommendations.md)).
+[m3-recommendations.md](../results/archive/m3-recommendations.md)). Since then the default became `blurb_header`
+and then `blurb_header_reread`; its current fits are in [read-twice.md §9](read-twice.md#the-shipped-fits-vllm-032-block-read-twice)
+and the choice curve below.
 
 Refit 2026-10-03 (T = 1 only when every candidate fails) by [`scripts/calibrate.py`](../../scripts/calibrate.py)
 ([report](../results/archive/qwen3.6-27b/2026-10-03T003833Z-calibrate/summary.md); file version 6 for qwen3.6, 3 for gemma and qwen3.8):
@@ -218,6 +225,10 @@ report](../results/archive/gemma-4-31b/2026-10-26T144030Z-calibrate/summary.md))
 
 Quants borrow their base's file, curve included. Dev check (index-dev-2k, never fitted on),
 gemma-4-31b choice + noul, the study's near-identical 6.85 − 0.80 ln n: ECE 0.115 → 0.075, same answers.
+Full Index, gemma-4-31b-fp8 (our ECE over gold-labelled rows): 0.119 at the constant T
+([run](../results/gemma-4-31b-fp8/2026-10-26T020911Z-vast-index/summary.md)) → 0.079 on the curve
+([run](../results/gemma-4-31b-fp8/2026-10-26T153317Z-vast-index/summary.md)); the second run also raised the decision
+cap from 32,768 to 65,536 tokens, which answered 11 more requests.
 
 Worked example, three options with letter logprobs −0.1, −2.5, −5.0:
 

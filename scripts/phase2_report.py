@@ -12,6 +12,7 @@ import json
 import re
 from pathlib import Path
 
+from gateway.calibration import FLOOR
 from gateway.config import ROOT, Settings, read_env_file
 from scripts.board import BOARD, MATCHES, fmt
 
@@ -22,7 +23,7 @@ TYPES = ("choice", "score", "noul")
 NOTES = {
     "†": "† the run's layout, orders or calibration differ from what ships now (or the calibration file is newer).",
     "‡": "‡ the latency run's layout, orders or calibration differ from the Index run's.",
-    "T": "Calibration T is listed as choice/score/noul; b is the noul yes-offset.",
+    "T": "Calibration T is listed as choice/score/noul, a choice curve as (a+b ln n) for n options; b is the noul yes-offset.",
 }
 
 
@@ -99,8 +100,13 @@ def shipped_settings(profile: str) -> dict:
             "version": data["version"], "stamp": digits(data["date"])}
 
 
+def rounded(T: float | dict) -> float | tuple:
+    """A constant T, or a choice curve {a, b, floor} as a tuple, rounded so files and summaries compare equal."""
+    return tuple(round(T.get(k, FLOOR), 6) for k in ("a", "b", "floor")) if isinstance(T, dict) else round(T, 6)
+
+
 def settings_key(s: dict) -> tuple:
-    return s["layout"], s["orders"], tuple(round(s["T"][t], 6) for t in TYPES), round(s["b"], 6)
+    return s["layout"], s["orders"], tuple(rounded(s["T"][t]) for t in TYPES), round(s["b"], 6)
 
 
 def same_settings(a: dict, b: dict) -> bool:
@@ -124,9 +130,18 @@ def profile_row(profile: str) -> dict:
     return row
 
 
+def t_text(T: float | dict) -> str:
+    return f"({T['a']:.3g}{T['b']:+.3g} ln n)" if isinstance(T, dict) else f"{T:.3g}"
+
+
 def calibration_cell(s: dict) -> str:
     T = [s["T"][t] for t in TYPES]
-    text = "T=1 (none)" if set(T) == {1.0} else f"T={T[0]:.4g}" if len(set(T)) == 1 else "T=" + "/".join(f"{x:.3g}" for x in T)
+    if all(x == 1.0 for x in T):
+        text = "T=1 (none)"
+    elif all(x == T[0] for x in T) and not isinstance(T[0], dict):
+        text = f"T={T[0]:.4g}"
+    else:
+        text = "T=" + "/".join(t_text(x) for x in T)
     return text + (f", b={s['b']:.2f}" if s["b"] else "")
 
 

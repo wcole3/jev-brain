@@ -139,3 +139,15 @@ def test_phase2_table_shows_0_3_public_and_full(tree):
     assert lines[0].startswith("| entry | Index | Full |")
     assert lines[2].startswith("| **gemma-4-31b** | 61.60 | — |")
     assert lines[3].startswith("| Decider chat · Gemma-4-31B | 57.79 | 57.62 |")
+
+
+def test_choice_curve_compares_with_the_shipped_file_and_prints_as_a_formula(tree):
+    curve = {"a": 6.849, "b": -0.792, "floor": 0.05}
+    types = {"choice": {"T": curve}, "score": {"T": 1.6}, "noul": {"T": 1.2, "b": 0.0}}
+    (tree / "data" / "p" / "decider_chat" / "calibration.json").write_text(
+        json.dumps({"version": 7, "date": "2026-10-03T00:39:27Z", "types": types}))
+    shipped = {"decider_chat": {"T": {"choice": curve, "score": 1.6, "noul": 1.2}, "b": 0.0}}
+    write(tree, "p", "2026-10-04T000000Z-index", summary(calibration=shipped, timestamp="2026-10-04T000000Z"))
+    row = report.profile_row("p")
+    assert not row["stale"]
+    assert "T=(6.85-0.792 ln n)/1.6/1.2" in report.markdown([row | {"profile": "gemma-4-31b"}])

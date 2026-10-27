@@ -15,32 +15,50 @@ qwen3.8 profiles take text and image decisions.
 
 ## Scores
 
-Decision Index scores of the model behind each profile, as served by this repo. The Index columns
-come from older runs than the latency column (see the notes below the table).
+Decision Index scores of the model behind each profile, as served by this repo. `gemma-4-31b-fp8` has full text and
+Vision runs under what ships now; the other profiles' Index numbers come from older runs, labelled in the
+"Index runs" column (see the notes below the table). The latency column is current for every profile.
 
-| Profile | Text Index (0.3 public; `blurb_header`, vLLM 0.30) | Vision Index (public; vLLM 0.30) | Latency ms, median / mean / p80 (current default, vLLM 0.32, 600 W) | Board |
-|---|---|---|---|---|
-| `gemma-4-31b` | 62.98 | 74.18 | [199.7 / 467.9 / 652.4](docs/results/archive/gemma-4-31b/2026-10-25T131631Z-latency/summary.md) | [Full 65.2 (0.4), earlier run](https://multimodalart-jev-decision-index.static.hf.space/index.html?model=jev-brain-gemma-4-31b) |
-| `gemma-4-31b-fp8` | 62.82 | 73.96 | [135.5 / 329.0 / 431.9](docs/results/archive/gemma-4-31b-fp8/2026-10-25T150150Z-latency/summary.md) | — |
-| `gemma-4-12b` | 53.58 | 67.56 | [85.9 / 165.9 / 206.0](docs/results/archive/gemma-4-12b/2026-10-25T145052Z-latency/summary.md) | — |
-| `gemma-4-12b-qat` | 51.26 | 66.54 | [83.2 / 161.7 / 204.2](docs/results/archive/gemma-4-12b-qat/2026-10-25T150932Z-latency/summary.md) | — |
-| `qwen3.6-27b` | 56.82 | — (text only) | [162.8 / 399.8 / 494.1](docs/results/archive/qwen3.6-27b/2026-10-25T141532Z-latency/summary.md) | — |
-| `qwen3.6-27b-fp8` | 56.78 | — (text only) | [151.4 / 344.9 / 408.6](docs/results/archive/qwen3.6-27b-fp8/2026-10-25T152157Z-latency/summary.md) | — |
-| `qwen3.8-27b` | 57.64 | 71.13 | [287.9 / 622.0 / 822.3](docs/results/archive/qwen3.8-27b/2026-10-25T124823Z-latency/summary.md) | — |
-| `qwen3.8-27b-fp8` | 57.58 | 70.67 | [248.4 / 531.1 / 722.5](docs/results/archive/qwen3.8-27b-fp8/2026-10-25T153711Z-latency/summary.md) | — |
-| `qwen3.8-27b-nvfp4` | 56.63 | 71.00 | [487.3 / **1,009.5 / 1,272.0**](docs/results/archive/qwen3.8-27b-nvfp4/2026-10-25T160045Z-latency/summary.md) (**fails the gate**) | — |
+| Profile | Text Index (0.3 public) | Vision Index (public) | Index runs: layout, vLLM | Latency ms, median / mean / p80 (current default, vLLM 0.32, 600 W) | Board |
+|---|---|---|---|---|---|
+| `gemma-4-31b` | [62.98](docs/results/gemma-4-31b/2026-10-20T154258Z-vast-index/summary.md) | [74.18](docs/results/gemma-4-31b/2026-10-21T080720Z-vision/summary.md) | `blurb_header`, 0.30 | [148.4 / 368.4 / 535.1](docs/results/archive/gemma-4-31b/2026-10-26T052132Z-latency/summary.md) | [Full 65.2 (0.4), earlier run](https://multimodalart-jev-decision-index.static.hf.space/index.html?model=jev-brain-gemma-4-31b) |
+| `gemma-4-31b-fp8` | [**63.64**](docs/results/gemma-4-31b-fp8/2026-10-26T153317Z-vast-index/summary.md) | [**74.41**](docs/results/gemma-4-31b-fp8/2026-10-27T035039Z-vision/summary.md) | **current default**, 0.32 | [116.0 / 297.2 / 390.5](docs/results/archive/gemma-4-31b-fp8/2026-10-26T012140Z-latency/summary.md) | — |
+| `gemma-4-12b` | [53.58](docs/results/gemma-4-12b/2026-10-21T163900Z-local-index/summary.md) | [67.56](docs/results/gemma-4-12b/2026-10-21T213916Z-vision/summary.md) | `blurb_header`, 0.30 | [63.9 / 145.3 / 178.4](docs/results/archive/gemma-4-12b/2026-10-26T023713Z-latency/summary.md) | — |
+| `gemma-4-12b-qat` | [51.26](docs/results/gemma-4-12b-qat/2026-10-21T121553Z-local-index/summary.md) | [66.54](docs/results/gemma-4-12b-qat/2026-10-21T220318Z-vision/summary.md) | `blurb_header`, 0.30 | [65.8 / 142.5 / 172.7](docs/results/archive/gemma-4-12b-qat/2026-10-26T042800Z-latency/summary.md) | — |
+| `qwen3.6-27b` | [56.82](docs/results/qwen3.6-27b/2026-10-20T152142Z-vast-index/summary.md) | — (text only) | `blurb_header`, 0.30 | [147.4 / 419.4 / 530.3](docs/results/archive/qwen3.6-27b/2026-10-26T032741Z-latency/summary.md) | — |
+| `qwen3.6-27b-fp8` | [56.78](docs/results/qwen3.6-27b-fp8/2026-10-20T152146Z-vast-index/summary.md) | — (text only) | `blurb_header`, 0.30 | [121.7 / 312.6 / 384.6](docs/results/archive/qwen3.6-27b-fp8/2026-10-26T044047Z-latency/summary.md) | — |
+| `qwen3.8-27b` | [57.64](docs/results/qwen3.8-27b/2026-10-20T154248Z-vast-index/summary.md) | [71.13](docs/results/qwen3.8-27b/2026-10-21T041305Z-vision/summary.md) | `blurb_header`, 0.30 | [213.1 / 498.8 / 718.6](docs/results/archive/qwen3.8-27b/2026-10-26T041951Z-latency/summary.md) | — |
+| `qwen3.8-27b-fp8` | [57.58](docs/results/qwen3.8-27b-fp8/2026-10-20T152130Z-vast-index/summary.md) | [70.67](docs/results/qwen3.8-27b-fp8/2026-10-21T004404Z-vision/summary.md) | `blurb_header`, 0.30 | [164.5 / 379.6 / 531.4](docs/results/archive/qwen3.8-27b-fp8/2026-10-26T045400Z-latency/summary.md) | — |
+| `qwen3.8-27b-nvfp4` | [56.63](docs/results/qwen3.8-27b-nvfp4/2026-10-20T152132Z-vast-index/summary.md) | [71.00](docs/results/qwen3.8-27b-nvfp4/2026-10-20T225517Z-vision/summary.md) | `blurb_header`, 0.30 | [232.5 / 558.7 / 794.9](docs/results/archive/qwen3.8-27b-nvfp4/2026-10-26T051046Z-latency/summary.md) | — |
 
-- **Index columns:** our full text and Vision runs of 2026-10-20/21 with the defaults of that time (`blurb_header`, round 4
-  option orders, vLLM 0.30). Profiles now serve `blurb_header_reread` with H1q on vLLM 0.32 (DS-045), which has
-  no full Index run yet; a gemma-4-31b full text and Vision rerun is in progress. Estimates of what the new
-  default is worth, from index-dev-2k deltas: [experiments vs public](docs/results/2026-10-25-experiments-vs-public.md).
-  The board entry (Full 65.2, public 61.69) is an earlier gemma-4-31b run (PR #193).
-- **Latency:** the board's design (latency-v1, one client, text decisions), 2026-10-25, on our WSL workstation
-  (RTX PRO 6000 at 600 W), under each profile's shipped layout, orders and calibration. The board's gate is median,
-  mean and p80 each ≤ 1,000 ms: eight profiles pass; `qwen3.8-27b-nvfp4` fails on mean and p80.
-- **Why the Qwen3.8 profiles got slower** than the 2026-10-20 runs (88–156 ms median then): CPU-bound hybrid
-  prefill on a slower host CPU plus the extra tokens H1q and `min_n:4+reversed` read; not WSL2 and mostly not
-  vLLM 0.32. [qwen3.8 latency note](docs/results/2026-10-25-qwen38-latency.md). See also [Results](#results).
+- **gemma-4-31b-fp8's runs use what ships now:** `blurb_header_reread`, `top_p:0.9+reversed` orders, the choice
+  temperature curve T(n), a 65,536-token decision cap, vLLM 0.32. Both ran on one rented RTX PRO 6000 at 500 W.
+  - Text: 140,178 of 140,178 requests `ok`, ECE 0.079 (ours, over gold-labelled rows; the board computes its own).
+  - Vision: 12,210 of 12,210 `ok`.
+  - The run before it, with a constant choice T and a 32,768-token cap, scored
+    [63.51, ECE 0.119, 11 requests unsupported](docs/results/gemma-4-31b-fp8/2026-10-26T020911Z-vast-index/summary.md)
+    and [Vision 74.20](docs/results/gemma-4-31b-fp8/2026-10-26T134418Z-vision/summary.md). Between the two, T(n)
+    took the ECE from 0.119 to 0.079 (it moves probabilities, not answers;
+    [calibration](docs/background/calibration.md)), and the 65k cap answered the 11 BRIGHT and ToolRet requests
+    of 33k–54k tokens.
+- **Board peers on the same frozen Gemma 4 31B:** FlexDM 63.63 public (board ECE 0.044) and Aleria Judge 63.46
+  (0.089), from the [board](https://huggingface.co/spaces/multimodalart/jev-decision-index). Our board entry
+  (Full 65.2, public 61.69) is an earlier gemma-4-31b run (`header`, vLLM 0.30, PR #193).
+- **The other Index columns** are our full text and Vision runs of 2026-10-20/21 with the defaults of that time
+  (`blurb_header`, round 4 option orders, vLLM 0.30). What the current default is worth on them, estimated from
+  index-dev-2k deltas: [experiments vs public](docs/results/2026-10-25-experiments-vs-public.md).
+- **Latency:** the board's design (latency-v1, one client, text decisions), 2026-10-26, on our WSL workstation
+  (RTX PRO 6000 at 600 W), under each profile's shipped layout and orders. The board's gate is median, mean and p80
+  each ≤ 1,000 ms: all nine profiles pass. The runs predate the T(n) refit, which changes no reads (the `top_p`
+  gate keeps a constant T). The rented box of gemma-4-31b-fp8's Index run measured
+  [112.6 / 342.1 / 454.7 ms](docs/results/archive/gemma-4-31b-fp8/2026-10-26T155153Z-latency-vast/summary.md) at 500 W.
+- **Why the Qwen3.8 profiles are slower** than in the 2026-10-20 runs (88–156 ms median then): CPU-bound hybrid
+  prefill on a slower host CPU, plus the extra rows `min_n:4+reversed` reads; not WSL2 and mostly not vLLM 0.32.
+  The question re-read (H1q) of 2026-10-25 added tokens too; without it qwen3.8-27b-nvfp4 went from
+  [487 / 1,010 / 1,272 ms](docs/results/archive/qwen3.8-27b-nvfp4/2026-10-25T160045Z-latency/summary.md), which
+  failed the gate, to [232 / 559 / 795 ms](docs/results/archive/qwen3.8-27b-nvfp4/2026-10-26T051046Z-latency/summary.md).
+  [qwen3.8 latency note](docs/results/2026-10-25-qwen38-latency.md).
+  See also [Results](#results).
 
 ## Versus vLLM's own `/v1/systemone`
 
@@ -55,7 +73,8 @@ We evaluate the same model (qwen3.8-27b) in jev-brain and vLLM's native '/v1/sys
 | Latency ms, median / mean / p80 (latency-v1, 600 W, requests both answer) | 263 / 540 / 598 | **138 / 272 / 276** |
 
 Summary: jev-brain is more accurate, at about twice the latency; both pass the board's 1,000 ms gate. Details and caveats:
-[2026-10-25-vs-vllm-native-systemone.md](docs/results/2026-10-25-vs-vllm-native-systemone.md).
+[2026-10-25-vs-vllm-native-systemone.md](docs/results/2026-10-25-vs-vllm-native-systemone.md). jev-brain ran that
+day's layout and calibration; today's latency is in [Scores](#scores).
 
 As stated above, vLLM is not able to serve Gemma 4 as a decision model even though it is currently (2026-10-25) the best
 performing non-finetuned model. A future effort will investigate enabling it.
@@ -158,7 +177,8 @@ base's fit (`scripts/borrow_calibration.py`).
 - **gemma-4-31b-fp8:** base `gemma-4-31b`; vision on, video off, retention interval 32, no
   MTP; the prefix warm-up still starts at 4,096 tokens (as on both 12B profiles). FP8 block
   weights plus `--kv-cache-dtype fp8_per_token_head` (1.55x KV tokens, no query cast; DS-005).
-  DeepGEMM off.
+  DeepGEMM off. Decisions take up to 65,536 tokens, as on the bf16 (since 2026-10-26; at 32,768
+  the Index left 11 requests unsupported).
 - **gemma-4-12b:** vision on (encoder-free, `gemma4_unified`), `--prefix-cache-retention-interval 64`
   (its scheduler block is 64), bf16 KV, no MTP. Chat is ~49 tok/s single-stream (31B bf16 ~24).
 - **gemma-4-12b-qat:** base `gemma-4-12b`; int4 W4A16 QAT weights (compressed-tensors, run by
@@ -235,10 +255,11 @@ Per-benchmark numbers and runs: [Images, section 6](docs/background/images.md#6-
 
 ## Results
 
-Decision Index 0.3. Our latest full Index run per profile (2026-10-20/21, `blurb_header`, vLLM 0.30)
-and latest latency run (2026-10-25, the shipped `blurb_header_reread`, vLLM 0.32), next to the
-matching Decision Index 0.3 board entries. † and ‡ mark exactly that gap: no Index run under the
-current default yet. `make report` regenerates the table (the raw command
+Decision Index 0.3. Our latest full Index run per profile and latest latency run (2026-10-26, the shipped
+`blurb_header_reread`, vLLM 0.32), next to the matching Decision Index 0.3 board entries. Only gemma-4-31b-fp8
+has an Index run under the current default (2026-10-26); the others are 2026-10-20/21 runs (`blurb_header`,
+vLLM 0.30), marked †. ‡ marks a latency run whose settings differ from the Index run's; for gemma-4-31b-fp8
+that is only the choice T(n), which changes no reads. `make report` regenerates the table (the raw command
 is `uv run python scripts/phase2_report.py --readme`). Index is the 0.3 public index; Full adds
 the private parts only the maintainers run ([index-0.3-rescore.md](docs/results/index-0.3-rescore.md)).
 ECE and latency are measured differently from the board's; see the run summaries:
@@ -246,36 +267,36 @@ ECE and latency are measured differently from the board's; see the run summaries
 <!-- phase2-table -->
 | entry | Index | Full | ECE | coverage | median ms | p95 ms | run layout / orders | run calibration | shipped now | latency run |
 |---|---|---|---|---|---|---|---|---|---|---|
-| **qwen3.6-27b** † | 56.82 | — | 0.048 | 1.000 | 162.8 | 901.2 | blurb_header / identity | T=1.63/2.06/1.26 | blurb_header_reread / identity / v1 | 2026-10-25T141532Z-latency ‡ |
+| **qwen3.6-27b** † | 56.82 | — | 0.048 | 1.000 | 147.4 | 978.4 | blurb_header / identity | T=1.63/2.06/1.26 | blurb_header_reread / identity / v1 | 2026-10-26T032741Z-latency ‡ |
 | Decider chat · Qwen3.6-27B | 51.57 | 51.25 | 0.021 | board | 83.6 | n/a | | | | |
-| **gemma-4-31b** † | 62.98 | — | 0.119 | 1.000 | 199.7 | 1282.6 | blurb_header / top_p:0.9+reversed | T=3.98/5.21/6.74 | blurb_header_reread / top_p:0.9+reversed / v1 | 2026-10-25T131631Z-latency ‡ |
+| **gemma-4-31b** † | 62.98 | — | 0.119 | 1.000 | 148.4 | 872.9 | blurb_header / top_p:0.9+reversed | T=3.98/5.21/6.74 | blurb_header_reread / top_p:0.9+reversed / v2 | 2026-10-26T052132Z-latency ‡ |
 | Decider chat · Gemma-4-31B | 57.79 | 57.62 | 0.047 | board | 108.5 | n/a | | | | |
-| **qwen3.8-27b** † | 57.64 | — | 0.024 | 1.000 | 287.9 | 1272.3 | blurb_header / min_n:4+reversed | T=1.64/1/1.21 | blurb_header_reread / min_n:4+reversed / v1 | 2026-10-25T124823Z-latency ‡ |
+| **qwen3.8-27b** † | 57.64 | — | 0.024 | 1.000 | 213.1 | 997.8 | blurb_header / min_n:4+reversed | T=1.64/1/1.21 | blurb_header_reread / min_n:4+reversed / v1 | 2026-10-26T041951Z-latency ‡ |
 | simple-jev · Qwen3.8-27B | 56.05 | 51.79 | 0.113 | board | 373.0 | n/a | | | | |
 | reflex Qwen3.8-27B-FP8 (wide choice) | 52.27 | 51.40 | 0.024 | board | 108.3 | n/a | | | | |
 | Jevfire Qwen3.8-27B | 49.80 | 45.55 | 0.052 | board | 89.6 | n/a | | | | |
-| **gemma-4-12b** † | 53.58 | — | 0.060 | 1.000 | 85.9 | 397.1 | blurb_header / identity | T=4.035 | blurb_header_reread / identity / v1 | 2026-10-25T145052Z-latency ‡ |
+| **gemma-4-12b** † | 53.58 | — | 0.060 | 1.000 | 63.9 | 358.9 | blurb_header / identity | T=4.035 | blurb_header_reread / identity / v2 | 2026-10-26T023713Z-latency ‡ |
 | AJev lora7 (Gemma 4 12B) | 55.17 | 49.11 | 0.082 | board | 69.1 | n/a | | | | |
 | decisio 0.4.0 (Gemma 4 12B) | 49.72 | 47.93 | 0.103 | board | 37.8 | n/a | | | | |
 | Winnow-12B | 50.66 | 47.07 | 0.168 | board | 72.5 | n/a | | | | |
-| **qwen3.6-27b-fp8** † | 56.78 | — | 0.049 | 1.000 | 151.4 | 835.5 | blurb_header / identity | T=1.61/2.04/1.26 | blurb_header_reread / identity / v1 | 2026-10-25T152157Z-latency ‡ |
+| **qwen3.6-27b-fp8** † | 56.78 | — | 0.049 | 1.000 | 121.7 | 833.8 | blurb_header / identity | T=1.61/2.04/1.26 | blurb_header_reread / identity / v1 | 2026-10-26T044047Z-latency ‡ |
 | Decider chat · Qwen3.6-27B | 51.57 | 51.25 | 0.021 | board | 83.6 | n/a | | | | |
-| **qwen3.8-27b-fp8** † | 57.58 | — | 0.024 | 1.000 | 248.4 | 1171.9 | blurb_header / min_n:4+reversed | T=1.59/1/1.11, b=0.14 | blurb_header_reread / min_n:4+reversed / v1 | 2026-10-25T153711Z-latency ‡ |
+| **qwen3.8-27b-fp8** † | 57.58 | — | 0.024 | 1.000 | 164.5 | 816.1 | blurb_header / min_n:4+reversed | T=1.59/1/1.11, b=0.14 | blurb_header_reread / min_n:4+reversed / v1 | 2026-10-26T045400Z-latency ‡ |
 | simple-jev · Qwen3.8-27B | 56.05 | 51.79 | 0.113 | board | 373.0 | n/a | | | | |
 | reflex Qwen3.8-27B-FP8 (wide choice) | 52.27 | 51.40 | 0.024 | board | 108.3 | n/a | | | | |
 | Jevfire Qwen3.8-27B | 49.80 | 45.55 | 0.052 | board | 89.6 | n/a | | | | |
-| **qwen3.8-27b-nvfp4** † | 56.63 | — | 0.025 | 1.000 | 487.3 | 2880.5 | blurb_header / min_n:4+reversed | T=1.68/1.97/1.14 | blurb_header_reread / min_n:4+reversed / v1 | 2026-10-25T160045Z-latency ‡ |
+| **qwen3.8-27b-nvfp4** † | 56.63 | — | 0.025 | 1.000 | 232.5 | 1224.1 | blurb_header / min_n:4+reversed | T=1.68/1.97/1.14 | blurb_header_reread / min_n:4+reversed / v1 | 2026-10-26T051046Z-latency ‡ |
 | simple-jev · Qwen3.8-27B | 56.05 | 51.79 | 0.113 | board | 373.0 | n/a | | | | |
 | reflex Qwen3.8-27B-FP8 (wide choice) | 52.27 | 51.40 | 0.024 | board | 108.3 | n/a | | | | |
 | Jevfire Qwen3.8-27B | 49.80 | 45.55 | 0.052 | board | 89.6 | n/a | | | | |
-| **gemma-4-31b-fp8** † | 62.82 | — | 0.116 | 1.000 | 135.5 | 789.7 | blurb_header / top_p:0.9+reversed | T=4.06/5.31/6.66 | blurb_header_reread / top_p:0.9+reversed / v1 | 2026-10-25T150150Z-latency ‡ |
+| **gemma-4-31b-fp8** | 63.64 | — | 0.079 | 1.000 | 116.0 | 684.9 | blurb_header_reread / top_p:0.9+reversed | T=(6.85-0.792 ln n)/5.3/7.15 | blurb_header_reread / top_p:0.9+reversed / v2 | 2026-10-26T012140Z-latency ‡ |
 | Decider chat · Gemma-4-31B | 57.79 | 57.62 | 0.047 | board | 108.5 | n/a | | | | |
-| **gemma-4-12b-qat** † | 51.26 | — | 0.047 | 1.000 | 83.2 | 394.9 | blurb_header / identity | T=3.01/12.9/2.24 | blurb_header_reread / identity / v1 | 2026-10-25T150932Z-latency ‡ |
+| **gemma-4-12b-qat** † | 51.26 | — | 0.047 | 1.000 | 65.8 | 365.4 | blurb_header / identity | T=3.01/12.9/2.24 | blurb_header_reread / identity / v2 | 2026-10-26T042800Z-latency ‡ |
 | AJev lora7 (Gemma 4 12B) | 55.17 | 49.11 | 0.082 | board | 69.1 | n/a | | | | |
 | decisio 0.4.0 (Gemma 4 12B) | 49.72 | 47.93 | 0.103 | board | 37.8 | n/a | | | | |
 | Winnow-12B | 50.66 | 47.07 | 0.168 | board | 72.5 | n/a | | | | |
 
-- Calibration T is listed as choice/score/noul; b is the noul yes-offset.
+- Calibration T is listed as choice/score/noul, a choice curve as (a+b ln n) for n options; b is the noul yes-offset.
 - † the run's layout, orders or calibration differ from what ships now (or the calibration file is newer).
 - ‡ the latency run's layout, orders or calibration differ from the Index run's.
 <!-- /phase2-table -->
@@ -283,18 +304,18 @@ ECE and latency are measured differently from the board's; see the run summaries
 <details>
 <summary>Latency notes</summary>
 
-- **Latency** is the latency-v1 design with one sequential client, run on 2026-10-25 on our WSL
-  workstation (RTX PRO 6000 at 600 W, Ryzen 7 3800X), vLLM 0.32, each profile's shipped layout, orders
-  and calibration. The board's gate is median, mean and p80 each ≤ 1,000 ms; qwen3.8-27b-nvfp4 fails it
-  (487.3 / 1,009.5 / 1,272.0 ms), the other eight pass. The 2026-10-20/21 runs (old default, vLLM 0.30,
-  rented boxes except the 12B) stay in `docs/results/archive/<profile>/`.
-- **qwen3.8-27b's row is the local 600 W run** (`2026-10-25T124823Z-latency`). Its newest latency dir,
-  which `make report` would pick, is a rented-box run from the investigation below.
+- **Latency** is the latency-v1 design with one sequential client, run on 2026-10-26 on our WSL
+  workstation (RTX PRO 6000 at 600 W, Ryzen 7 3800X), vLLM 0.32, each profile's shipped layout and orders.
+  The board's gate is median, mean and p80 each ≤ 1,000 ms; all nine profiles pass. The 2026-10-25 runs under
+  H1q (the question read twice too) and the 2026-10-20/21 runs (old default, vLLM 0.30, rented boxes except
+  the 12B) stay in `docs/results/archive/<profile>/`.
+- **`make report` picks the newest `<stamp>-latency` dir** per profile; runs on rented boxes and A/B arms carry
+  a suffix (`-latency-vast`, `-latency-<arm>`), so they are not picked.
 - **Qwen is slower on our workstation** than on the 2026-10-20 rented boxes. Not WSL2: a native-Linux
   box with the same CPU generation measures the same. Hybrid-Qwen prefill is CPU-bound, those boxes had
-  much faster CPUs, and H1q and `min_n:4+reversed` compute more tokens per row; vLLM 0.32 adds about 5%
-  to mean and p80. nvfp4 also loses time in FlashInfer's FP8 kernel for its attention projections.
-  Details: [qwen3.8 latency note](docs/results/2026-10-25-qwen38-latency.md) (DS-032).
+  much faster CPUs, and `min_n:4+reversed` computes more tokens per row (H1q did too, until 2026-10-26);
+  vLLM 0.32 adds about 5% to mean and p80. nvfp4 also loses time in FlashInfer's FP8 kernel for its
+  attention projections. Details: [qwen3.8 latency note](docs/results/2026-10-25-qwen38-latency.md) (DS-032).
 
 </details>
 
@@ -335,10 +356,15 @@ per arm. ECE columns are Stage 2 on the eval split, before the fit (T = 1) → a
 - **Prompt format is data, not code.** Wording and part order live in `prompts/<layout>.toml`.
   The default `blurb_header_reread` layout is `header` with an intro blurb: question list, then the
   state, then one question per row, so every row of a request shares one long
-  prefix. A one-question request reads the list and state twice and, with up to 32 options,
-  its question and labelled options twice too (H1q); a request too long to read twice is read
-  once. Option names that only repeat their letter (A, B, …) are dropped (DS-045,
-  [read-twice](docs/background/read-twice.md)). Profiles set the orders: gemma `top_p:0.9+reversed` (images `identity`), qwen3.8 `min_n:4+reversed`, qwen3.6 `identity`.
+  prefix. A one-question request reads that shared block (list and state) twice, behind one
+  joiner line, inside the cached prefix; a request too long to read twice is read once. Option
+  names that only repeat their letter (A, B, …) are dropped (DS-045,
+  [read-twice](docs/background/read-twice.md)). Reading the question and options twice as well
+  (H1q) was tried and dropped: [+0.18 estimated public points](docs/results/2026-10-25-experiments-vs-public.md)
+  (95% CI −0.50 to +0.83), for gemma-4-31b-fp8 latency of
+  [136 / 329 / 432 ms](docs/results/archive/gemma-4-31b-fp8/2026-10-25T150150Z-latency/summary.md) instead of
+  [116 / 297 / 391](docs/results/archive/gemma-4-31b-fp8/2026-10-26T012140Z-latency/summary.md)
+  (median / mean / p80). Profiles set the orders: gemma `top_p:0.9+reversed` (images `identity`), qwen3.8 `min_n:4+reversed`, qwen3.6 `identity`.
   [Prompt layouts](docs/background/prompt-layouts.md).
 - **Token-exact rows.** Rows are built piecewise from token ids, and each label letter must
   be one token in context (checked by `scripts/build_labels.py`). Identical prefixes hit the
@@ -349,8 +375,9 @@ per arm. ECE columns are Stage 2 on the eval split, before the fit (T = 1) → a
   instead of recomputing the tail. [KV cache](docs/background/kv-cache.md),
   [prompt sharing](docs/background/prompt-sharing.md).
 - **Calibrated probabilities.** A softmax over the letters with a fitted temperature T per
-  question type, plus a yes/no offset b for `noul`. Fits use JevBench gold labels, never
-  Jev outputs. [Calibration](docs/background/calibration.md),
+  question type, plus a yes/no offset b for `noul`. On gemma the choice T depends on the option
+  count n, T(n) = a + b·ln n, because the Index is two-option heavy and our calib split is not.
+  Fits use JevBench gold labels, never Jev outputs. [Calibration](docs/background/calibration.md),
   [yes/no bias](docs/background/noul-bias.md).
 - **Jev-shaped answers.** `choice`, `score` and `noul` with Jev's fields and `confidence`
   formulas. [Answer compatibility](docs/6-answer-compatibility.md).

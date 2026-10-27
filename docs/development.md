@@ -110,12 +110,15 @@ uv run python scripts/hle_focus.py             # data/splits/hle-focus.json: all
 uv run python scripts/collect.py --profile qwen3.6-27b --split eval       # raw letter logprobs, stack up
 uv run python scripts/calibrate.py --profile qwen3.6-27b                  # fit T (+ noul offset) on calib, judge on eval; CPU only
 uv run python scripts/calibrate.py --profile qwen3.6-27b --orders identity+reversed --collect-label L  # a setting's fit from <split>-L.jsonl.gz; writes that setting's file
+uv run python scripts/calibrate.py --profile gemma-4-31b --orders top_p:0.9+reversed --collect-label reread32 --choice-tn  # also try choice T(n) = a + b ln n; ships only if its eval ECE wins
 # collect --orders takes all or a fixed setting (min_n:4+reversed); a gated one needs identity+reversed
 # gated settings (top_p:<tau>+reversed) gate on the identity fit: gemma runs --orders identity first, then --orders top_p:0.9+reversed
+# reread_p:<tau> (opt-in, not shipped: background/read-twice.md §9) reads the block once, then re-reads unsure one-question requests with it twice
 uv run python scripts/borrow_calibration.py --profile qwen3.8-27b-fp8 --layout blurb_header_reread  # a quantized profile reuses its bf16 base's fit (QUANTIZED), restamped; --dry-run first
 uv run python scripts/evaluate.py offline --profile qwen3.6-27b --split eval --orders identity+reversed
 uv run python scripts/evaluate.py index --profile qwen3.6-27b             # full Index via the upstream harness, 8 shards
 uv run python scripts/evaluate.py replace --profile qwen3.6-27b --base RUN_DIR --override RUN_DIR  # swap re-run rows into an Index run
+uv run python scripts/hub_export.py text RUN_DIR --name NAME --out OUT    # board submission folder OUT/runs/NAME/: one line per suite row, hashes and rescore checked (vision: vision RUN_DIR)
 uv run python scripts/latency.py --profile qwen3.6-27b                    # latency-v1 design, one sequential client; reports median, mean, p80, p95 and flags any admission metric over 1000 ms
 uv run python scripts/evaluate.py lengths --profile qwen3.6-27b --baseline RUN_DIR  # rows the decision cap refuses
 uv run python scripts/collect.py --profile gemma-4-31b --split calib-600 --layout-file prompts/experiments/labels-lower.toml --label lower  # experiment layout -> calib-600-lower.jsonl.gz
@@ -190,10 +193,10 @@ A-B-A latency runs, and `--latency NAME=DIR` attaches a run's `summary.json` to 
 | Path | What |
 |---|---|
 | `gateway/` | FastAPI gateway: `/v1/systemone` flow (`decide.py`), chat proxy (`chat.py`), disconnect cancellation (`disconnect.py`) |
-| `prompts/` | Prompt layouts (`header` default for all profiles, `decider_chat`, `question_first`) |
+| `prompts/` | Prompt layouts (`blurb_header_reread` default for all profiles, `blurb_header`, `header`, `decider_chat`, `question_first`); `experiments/` holds unserved arms |
 | `profiles/` | One env file per model |
 | `data/` | Label tables and calibration per profile/layout; benchmark corpus |
-| `scripts/` | `fetch_model.py`, `build_labels.py`, `bench.py` (+ `bench_data.py`, `bench_report.py`), `decider_fixtures.py`; phase 2: `index_suite.py`, `splits.py`, `collect.py`, `calibrate.py` (+ `fit.py`, `calibrate_report.py`), `evaluate.py`, `latency.py` (+ helpers) |
+| `scripts/` | `fetch_model.py`, `build_labels.py`, `bench.py` (+ `bench_data.py`, `bench_report.py`), `decider_fixtures.py`; phase 2: `index_suite.py`, `splits.py`, `collect.py`, `calibrate.py` (+ `fit.py`, `calibrate_report.py`), `evaluate.py`, `latency.py` (+ helpers), `phase2_report.py` (README results table), `hub_export.py` (board submission folder) |
 | `data/splits/` | Committed calibration, evaluation, index-dev, latency-v1 and hle-focus (all HLE + a sample of the other Index benchmarks) row ids |
 | `tests/` | `unit/`, `parity/`, `live/` |
 | `Makefile` | Entry point: `make help` lists fetch, up, down, try, test, bench, index and report targets |
@@ -214,7 +217,7 @@ decider's T = 1.943). Accuracy in %; ECE is calibration error (lower is better):
 
 Since then the default layout moved to `header` (owner, 2026-10-04; full Index confirmation in
 [docs/results/archive/m3-recommendations.md](results/archive/m3-recommendations.md)), then `blurb_header` (round 4,
-2026-10-20) and `blurb_header_reread` with H1q on vLLM 0.32 (DS-045, 2026-10-25;
-[read-twice.md](background/read-twice.md)). Current scores and latency: README "Scores".
+2026-10-20) and `blurb_header_reread`, the shared block read twice on one-question requests, on vLLM 0.32
+(DS-045, 2026-10-26; [read-twice.md](background/read-twice.md)). Current scores and latency: README "Scores".
 Choice is level with Jev; most of the gap is in noul and score. Details and caveats:
 [docs/results/archive/jevbench-vs-jev.md](results/archive/jevbench-vs-jev.md).

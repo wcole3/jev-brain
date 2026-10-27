@@ -1,5 +1,16 @@
 # Submitting to the Decision Index
 
+Status **2026-10-27**: the next candidate is gemma-4-31b-fp8 under the current default (`blurb_header_reread`,
+`top_p:0.9+reversed`, choice T(n), vLLM 0.32, 65,536-token decision cap), run on one rented RTX PRO 6000:
+- public text Index [63.64, ECE 0.079](results/gemma-4-31b-fp8/2026-10-26T153317Z-vast-index/summary.md), 140,178 of
+  140,178 rows `ok` (none unsupported);
+- public Vision Index [74.41](results/gemma-4-31b-fp8/2026-10-27T035039Z-vision/summary.md), 12,210 of 12,210 `ok`;
+- latency-v1 on our workstation at 600 W
+  [116.0 / 297.2 / 390.5 ms](results/archive/gemma-4-31b-fp8/2026-10-26T012140Z-latency/summary.md) (median / mean / p80).
+
+`scripts/hub_export.py` builds the `runs/<name>/` folder for either board and runs the checks of
+[Results file](#results-file-one-line-per-suite-row). The status below and the rest of the page are older.
+
 Status **2026-10-20**: gemma-4-31b was submitted (PR #193, public 0.3 index 61.69) and is on the 0.4
 board. The board's note says our results file had extra lines and duplicate questions; the next
 submission ships a clean file (see [Results file](#results-file-one-line-per-suite-row)). The rest of
@@ -74,6 +85,8 @@ each the last attempt for its `run_id`. No retries, no rows outside the suite.
 - **How.** Start from `merged/results.jsonl` (`evaluate.py index` writes it as a last-attempt merge
   of the shards, one line per `run_id`). Keep only `run_id`s in the suite export
   (`.cache/decision-index/rows-0.3.jsonl.gz`, field `_evaluation.run_id`), then gzip.
+- **Tool.** `uv run python scripts/hub_export.py text RUN_DIR --name NAME --out OUT` (or `vision`) does the
+  filtering and the checks below; any failed check writes no folder.
 - **Check before upload.**
   - Lines = unique `run_id`s = 140,178.
   - Every `run_id` is in the suite export.

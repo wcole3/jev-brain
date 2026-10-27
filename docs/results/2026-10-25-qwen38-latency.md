@@ -1,5 +1,7 @@
 # Why qwen3.8 decisions got slower (2026-10-25)
 
+> Since then (2026-10-26) the default dropped H1q; qwen3.8-27b-nvfp4 passes at [232 / 559 / 795 ms](archive/qwen3.8-27b-nvfp4/2026-10-26T051046Z-latency/summary.md) ([read-twice.md §9](../background/read-twice.md#9-h1q-tried-and-dropped-2026-10-2526)).
+
 After the move to vLLM 0.32 and the H1q default (`blurb_header_reread`), qwen3.8-27b-nvfp4 failed the latency gate
 (latency-v1 at 600 W: 487 / 1,010 / 1,272 / 2,881 ms median / mean / p80 / p95). The 2026-10-20 runs were
 88 / 180 / 226 ms. This note finds where the time went. Short answer: not WSL2 and mostly not vLLM 0.32; the

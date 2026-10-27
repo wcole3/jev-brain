@@ -1,0 +1,108 @@
+{
+  "edition": "0.3",
+  "public_vision_index": 74.41449778711086,
+  "complete": true,
+  "missing_rows": 0,
+  "benchmarks": {
+    "CV-Bench": {
+      "rows": 2038,
+      "answered": 2038,
+      "accuracy": 0.8567222767419038,
+      "chance": 0.393825646058227,
+      "skill": 0.7636361183438339,
+      "skill_clipped": 0.7636361183438339,
+      "weight": 1.0
+    },
+    "BLINK": {
+      "rows": 961,
+      "answered": 961,
+      "accuracy": 0.7835587929240374,
+      "chance": 0.3540582726326743,
+      "skill": 0.6649214659685863,
+      "skill_clipped": 0.6649214659685863,
+      "weight": 1.0
+    },
+    "RealWorldQA": {
+      "rows": 589,
+      "answered": 589,
+      "accuracy": 0.7741935483870968,
+      "chance": 0.38808715336728916,
+      "skill": 0.6309826589595374,
+      "skill_clipped": 0.6309826589595374,
+      "weight": 1.0
+    },
+    "CharXiv": {
+      "rows": 532,
+      "answered": 532,
+      "accuracy": 0.8590225563909775,
+      "chance": 0.25,
+      "skill": 0.81203007518797,
+      "skill_clipped": 0.81203007518797,
+      "weight": 1.0
+    },
+    "InfographicVQA": {
+      "rows": 244,
+      "answered": 244,
+      "accuracy": 0.9590163934426229,
+      "chance": 0.25,
+      "skill": 0.9453551912568305,
+      "skill_clipped": 0.9453551912568305,
+      "weight": 1.0
+    },
+    "Mind2Web": {
+      "rows": 973,
+      "answered": 973,
+      "accuracy": 0.8776978417266187,
+      "chance": 0.25,
+      "skill": 0.8369304556354916,
+      "skill_clipped": 0.8369304556354916,
+      "weight": 1.0
+    },
+    "Winoground": {
+      "rows": 800,
+      "answered": 800,
+      "accuracy": 0.93375,
+      "chance": 0.5,
+      "skill": 0.8674999999999999,
+      "skill_clipped": 0.8674999999999999,
+      "weight": 1.0
+    },
+    "KIE (CORD+FUNSD)": {
+      "rows": 2465,
+      "answered": 2465,
+      "accuracy": 0.954158215010142,
+      "chance": 0.39259634888438133,
+      "skill": 0.9245283018867925,
+      "skill_clipped": 0.9245283018867925,
+      "weight": 1.0
+    },
+    "Moderation (Hateful Memes)": {
+      "rows": 1213,
+      "answered": 1213,
+      "accuracy": 0.7609233305853257,
+      "chance": 0.5,
+      "skill": 0.5218466611706514,
+      "skill_clipped": 0.5218466611706514,
+      "weight": 1.0
+    },
+    "R-Bench-M": {
+      "rows": 665,
+      "answered": 665,
+      "accuracy": 0.46766917293233085,
+      "chance": 0.16679197994987469,
+      "skill": 0.3611069333734397,
+      "skill_clipped": 0.3611069333734397,
+      "weight": 0.5
+    },
+    "MMMU-Pro vision": {
+      "rows": 1730,
+      "answered": 1730,
+      "accuracy": 0.5017341040462427,
+      "chance": 0.12811840535828975,
+      "skill": 0.4285165565875789,
+      "skill_clipped": 0.4285165565875789,
+      "weight": 0.25
+    }
+  },
+  "full_index": "0.5 x public + 0.5 x private; the private part is run by the maintainers and reported as an aggregate"
+}
